@@ -580,10 +580,11 @@ export function captureOpenAICodexEvaluation({
         '--json',
         '--output-last-message', path.join(outputRoot, ...transcriptPath.split('/')),
         '--cd', absoluteRoot,
-        prompt,
+        '-',
       ], {
         cwd: absoluteRoot,
         env: environment,
+        input: prompt,
         maxBuffer: MAX_EVENT_BYTES,
         timeout: timeoutSeconds * 1000,
       });
@@ -599,7 +600,10 @@ export function captureOpenAICodexEvaluation({
       if (result.error?.code === 'ETIMEDOUT') {
         fail(`Codex timed out for ${entry.id}`, 2);
       }
-      if (result.error || result.status !== 0) {
+      if (result.error) {
+        fail(`Codex process failed for ${entry.id}: ${result.error.code ?? 'unknown error'}`, 2);
+      }
+      if (result.status !== 0) {
         fail(`Codex failed for ${entry.id} with status ${result.status ?? 'unavailable'}`, 2);
       }
       let providerEvents;

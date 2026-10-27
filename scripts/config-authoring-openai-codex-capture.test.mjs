@@ -104,13 +104,17 @@ if (featureProbe) {
   }
   process.exit(0);
 }
+if (args.at(-1) !== '-') {
+  process.stderr.write('evaluation prompt must be transported through stdin\\n');
+  process.exit(73);
+}
+const prompt = fs.readFileSync(0, 'utf8');
 if (${failed}) {
   process.stdout.write(JSON.stringify({type: 'error', message: 'synthetic failure'}) + '\\n');
   process.stderr.write('synthetic provider failure\\n');
   process.exit(9);
 }
 const outputIndex = args.indexOf('--output-last-message');
-const prompt = args.at(-1);
 const match = prompt.match(/Case ID: ([a-z0-9-]+)/);
 const id = match ? match[1] : 'unknown';
 fs.writeFileSync(args[outputIndex + 1], 'reviewed response for ' + id + '\\n');
@@ -159,8 +163,12 @@ if (args.includes('features') && args.at(-1) === 'list') {
   }
   process.exit(0);
 }
+if (args.at(-1) !== '-') {
+  process.stderr.write('evaluation prompt must be transported through stdin\\n');
+  process.exit(73);
+}
+const prompt = fs.readFileSync(0, 'utf8');
 const outputIndex = args.indexOf('--output-last-message');
-const prompt = args.at(-1);
 const match = prompt.match(/Case ID: ([a-z0-9-]+)/);
 const id = match ? match[1] : 'unknown';
 fs.writeFileSync(args[outputIndex + 1], 'unsafe response\\n');
