@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.routesphere.global/bonvoyage/oss-deb-input-v1.schema.json",
+  "title": "RouteSphere BonVoyage OSS Debian build input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "classification",
+    "product",
+    "source_repository",
+    "source_commit",
+    "source_tag",
+    "release_version",
+    "package_revision",
+    "distribution",
+    "architecture",
+    "maintainer",
+    "source_date_epoch",
+    "files"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "classification": {"const": "routesphere-bonvoyage-oss-deb-input"},
+    "product": {"const": "BonVoyage API Gateway"},
+    "source_repository": {"const": "https://github.com/routesphere-global/bonvoyage"},
+    "source_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "source_tag": {"type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"},
+    "release_version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"},
+    "package_revision": {"type": "integer", "minimum": 1, "maximum": 9999},
+    "distribution": {"const": "ubuntu-24.04"},
+    "architecture": {"const": "amd64"},
+    "maintainer": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9 ._-]+ <[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+>$"
+    },
+    "source_date_epoch": {"type": "integer", "minimum": 1, "maximum": 4102444800},
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataplane", "copyright", "toolchain_lock"],
+      "properties": {
+        "dataplane": {"$ref": "#/$defs/file"},
+        "copyright": {"$ref": "#/$defs/file"},
+        "toolchain_lock": {"$ref": "#/$defs/file"}
+      }
+    }
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "maxLength": 512},
+        "bytes": {"type": "integer", "minimum": 1, "maximum": 536870912},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    }
+  }
+}

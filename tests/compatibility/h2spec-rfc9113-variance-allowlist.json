@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "id": "bonvoyage-h2spec-v2.6.0-rfc9113-variance-allowlist",
+  "tool": {
+    "name": "h2spec",
+    "version": "2.6.0",
+    "covered_specifications": [
+      "RFC 7540",
+      "RFC 7541"
+    ],
+    "current_specification": "RFC 9113"
+  },
+  "match_fields": [
+    "package",
+    "classname",
+    "outcome"
+  ],
+  "expected_variance_count": 5,
+  "policy": {
+    "unexpected_failure": "fail",
+    "allowlisted_failure": "accept_as_reviewed_rfc9113_variance",
+    "allowlisted_test_now_passing": "report_without_failure",
+    "allowlisted_test_absent_or_skipped": "fail_as_unexercised"
+  },
+  "review": {
+    "status": "approved",
+    "authority": "RouteSphere BonVoyage Phase 3 architecture review",
+    "reviewed_on": "2026-08-28",
+    "change_control": "Every added or changed variance requires an explicit RFC 9113 review."
+  },
+  "variances": [
+    {
+      "id": "rfc9113-closed-data-after-rst-race",
+      "package": "http2/5.1",
+      "classname": "closed: Sends a DATA frame after sending RST_STREAM frame",
+      "outcome": "error",
+      "rfc9113": {
+        "sections": [
+          "5.1",
+          "5.4.2"
+        ],
+        "url": "https://www.rfc-editor.org/rfc/rfc9113.html#section-5.1"
+      },
+      "rationale": "RFC 9113 permits minimal processing and discard of frames that raced with a locally sent RST_STREAM; the legacy RFC 7540 timeout expectation is not authoritative for this closure race.",
+      "review_status": "approved"
+    },
+    {
+      "id": "rfc9113-closed-headers-after-rst-race",
+      "package": "http2/5.1",
+      "classname": "closed: Sends a HEADERS frame after sending RST_STREAM frame",
+      "outcome": "error",
+      "rfc9113": {
+        "sections": [
+          "5.1",
+          "5.4.2"
+        ],
+        "url": "https://www.rfc-editor.org/rfc/rfc9113.html#section-5.1"
+      },
+      "rationale": "RFC 9113 permits minimal processing and discard of frames that raced with a locally sent RST_STREAM, including the required header-compression state update for HEADERS.",
+      "review_status": "approved"
+    },
+    {
+      "id": "rfc9113-closed-data-race",
+      "package": "http2/5.1",
+      "classname": "closed: Sends a DATA frame",
+      "outcome": "error",
+      "rfc9113": {
+        "sections": [
+          "5.1",
+          "5.4.2"
+        ],
+        "url": "https://www.rfc-editor.org/rfc/rfc9113.html#section-5.1"
+      },
+      "rationale": "RFC 9113 allows endpoints to minimally process and discard in-flight DATA on a closed stream while preserving connection flow-control accounting; the legacy timeout expectation is therefore a reviewed variance.",
+      "review_status": "approved"
+    },
+    {
+      "id": "rfc9113-closed-headers-race",
+      "package": "http2/5.1",
+      "classname": "closed: Sends a HEADERS frame",
+      "outcome": "error",
+      "rfc9113": {
+        "sections": [
+          "5.1",
+          "5.4.2"
+        ],
+        "url": "https://www.rfc-editor.org/rfc/rfc9113.html#section-5.1"
+      },
+      "rationale": "RFC 9113 allows endpoints to minimally process and discard in-flight HEADERS on a closed stream while preserving header-compression state; the legacy timeout expectation is therefore a reviewed variance.",
+      "review_status": "approved"
+    },
+    {
+      "id": "rfc9113-deprecated-priority-self-dependency",
+      "package": "http2/5.3.1",
+      "classname": "Sends PRIORITY frame that depend on itself",
+      "outcome": "error",
+      "rfc9113": {
+        "sections": [
+          "5.3.2",
+          "6.3"
+        ],
+        "url": "https://www.rfc-editor.org/rfc/rfc9113.html#section-5.3.2"
+      },
+      "rationale": "RFC 9113 deprecates and omits the RFC 7540 priority dependency semantics while retaining the frame format and selected mandatory handling, so the legacy self-dependency expectation is not an RFC 9113 conformance requirement.",
+      "review_status": "approved"
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      day: monday
+      time: "04:00"
+      timezone: Asia/Singapore
+    open-pull-requests-limit: 1
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: chore(actions)
+
+  - package-ecosystem: gomod
+    directory: /api/gen
+    schedule:
+      interval: monthly
+      day: monday
+      time: "04:10"
+      timezone: Asia/Singapore
+    open-pull-requests-limit: 1
+    groups:
+      go-api:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: gomod
+    directory: /control-plane
+    schedule:
+      interval: monthly
+      day: monday
+      time: "04:20"
+      timezone: Asia/Singapore
+    open-pull-requests-limit: 1
+    groups:
+      go-control-plane:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: gomod
+    directory: /tools/host-tune
+    schedule:
+      interval: monthly
+      day: monday
+      time: "04:30"
+      timezone: Asia/Singapore
+    open-pull-requests-limit: 1
+    groups:
+      go-host-tune:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+      day: monday
+      time: "04:40"
+      timezone: Asia/Singapore
+    open-pull-requests-limit: 1
+    groups:
+      node-tooling:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: npm
+    directory: /docs-site
+    schedule:
+      interval: monthly
+      day: monday
+      time: "04:50"
+      timezone: Asia/Singapore
+    open-pull-requests-limit: 1
+    groups:
+      documentation:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: chore(docs-deps)

@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-oss-deb-builder-image-contract",
+  "state": "local-foundation-unpublished",
+  "image": {
+    "dockerfile": "deploy/docker/bonvoyage/Dockerfile",
+    "target": "oss-deb-builder",
+    "platform": "linux/amd64",
+    "ubuntu_base": "ubuntu:24.04@sha256:561618e2c15bf2397621dd04f96926663a3b5616c189cf7e38db7e82f5c538ea",
+    "packaging_snapshot": "20261006T000000Z",
+    "entrypoint_source": "scripts/oss-deb-builder-entrypoint.py",
+    "entrypoint": "/usr/local/bin/bonvoyage-oss-deb-builder",
+    "default_user": "65532:65532",
+    "working_directory": "/workspace"
+  },
+  "build": {
+    "source_compiled_at_runtime": true,
+    "source_or_binary_embedded": false,
+    "build_type": "RelWithDebInfo",
+    "compiled_tests_required": true,
+    "package_revision": 1,
+    "maintainer": "RouteSphere Release <release@routesphere.global>",
+    "dependency_prefixes": [
+      "/opt/abseil",
+      "/opt/c-ares",
+      "/opt/libjwt",
+      "/opt/llhttp",
+      "/opt/nghttp2",
+      "/opt/re2",
+      "/opt/seastar"
+    ]
+  },
+  "runtime": {
+    "network": "none",
+    "read_only_root": true,
+    "capabilities": [],
+    "no_new_privileges": true,
+    "run_as_caller": true,
+    "source_mount": "/workspace/source",
+    "source_mount_read_only": true,
+    "work_mount": "/workspace/work",
+    "output_mount": "/workspace/output",
+    "tmp_mount": "/tmp",
+    "tmp_noexec": true,
+    "required_environment": [
+      "BONVOYAGE_BUILDER_ID",
+      "BONVOYAGE_BUILDER_IMAGE",
+      "BONVOYAGE_SOURCE_COMMIT",
+      "BONVOYAGE_SOURCE_TAG"
+    ]
+  },
+  "registry": {
+    "repository": "ghcr.io/routesphere-global/bonvoyage-debian-builder",
+    "reference": null,
+    "external_verification_receipt": null,
+    "anonymous_pull_verified": false
+  },
+  "authority": {
+    "release_admitted": false,
+    "publishable": false,
+    "package_uploaded": false,
+    "container_uploaded": false,
+    "signature_created": false,
+    "provenance_created": false
+  }
+}

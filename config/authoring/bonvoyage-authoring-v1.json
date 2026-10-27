@@ -1,0 +1,276 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-configuration-authoring-contract",
+  "contract_version": "bonvoyage.configuration-authoring.v1",
+  "implementation_state": "implemented",
+  "authority": {
+    "compiler_package": "control-plane/internal/snapshot",
+    "compiler_entrypoint": "snapshot.Compile",
+    "compiler_identity": "bonvoyage-control-plane-phase4-admin-v1",
+    "configuration_schema": "config/schemas/bonvoyage-config.schema.json",
+    "supported_configuration_schema_versions": [1],
+    "json_schema_role": "structural-assistance-only"
+  },
+  "version_binding": {
+    "mode": "installed-release-exact",
+    "product_version_source": "installed-release-metadata",
+    "compiler_version_source": "compiled-binary",
+    "configuration_schema_version_source": "document.snapshot.schema_version",
+    "reported_fields": [
+      "contract_version",
+      "product_version",
+      "compiler_version",
+      "supported_configuration_schema_versions",
+      "input_configuration_schema_version"
+    ],
+    "caller_constraints": {
+      "product_version": "exact-semver-when-present",
+      "compiler_version": "exact-string-when-present",
+      "configuration_schema_version": "exact-integer-when-present"
+    },
+    "caller_override_allowed": false,
+    "mismatch_status": "refused",
+    "mismatch_reason_code": "BV_CFG_VERSION_MISMATCH"
+  },
+  "file_detection": {
+    "accepted_input_kinds": ["regular-file", "stdin"],
+    "recognized_extensions": [".yaml", ".yml"],
+    "extension_case_sensitive": false,
+    "automatic_detection_requires": [
+      "recognized-extension",
+      "top-level-server",
+      "snapshot.schema_version",
+      "top-level-listeners",
+      "top-level-virtual_hosts",
+      "top-level-clusters"
+    ],
+    "stdin_requires_explicit_selection": true,
+    "maximum_bytes": 1048576,
+    "encoding": "utf-8",
+    "utf8_bom": "accepted-and-preserved",
+    "line_endings": ["lf", "crlf"],
+    "multiple_documents": "reject",
+    "aliases_and_merge_keys": "reject",
+    "read_only_symlink_policy": "resolve-to-regular-file",
+    "in_place_symlink_policy": "reject",
+    "source_coordinates": {
+      "line": "one-based",
+      "column": "one-based-unicode-scalar",
+      "byte_offset": "zero-based-original-utf8",
+      "end": "exclusive"
+    }
+  },
+  "operations": {
+    "validate": {
+      "inputs": ["document"],
+      "requires_parseable_input": true,
+      "requires_valid_configuration": false,
+      "primary_output": "acceptance, immutable artifact identity and diagnostics",
+      "document_output": "none",
+      "in_place": "never",
+      "network_access": false,
+      "live_mutation": false,
+      "constraints": [
+        "The Go compiler is authoritative after bounded YAML parsing.",
+        "JSON Schema acceptance alone never establishes deployability.",
+        "Validation does not establish data-plane ACK or active state."
+      ],
+      "summary": "Validate one complete desired-state document without changing it."
+    },
+    "format": {
+      "inputs": ["document"],
+      "requires_parseable_input": true,
+      "requires_valid_configuration": true,
+      "primary_output": "comment-preserving formatted document",
+      "document_output": "explicit-primary-result-only",
+      "in_place": "explicit-only",
+      "network_access": false,
+      "live_mutation": false,
+      "constraints": [
+        "Default output is separate from the input file.",
+        "In-place replacement requires an explicit flag and atomic regular-file replacement.",
+        "Every comment and a consistent input line-ending style must be preserved.",
+        "Mixed line endings or an unprovable comment-preservation case fail with BV_CFG_FORMAT_UNSAFE.",
+        "Formatting never materializes compiler defaults into the source document."
+      ],
+      "summary": "Normalize supported YAML presentation without changing compiled semantics."
+    },
+    "explain": {
+      "inputs": ["field-path", "optional-document"],
+      "requires_parseable_input": false,
+      "requires_valid_configuration": false,
+      "primary_output": "release-matched static field explanation",
+      "document_output": "none",
+      "in_place": "never",
+      "network_access": false,
+      "live_mutation": false,
+      "constraints": [
+        "Field paths use RFC 6901 JSON Pointer notation.",
+        "Explanations come from reviewed release assets, not generated guesses.",
+        "Document values are never copied into an explanation."
+      ],
+      "summary": "Explain one configuration field for the installed release."
+    },
+    "diff": {
+      "inputs": ["baseline-document", "proposed-document"],
+      "requires_parseable_input": true,
+      "requires_valid_configuration": true,
+      "primary_output": "compiled semantic change set and artifact identities",
+      "document_output": "none",
+      "in_place": "never",
+      "network_access": false,
+      "live_mutation": false,
+      "constraints": [
+        "Both inputs must pass the same installed compiler.",
+        "Changes report paths and change kinds without scalar before or after values.",
+        "Source-only formatting differences are not semantic changes."
+      ],
+      "summary": "Compare two accepted local configurations by compiled meaning."
+    },
+    "migrate": {
+      "inputs": ["document", "explicit-target-schema-version"],
+      "requires_parseable_input": true,
+      "requires_valid_configuration": false,
+      "primary_output": "explicit version-to-version migrated document",
+      "document_output": "explicit-primary-result-only",
+      "in_place": "explicit-only",
+      "network_access": false,
+      "live_mutation": false,
+      "constraints": [
+        "The source and target schema versions must be explicit.",
+        "Only reviewed release-shipped migration pairs are allowed.",
+        "Schema version 1 to version 1 is a no-change result; no other migration pair exists in contract v1.",
+        "Unsupported or lossy migration fails without modifying input.",
+        "In-place replacement has the same comment, line-ending, symlink and atomicity requirements as format."
+      ],
+      "summary": "Apply one reviewed, explicit configuration-schema migration."
+    },
+    "preview": {
+      "inputs": ["document", "optional-baseline-document"],
+      "requires_parseable_input": true,
+      "requires_valid_configuration": true,
+      "primary_output": "post-default artifact metadata, resource counts and optional semantic changes",
+      "document_output": "none",
+      "in_place": "never",
+      "network_access": false,
+      "live_mutation": false,
+      "constraints": [
+        "Preview uses the installed compiler and deterministic snapshot serialization.",
+        "Compiler defaults are reflected in artifact identity; source-specific defaulted paths and scalar values are not enumerated.",
+        "A baseline is local input, never fetched from a live gateway.",
+        "Preview does not authorize apply, target nodes, ACK, activation or rollback."
+      ],
+      "summary": "Compile and summarize the immutable local artifact without applying it."
+    }
+  },
+  "diagnostics": {
+    "maximum_count": 256,
+    "truncation_reason_code": "BV_CFG_DIAGNOSTICS_TRUNCATED",
+    "ordering": [
+      "source-byte-offset-ascending",
+      "severity-error-warning-info",
+      "reason-code-ascending",
+      "path-ascending"
+    ],
+    "path_notation": "rfc6901-json-pointer",
+    "fields": [
+      {
+        "name": "code",
+        "required": true,
+        "semantics": "Stable BV_CFG reason code; dynamic data is forbidden."
+      },
+      {
+        "name": "severity",
+        "required": true,
+        "semantics": "One of error, warning or info."
+      },
+      {
+        "name": "message",
+        "required": true,
+        "semantics": "Bounded human explanation with document scalar values removed."
+      },
+      {
+        "name": "path",
+        "required": false,
+        "semantics": "RFC 6901 path when the affected field is known."
+      },
+      {
+        "name": "source",
+        "required": false,
+        "semantics": "Half-open source range when a position can be proven."
+      },
+      {
+        "name": "redacted",
+        "required": true,
+        "semantics": "True when any source-derived detail was withheld."
+      }
+    ],
+    "reason_codes": [
+      { "code": "BV_CFG_DIAGNOSTICS_TRUNCATED", "class": "operation", "default_severity": "warning", "retryable": false },
+      { "code": "BV_CFG_DIFF_INPUT_INVALID", "class": "operation", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_EXPLAIN_PATH_UNKNOWN", "class": "operation", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_FILE_TYPE_UNSUPPORTED", "class": "input", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_FORMAT_UNSAFE", "class": "operation", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_INPUT_ENCODING", "class": "input", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_INPUT_NOT_REGULAR", "class": "input", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_INPUT_SYMLINK", "class": "input", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_INPUT_TOO_LARGE", "class": "input", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_INPUT_UNREADABLE", "class": "input", "default_severity": "error", "retryable": true },
+      { "code": "BV_CFG_INTERNAL", "class": "internal", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_MIGRATION_UNSUPPORTED", "class": "operation", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_OPERATION_UNSUPPORTED", "class": "operation", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_OUTPUT_LIMIT_EXCEEDED", "class": "operation", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_PREVIEW_INPUT_INVALID", "class": "operation", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_REFERENCE_DUPLICATE", "class": "semantic", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_REFERENCE_MISSING", "class": "semantic", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_SCHEMA_CONSTRAINT", "class": "schema", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_SCHEMA_REQUIRED_FIELD", "class": "schema", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_SCHEMA_TYPE", "class": "schema", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_SCHEMA_UNKNOWN_FIELD", "class": "schema", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_SCHEMA_VERSION_REQUIRED", "class": "compatibility", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_SCHEMA_VERSION_UNSUPPORTED", "class": "compatibility", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_SECRET_LITERAL_FORBIDDEN", "class": "security", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_SEMANTIC_INVALID", "class": "semantic", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_VERSION_MISMATCH", "class": "compatibility", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_YAML_ALIAS_UNSUPPORTED", "class": "syntax", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_YAML_EMPTY", "class": "syntax", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_YAML_LIMIT_EXCEEDED", "class": "syntax", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_YAML_MULTIPLE_DOCUMENTS", "class": "syntax", "default_severity": "error", "retryable": false },
+      { "code": "BV_CFG_YAML_SYNTAX", "class": "syntax", "default_severity": "error", "retryable": false }
+    ]
+  },
+  "redaction": {
+    "document_values_are_untrusted": true,
+    "diagnostics_echo_document_values": false,
+    "logs_echo_document_values": false,
+    "default_source_document_output": false,
+    "primary_document_output_operations": ["format", "migrate"],
+    "secret_reference_fields": [
+      "certificate_chain_secret",
+      "credentials_secret",
+      "jwks_secret",
+      "private_key_secret",
+      "trust_bundle_secret"
+    ],
+    "secret_reference_semantics": "Valid values are bounded filenames resolved only by the deployment secret boundary; they are not secret contents.",
+    "diagnostic_replacement": "<redacted>",
+    "hash_secret_values": false,
+    "pem_literal_policy": "reject-without-echo"
+  },
+  "process_exit_codes": [
+    { "code": 0, "name": "accepted", "status": "accepted", "failure_kind": "none" },
+    { "code": 2, "name": "configuration-rejected", "status": "rejected", "failure_kind": "validation" },
+    { "code": 3, "name": "operation-refused", "status": "refused", "failure_kind": "compatibility" },
+    { "code": 4, "name": "input-output-failure", "status": "failed", "failure_kind": "io" },
+    { "code": 70, "name": "internal-software-failure", "status": "failed", "failure_kind": "internal" }
+  ],
+  "security_boundary": {
+    "offline": true,
+    "telemetry": false,
+    "network_access": false,
+    "live_apply": false,
+    "shell_execution": false,
+    "environment_secret_reads": false,
+    "deterministic_machine_output": true
+  }
+}

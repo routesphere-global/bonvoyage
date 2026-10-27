@@ -1,0 +1,153 @@
+server:
+  node_id: phase3-load-balancing-node
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-load-balancing-smoke
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: cleartext-http1
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [api]
+
+virtual_hosts:
+  - name: api
+    domains: [api.example.test]
+    routes:
+      - name: weighted-round-robin
+        match:
+          path_exact: /identity/round-robin
+        cluster: weighted-round-robin
+      - name: weighted-random
+        match:
+          path_exact: /identity/random
+        cluster: weighted-random
+      - name: least-request
+        match:
+          path_exact: /slow-identity/500
+        cluster: least-request
+      - name: passive-ejection
+        match:
+          path_exact: /identity/passive
+        cluster: passive-ejection
+      - name: all-ejected
+        match:
+          path_exact: /identity/all-ejected
+        cluster: all-ejected
+      - name: post-head-truncation
+        match:
+          path_exact: /chunked-truncated/16
+        cluster: post-head-neutral
+      - name: post-head-recovery
+        match:
+          path_exact: /identity/post-head
+        cluster: post-head-neutral
+
+clusters:
+  - name: weighted-round-robin
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 300
+    max_connections_per_shard: 8
+    max_pending_requests_per_shard: 16
+    endpoints:
+      - name: upstream-a
+        address: upstream-a
+        port: 8081
+        weight: 3
+      - name: upstream-b
+        address: upstream-b
+        port: 8081
+        weight: 1
+  - name: weighted-random
+    load_balancing_policy: random
+    connect_timeout_ms: 300
+    max_connections_per_shard: 8
+    max_pending_requests_per_shard: 16
+    endpoints:
+      - name: upstream-a
+        address: upstream-a
+        port: 8081
+        weight: 3
+      - name: upstream-b
+        address: upstream-b
+        port: 8081
+        weight: 1
+  - name: least-request
+    load_balancing_policy: least_request
+    connect_timeout_ms: 300
+    max_connections_per_shard: 8
+    max_pending_requests_per_shard: 16
+    endpoints:
+      - name: upstream-a
+        address: upstream-a
+        port: 8081
+        weight: 1
+      - name: upstream-b
+        address: upstream-b
+        port: 8081
+        weight: 1
+  - name: passive-ejection
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 300
+    max_connections_per_shard: 4
+    max_pending_requests_per_shard: 8
+    passive_health:
+      consecutive_failures: 1
+      ejection_time_ms: 500
+      max_ejection_percent: 50
+    endpoints:
+      - name: unavailable
+        address: 127.0.0.1
+        port: 65530
+        weight: 1
+      - name: upstream-b
+        address: upstream-b
+        port: 8081
+        weight: 1
+  - name: all-ejected
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 300
+    max_connections_per_shard: 4
+    max_pending_requests_per_shard: 8
+    passive_health:
+      consecutive_failures: 1
+      ejection_time_ms: 500
+      max_ejection_percent: 100
+    endpoints:
+      - name: unavailable-a
+        address: 127.0.0.1
+        port: 65530
+        weight: 1
+      - name: unavailable-b
+        address: 127.0.0.1
+        port: 65531
+        weight: 1
+  - name: post-head-neutral
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 300
+    max_connections_per_shard: 2
+    max_pending_requests_per_shard: 4
+    passive_health:
+      consecutive_failures: 1
+      ejection_time_ms: 500
+      max_ejection_percent: 100
+    endpoints:
+      - name: upstream-a
+        address: upstream-a
+        port: 8081
+        weight: 1
+
+runtime_limits:
+  max_downstream_connections_per_shard: 1024
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 5000
+  downstream_idle_timeout_ms: 30000

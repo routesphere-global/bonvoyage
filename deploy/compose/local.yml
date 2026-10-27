@@ -1,0 +1,56 @@
+name: bonvoyage-local
+
+services:
+  upstream:
+    build:
+      context: ../docker/upstream
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8081/healthz"]
+      interval: 2s
+      timeout: 1s
+      retries: 20
+
+  snapshot-compiler:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/control-plane/Dockerfile
+    command:
+      - -input
+      - /etc/bonvoyage/local.yaml
+      - -output
+      - /var/lib/bonvoyage/snapshot.pb
+    volumes:
+      - ../../config/examples/local.yaml:/etc/bonvoyage/local.yaml:ro
+      - snapshot:/var/lib/bonvoyage
+
+  bonvoyage:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/bonvoyage/Dockerfile
+    command:
+      - --snapshot
+      - /etc/bonvoyage/snapshot.pb
+      - --admin-address
+      - 0.0.0.0
+      - --metrics-address
+      - 0.0.0.0
+      - --smp
+      - "1"
+      - --memory
+      - 256M
+      - --overprovisioned
+    volumes:
+      - snapshot:/etc/bonvoyage:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:9090:9090"
+      - "127.0.0.1:9901:9901"
+    depends_on:
+      upstream:
+        condition: service_healthy
+      snapshot-compiler:
+        condition: service_completed_successfully
+    stop_grace_period: 20s
+
+volumes:
+  snapshot:

@@ -1,0 +1,293 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-reviewed-configuration-snippet-sources",
+  "snippet_version": "bonvoyage.configuration-snippets.v1",
+  "entries": [
+    {
+      "id": "cluster-upstream-mtls",
+      "title": "Upstream TLS and mTLS",
+      "summary": "Add server identity verification and an optional client certificate to one upstream cluster.",
+      "category": "transport",
+      "source": {
+        "path": "config/examples/upstream-tls.yaml",
+        "pointer": "/clusters/0/upstream_tls",
+        "sha256": "ed9925d1fa73f1d49e695311deb42f18934424cf496650ede1dbf42bae3ff317"
+      },
+      "insertion": {
+        "container_path": "/clusters/*",
+        "mode": "merge-object"
+      },
+      "edit_points": [
+        "/upstream_tls/certificate_chain_secret",
+        "/upstream_tls/private_key_secret",
+        "/upstream_tls/server_name",
+        "/upstream_tls/trust_bundle_secret"
+      ]
+    },
+    {
+      "id": "document-local-baseline",
+      "title": "Local gateway baseline",
+      "summary": "Start a complete local listener, fixed response, proxied route, upstream cluster and bounded runtime profile.",
+      "category": "baseline",
+      "source": {
+        "path": "config/examples/local.yaml",
+        "pointer": "",
+        "sha256": "f8fd66340d769ee505e4135e0cabd713e338b9fc8323ba1d9c21e28ecc03e4a8"
+      },
+      "insertion": {
+        "container_path": "",
+        "mode": "replace-document"
+      },
+      "edit_points": [
+        "/clusters/0/endpoints/0/address",
+        "/listeners/0/port",
+        "/server/node_id",
+        "/snapshot/snapshot_id",
+        "/virtual_hosts/0/domains"
+      ]
+    },
+    {
+      "id": "listener-downstream-tls",
+      "title": "Downstream TLS",
+      "summary": "Enable a listener certificate and private-key reference using deployment-secret filenames.",
+      "category": "transport",
+      "source": {
+        "path": "config/examples/tls.yaml",
+        "pointer": "/listeners/0/downstream_tls",
+        "sha256": "1cabf7e80599ff06924f3db511cf2b340d9adccc860c343edefb0083686e071c"
+      },
+      "insertion": {
+        "container_path": "/listeners/*",
+        "mode": "merge-object"
+      },
+      "edit_points": [
+        "/downstream_tls/certificate_chain_secret",
+        "/downstream_tls/private_key_secret"
+      ]
+    },
+    {
+      "id": "route-api-key-auth",
+      "title": "API-key admission",
+      "summary": "Require a named request header whose value is checked against a deployment-secret credential file.",
+      "category": "security",
+      "source": {
+        "path": "tests/fixtures/phase3-api-key.yaml",
+        "pointer": "/virtual_hosts/0/routes/1/api_key_auth",
+        "sha256": "6e400dfa5f617bd3ce8bd66bd3a31b438c95cf80c71e9fa201f89326a70ec3ca"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "edit_points": [
+        "/api_key_auth/credentials_secret",
+        "/api_key_auth/header_name"
+      ]
+    },
+    {
+      "id": "route-cors",
+      "title": "CORS policy",
+      "summary": "Add bounded browser-origin, method, header, credential and preflight-cache rules to one route.",
+      "category": "security",
+      "source": {
+        "path": "tests/fixtures/phase3-cors.yaml",
+        "pointer": "/virtual_hosts/0/routes/0/cors",
+        "sha256": "a4da2371bde1da956b35faf0beb32460dbe44b848128cf454874a8e3d9af4ed9"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "edit_points": [
+        "/cors/allow_credentials",
+        "/cors/allowed_headers",
+        "/cors/allowed_methods",
+        "/cors/allowed_origins",
+        "/cors/exposed_headers",
+        "/cors/max_age_seconds"
+      ]
+    },
+    {
+      "id": "route-fixed-response",
+      "title": "Fixed-response route",
+      "summary": "Append a route that returns a local status, body and content type without contacting an upstream.",
+      "category": "routing",
+      "source": {
+        "path": "config/examples/local.yaml",
+        "pointer": "/virtual_hosts/0/routes/0",
+        "sha256": "f8fd66340d769ee505e4135e0cabd713e338b9fc8323ba1d9c21e28ecc03e4a8"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes",
+        "mode": "append-array-item"
+      },
+      "edit_points": [
+        "/0/fixed_response/body",
+        "/0/fixed_response/content_type",
+        "/0/fixed_response/status_code",
+        "/0/match/path_exact",
+        "/0/name"
+      ]
+    },
+    {
+      "id": "route-header-transformations",
+      "title": "Header transformations",
+      "summary": "Set, append or remove bounded request and response headers on one route.",
+      "category": "transformation",
+      "source": {
+        "path": "tests/fixtures/phase3-header-transformations.yaml",
+        "pointer": "/virtual_hosts/0/routes/0/header_transformations",
+        "sha256": "715e3ee392c55d3004d1b756ef13fd7af9f63e5c09fd8d9948d9261022e19b10"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "edit_points": [
+        "/header_transformations/request",
+        "/header_transformations/response"
+      ]
+    },
+    {
+      "id": "route-jwt-auth",
+      "title": "JWT admission",
+      "summary": "Validate JWT signature, issuer, audience, scopes, claims and bounded verification admission on one route.",
+      "category": "security",
+      "source": {
+        "path": "tests/fixtures/phase3-jwt.yaml",
+        "pointer": "/virtual_hosts/0/routes/0/jwt_auth",
+        "sha256": "4ef9c354d4071d17b144c95b549bf4aeee8ca30dc868f520ca4e469f119b7f9e"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "edit_points": [
+        "/jwt_auth/algorithms",
+        "/jwt_auth/audience",
+        "/jwt_auth/issuer",
+        "/jwt_auth/jwks_secret",
+        "/jwt_auth/required_claims",
+        "/jwt_auth/required_scopes",
+        "/jwt_auth/verification_rate_limit/capacity",
+        "/jwt_auth/verification_rate_limit/refill_tokens_per_second"
+      ]
+    },
+    {
+      "id": "route-local-rate-limit",
+      "title": "Local route rate limit",
+      "summary": "Add a shard-local token bucket with explicit capacity and refill rate to one route.",
+      "category": "traffic-policy",
+      "source": {
+        "path": "tests/fixtures/phase3-route-admission.yaml",
+        "pointer": "/virtual_hosts/0/routes/2/local_rate_limit",
+        "sha256": "98f990af5319ab6bfb423b81041f76234706ad88e3005f38006e6a9b56c05406"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "edit_points": [
+        "/local_rate_limit/capacity",
+        "/local_rate_limit/refill_tokens_per_second"
+      ]
+    },
+    {
+      "id": "route-request-content",
+      "title": "Request-content policy",
+      "summary": "Constrain request body size and accepted media types before forwarding upstream.",
+      "category": "security",
+      "source": {
+        "path": "tests/fixtures/phase3-request-content.yaml",
+        "pointer": "/virtual_hosts/0/routes/0/request_content",
+        "sha256": "890048221b4313d96e01d17d9c8f7931988e9ef6b5766ac73dc65982dda39c9c"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "edit_points": [
+        "/request_content/allowed_content_types",
+        "/request_content/max_body_bytes"
+      ]
+    },
+    {
+      "id": "route-rewrite",
+      "title": "Upstream request rewrite",
+      "summary": "Rewrite the upstream authority and path prefix for one matched route.",
+      "category": "transformation",
+      "source": {
+        "path": "tests/fixtures/phase3-route-rewrites.yaml",
+        "pointer": "/virtual_hosts/0/routes/0/rewrite",
+        "sha256": "e145ef6a3f7480c8e5401345f8aba5515d984e4b63216d90e394f8a7c0430854"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "edit_points": [
+        "/rewrite/host",
+        "/rewrite/path_prefix",
+        "/rewrite/port"
+      ]
+    },
+    {
+      "id": "route-static-redirect",
+      "title": "Static redirect",
+      "summary": "Return a bounded redirect status and location components without contacting an upstream.",
+      "category": "routing",
+      "source": {
+        "path": "tests/fixtures/phase3-redirect.yaml",
+        "pointer": "/virtual_hosts/0/routes/0/redirect",
+        "sha256": "e32f20d6b7e9f526050f22e6a40c58e704904e0b6475a8ed7e97906a7a570897"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "edit_points": [
+        "/redirect/path",
+        "/redirect/query",
+        "/redirect/status_code"
+      ]
+    },
+    {
+      "id": "route-upstream",
+      "title": "Proxied upstream route",
+      "summary": "Append a prefix route that forwards matching requests to a named cluster.",
+      "category": "routing",
+      "source": {
+        "path": "config/examples/local.yaml",
+        "pointer": "/virtual_hosts/0/routes/1",
+        "sha256": "f8fd66340d769ee505e4135e0cabd713e338b9fc8323ba1d9c21e28ecc03e4a8"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes",
+        "mode": "append-array-item"
+      },
+      "edit_points": [
+        "/0/cluster",
+        "/0/match/path_prefix",
+        "/0/name"
+      ]
+    },
+    {
+      "id": "route-weighted-clusters",
+      "title": "Weighted upstream clusters",
+      "summary": "Distribute one route deterministically across named clusters using positive integer weights.",
+      "category": "traffic-policy",
+      "source": {
+        "path": "tests/fixtures/phase3-weighted-traffic-splitting.yaml",
+        "pointer": "/virtual_hosts/0/routes/0/weighted_clusters",
+        "sha256": "d82913c24f15cc674ea0a07f7ce726fae0fdc6929fd91afbeaf79ae1f262c421"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "edit_points": [
+        "/weighted_clusters"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+server:
+  node_id: phase3-routing-node
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-routing-smoke
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: https-http2
+    address: 0.0.0.0
+    port: 8443
+    protocol: http2
+    virtual_hosts: [api]
+    downstream_tls:
+      certificate_chain_secret: server-chain.pem
+      private_key_secret: server-key.pem
+  - name: cleartext-http1
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [api]
+
+virtual_hosts:
+  - name: api
+    domains: [api.example.test]
+    routes:
+      - name: compound-predicate
+        match:
+          path_exact: /routing/select
+          methods: [GET]
+          headers:
+            - name: x-release
+              exact: beta
+          query_parameters:
+            - name: tenant
+              exact: acme
+        fixed_response:
+          status_code: 200
+          body: "predicate-selected\n"
+          content_type: text/plain
+      - name: compound-fallback
+        match:
+          path_exact: /routing/select
+        fixed_response:
+          status_code: 201
+          body: "predicate-fallback\n"
+          content_type: text/plain
+      - name: negative-presence
+        match:
+          path_exact: /routing/absence
+          headers:
+            - name: x-blocked
+              present: false
+          query_parameters:
+            - name: debug
+              present: false
+        fixed_response:
+          status_code: 202
+          body: "negative-presence\n"
+          content_type: text/plain
+      - name: exact-baseline
+        match:
+          path_exact: /routing/baseline
+        fixed_response:
+          status_code: 200
+          body: "baseline\n"
+          content_type: text/plain
+      - name: numeric-item
+        match:
+          safe_regex: /routing/items/[0-9]+
+        fixed_response:
+          status_code: 203
+          body: "safe-regex\n"
+          content_type: text/plain
+      - name: upstream-fallback
+        match:
+          path_prefix: /
+        cluster: local-upstream
+
+clusters:
+  - name: local-upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 1000
+    max_connections_per_shard: 32
+    max_pending_requests_per_shard: 64
+    endpoints:
+      - name: upstream-1
+        address: upstream
+        port: 8081
+        weight: 1
+
+runtime_limits:
+  max_downstream_connections_per_shard: 1024
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 15000
+  downstream_idle_timeout_ms: 30000

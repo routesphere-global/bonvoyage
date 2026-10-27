@@ -1,0 +1,18 @@
+diff --git a/src/net/dns.cc b/src/net/dns.cc
+--- a/src/net/dns.cc
++++ b/src/net/dns.cc
+@@ -307,6 +307,14 @@ dns_resolver::impl::impl(network_stack& stack, const options& opts)
+     // Always set the timeout
+     a_opts.timeout = _timeout.count();
+     int flags = ARES_OPT_LOOKUPS|ARES_OPT_TIMEOUTMS;
++    // BonVoyage owns fixed-interval refresh. New c-ares defaults must not
++    // retain answers behind that refresh or silently introduce TTL scheduling.
++    a_opts.qcache_max_ttl = 0;
++    flags |= ARES_OPT_QUERY_CACHE;
++    // Bound each server attempt, including the adaptive timer's 250ms floor.
++    // c-ares retry/search processing can still span multiple attempts.
++    a_opts.maxtimeout = _timeout.count();
++    flags |= ARES_OPT_MAXTIMEOUTMS;
+ 
+     if (opts.use_tcp_query && *opts.use_tcp_query) {
+         a_opts.flags = ARES_FLAG_USEVC | ARES_FLAG_PRIMARY;

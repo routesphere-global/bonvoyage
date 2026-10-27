@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-13",
+  "products": [
+    {
+      "name": "envoy",
+      "repository": "docker.io/envoyproxy/envoy",
+      "version": "1.39.0",
+      "index_digest": "sha256:d59f7f5fa10cff6d5892b6c5e7df5c9297ddfb2c3683e33fbfb82da24de4fa66",
+      "manifests": {
+        "linux_amd64": "sha256:f6e2f57b1bef8235083a2553b523508cf97d8991c893fd2aae3a94a6b21096a2",
+        "linux_arm64": "sha256:5edd669228659835ac243e3ffa5c08a65e92bb267d56da5c28317dbcf5a70292"
+      },
+      "config": "benchmarks/products/envoy/envoy.yaml",
+      "config_sha256": "d2c3c80360b30055e501732c86d31e1018d81e1f8455f6e6acfe7eacf0ac5f8a",
+      "listener_port": 8080,
+      "readiness_path": "/ready",
+      "executable": "/usr/local/bin/envoy"
+    },
+    {
+      "name": "nginx",
+      "repository": "docker.io/library/nginx",
+      "version": "1.30.4",
+      "index_digest": "sha256:46ccc48fbb1f5a43167f2ee2c279c122b96eec5d976e7f4e1e0780f59a51b4d6",
+      "manifests": {
+        "linux_amd64": "sha256:9e4b33ead4c69e9845e53a1f175d0aa70a6cea62425b5d08957ba7eee5dc9b1d",
+        "linux_arm64": "sha256:9105903bbaf495b6994795c85e415a9cd021381ebcdf9eb2d2c7f2d47172a0cc"
+      },
+      "config": "benchmarks/products/nginx/nginx.conf",
+      "config_sha256": "859a9579e148b55f9d811b84dd61b5fccb7ab4e20b6b38fb287c518880415708",
+      "listener_port": 8080,
+      "readiness_path": "/health/ready",
+      "executable": "/usr/sbin/nginx"
+    },
+    {
+      "name": "haproxy",
+      "repository": "docker.io/library/haproxy",
+      "version": "3.4.2",
+      "index_digest": "sha256:728fec0da177a4010e53a0a1327d2aaef70dfd2151798507c8a0d503d01e4d7f",
+      "manifests": {
+        "linux_amd64": "sha256:5ba66655cd371244f3ec5b33f10ab982386cf47f28550b21012ba6c1d75e03e9",
+        "linux_arm64": "sha256:d086d7c645181c55e0a04dd1b97dd9072e7aeef93dd1e9760d421dfeb745dfe1"
+      },
+      "config": "benchmarks/products/haproxy/haproxy.cfg",
+      "config_sha256": "67782fef20980c46864b1adb8aef6ffe62b64e165ecde56f6514591bd18a19da",
+      "listener_port": 8080,
+      "readiness_path": "/health/ready",
+      "executable": "/usr/local/sbin/haproxy"
+    }
+  ],
+  "load_generator": {
+    "repository": "ghcr.io/hatoo/oha",
+    "version": "1.15.0",
+    "index_digest": "sha256:57c2247792c1466c88ecc83ddb9253aa0b58dcb852b1d7f2026a0acf7744c965",
+    "manifests": {
+      "linux_amd64": "sha256:9567e87f638dc28e83d99fb0f7498f702ef0a9020569d089aa1ecbd720106674",
+      "linux_arm64": "sha256:7636e482ec11bd9a51c0fdf73ec075aad861a1eb227388c5ac6d694c986232c5"
+    }
+  }
+}

@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "lock_id": "dq-artifacts-fixture-valid",
+  "campaign_id": "phase1-phase3-dedicated-qualification-v1",
+  "captured_at": "2026-09-05T00:00:00Z",
+  "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "platform": {
+    "operating_system": "Ubuntu 24.04 LTS",
+    "architecture": "x86_64",
+    "container_platform": "linux/amd64"
+  },
+  "scope_complete": true,
+  "input_bindings": [
+    {
+      "id": "campaign-plan",
+      "path": "benchmarks/plans/dedicated-qualification-v1.yaml",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    {
+      "id": "product-lock",
+      "path": "benchmarks/products/lock.json",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "id": "host-tuning-policy",
+      "path": "deploy/tuning/policies/throughput-balanced.yaml",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "bonvoyage",
+      "kind": "gateway",
+      "version": "fixture",
+      "image_reference": "registry.example/bonvoyage@sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "image_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "platform_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "metadata": {
+        "upstream_http1_client": "seastar-reference"
+      },
+      "files": [
+        {
+          "purpose": "executable",
+          "path": "/usr/local/bin/bonvoyage",
+          "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+        }
+      ]
+    },
+    {
+      "id": "envoy",
+      "kind": "gateway",
+      "version": "fixture",
+      "image_reference": "registry.example/envoy@sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "image_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "platform_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "files": [
+        {
+          "purpose": "executable",
+          "path": "/usr/local/bin/envoy",
+          "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      ]
+    },
+    {
+      "id": "nginx",
+      "kind": "gateway",
+      "version": "fixture",
+      "image_reference": "registry.example/nginx@sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "image_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "platform_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "files": [
+        {
+          "purpose": "executable",
+          "path": "/usr/sbin/nginx",
+          "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+        }
+      ]
+    },
+    {
+      "id": "haproxy",
+      "kind": "gateway",
+      "version": "fixture",
+      "image_reference": "registry.example/haproxy@sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "image_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "platform_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "files": [
+        {
+          "purpose": "executable",
+          "path": "/usr/local/sbin/haproxy",
+          "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+        }
+      ]
+    },
+    {
+      "id": "controlled-upstream",
+      "kind": "upstream",
+      "version": "fixture",
+      "image_reference": "registry.example/controlled-upstream@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "image_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "platform_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "files": [
+        {
+          "purpose": "entrypoint",
+          "path": "/srv/controlled-upstream.py",
+          "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+        }
+      ]
+    },
+    {
+      "id": "load-generator",
+      "kind": "load-generator",
+      "version": "fixture",
+      "image_reference": "registry.example/oha@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "image_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "platform_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "files": [
+        {
+          "purpose": "executable",
+          "path": "/usr/local/bin/oha",
+          "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+        }
+      ]
+    },
+    {
+      "id": "telemetry-collector",
+      "kind": "telemetry",
+      "version": "fixture",
+      "image_reference": "registry.example/otel-collector@sha256:7777777777777777777777777777777777777777777777777777777777777777",
+      "image_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+      "platform_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+      "files": [
+        {
+          "purpose": "configuration",
+          "path": "/etc/otel/config.yaml",
+          "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+        }
+      ]
+    },
+    {
+      "id": "metrics-store",
+      "kind": "telemetry",
+      "version": "fixture",
+      "image_reference": "registry.example/prometheus@sha256:8888888888888888888888888888888888888888888888888888888888888888",
+      "image_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+      "platform_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+      "files": [
+        {
+          "purpose": "configuration",
+          "path": "/etc/prometheus/prometheus.yml",
+          "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+        }
+      ]
+    },
+    {
+      "id": "sbom-generator",
+      "kind": "security-tool",
+      "version": "fixture",
+      "image_reference": "registry.example/syft@sha256:9999999999999999999999999999999999999999999999999999999999999999",
+      "image_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+      "platform_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+      "files": [
+        {
+          "purpose": "executable",
+          "path": "/syft",
+          "sha256": "9999999999999999999999999999999999999999999999999999999999999999"
+        }
+      ]
+    },
+    {
+      "id": "vulnerability-scanner",
+      "kind": "security-tool",
+      "version": "fixture",
+      "image_reference": "registry.example/grype@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "platform_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "files": [
+        {
+          "purpose": "executable",
+          "path": "/grype",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "sboms": [
+    {
+      "artifact_id": "bonvoyage",
+      "format": "CycloneDX JSON",
+      "path": "evidence/runtime.cdx.json",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "artifact_id": "bonvoyage",
+      "format": "SPDX JSON",
+      "path": "evidence/runtime.spdx.json",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "comparator-qualification",
+      "path": "evidence/comparator-qualification.json",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    {
+      "id": "runtime-dependency-environment",
+      "path": "evidence/environment.txt",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "id": "runtime-evidence-checksums",
+      "path": "evidence/evidence-checksums.sha256",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    {
+      "id": "runtime-vulnerability-summary",
+      "path": "evidence/vulnerability-summary.json",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "passed": true
+}

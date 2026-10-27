@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bonvoyage-config-invalid
+  namespace: bonvoyage
+  labels:
+    app.kubernetes.io/name: bonvoyage
+    app.kubernetes.io/component: acceptance-config
+    routesphere.io/revision: invalid
+data:
+  local.yaml: |
+    snapshot: [this document is intentionally invalid

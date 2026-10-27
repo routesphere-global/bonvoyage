@@ -1,0 +1,89 @@
+schema_version: 1
+format: seastar_prefix_plus_logfmt_message
+request_access_events: bounded_async_jsonl_v1
+
+events:
+  - name: dataplane_ready
+    severity: info
+    required_fields: [product, version, shards, snapshot_id, snapshot_generation]
+    decision: admit_node_to_service
+  - name: dataplane_stopped
+    severity: info
+    required_fields: [product, version, outcome]
+    decision: verify_controlled_shutdown
+  - name: http2_output_timeout
+    severity: warning
+    required_fields: [reason]
+    decision: correlate_slow_downstream_transport_with_timeouts_and_released_capacity
+  - name: active_health_publish_failed
+    severity: error
+    required_fields: [cluster, endpoint]
+    decision: investigate_cross_shard_health_publication
+  - name: active_health_recovered
+    severity: info
+    required_fields: [cluster, endpoint]
+    decision: clear_upstream_health_incident
+  - name: active_health_excluded
+    severity: warning
+    required_fields: [cluster, endpoint]
+    decision: inspect_or_shift_upstream_traffic
+  - name: dns_refresh_recovered
+    severity: info
+    required_fields: [cluster, endpoint]
+    decision: clear_dns_refresh_incident
+  - name: dns_refresh_failed
+    severity: warning
+    required_fields: [cluster, endpoint, action]
+    decision: inspect_dns_while_retaining_last_known_address
+  - name: dns_publish_failed
+    severity: error
+    required_fields: [cluster, endpoint]
+    decision: investigate_cross_shard_dns_publication
+  - name: dns_address_applied
+    severity: info
+    required_fields: [cluster, endpoint]
+    decision: correlate_upstream_address_change
+  - name: endpoint_circuit_opened
+    severity: warning
+    required_fields: [cluster, endpoint]
+    decision: inspect_endpoint_or_capacity
+  - name: endpoint_circuit_reopened
+    severity: warning
+    required_fields: [cluster, endpoint]
+    decision: keep_endpoint_out_of_service
+  - name: endpoint_circuit_closed
+    severity: info
+    required_fields: [cluster, endpoint]
+    decision: confirm_endpoint_recovery
+  - name: access_log_sink_healthy
+    severity: info
+    required_fields: [shard, segment, snapshot_generation]
+    decision: confirm_access_evidence_delivery
+  - name: access_log_sink_unavailable
+    severity: warning
+    required_fields: [shard, reason, snapshot_generation]
+    decision: restore_access_log_storage_without_removing_gateway_traffic
+  - name: access_log_capacity_exhausted
+    severity: warning
+    required_fields: [shard, snapshot_generation]
+    decision: rotate_or_expand_the_bounded_access_log_budget
+  - name: access_log_sink_stopped
+    severity: error
+    required_fields: [shard, reason, snapshot_generation]
+    decision: preserve_gateway_service_and_investigate_the_sink_worker
+  - name: otlp_trace_export_failed
+    severity: warning
+    required_fields: [shard, spans, snapshot_generation]
+    decision: restore_trace_collector_without_removing_gateway_traffic
+  - name: otlp_trace_exporter_recovered
+    severity: info
+    required_fields: [shard, snapshot_generation]
+    decision: clear_trace_delivery_incident
+  - name: otlp_trace_worker_failed
+    severity: error
+    required_fields: [shard, snapshot_generation]
+    decision: preserve_gateway_service_and_investigate_the_trace_worker
+  - name: otlp_trace_exporter_stopped
+    severity: info
+    required_fields: [shard, exported, dropped, snapshot_generation]
+    decision: verify_controlled_trace_shutdown

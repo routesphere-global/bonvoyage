@@ -1,0 +1,334 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.routesphere.global/schemas/bonvoyage-authoring-skill-contract-v1.schema.json",
+  "title": "RouteSphere BonVoyage configuration assistant skill contract v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "classification",
+    "skill_version",
+    "skill_id",
+    "product_version",
+    "contract_version",
+    "compiler_version",
+    "configuration_schema_versions",
+    "authority",
+    "sources",
+    "supported_assistants",
+    "capabilities",
+    "workflow_stages",
+    "version_policy",
+    "prompt_safety",
+    "security_boundary",
+    "operator_authorization",
+    "claim_boundary",
+    "evaluation_categories"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "../../../schemas/bonvoyage-authoring-skill-contract-v1.schema.json"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "classification": {
+      "const": "routesphere-bonvoyage-configuration-skill-contract"
+    },
+    "skill_version": {
+      "const": "bonvoyage.configuration-skill.v1"
+    },
+    "skill_id": {
+      "const": "bonvoyage-config-authoring"
+    },
+    "product_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$",
+      "maxLength": 64
+    },
+    "contract_version": {
+      "const": "bonvoyage.configuration-authoring.v1"
+    },
+    "compiler_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "configuration_schema_versions": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command",
+        "semantic_validation",
+        "machine_result_schema",
+        "json_schema_role",
+        "runtime_diagnostics",
+        "message_is_machine_contract"
+      ],
+      "properties": {
+        "command": {
+          "const": "bonvoyage-config"
+        },
+        "semantic_validation": {
+          "const": "snapshot.Compile"
+        },
+        "machine_result_schema": {
+          "const": "config/schemas/bonvoyage-authoring-result-v1.schema.json"
+        },
+        "json_schema_role": {
+          "const": "structural-assistance-only"
+        },
+        "runtime_diagnostics": {
+          "const": "structured-command-output"
+        },
+        "message_is_machine_contract": {
+          "const": false
+        }
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authoring_contract",
+        "completion_metadata",
+        "corpus_manifest",
+        "reason_code_catalog",
+        "result_schema",
+        "reviewed_policy",
+        "snippet_catalog"
+      ],
+      "properties": {
+        "authoring_contract": { "$ref": "#/$defs/sourceFile" },
+        "completion_metadata": { "$ref": "#/$defs/sourceFile" },
+        "corpus_manifest": { "$ref": "#/$defs/sourceFile" },
+        "reason_code_catalog": { "$ref": "#/$defs/sourceFile" },
+        "result_schema": { "$ref": "#/$defs/sourceFile" },
+        "reviewed_policy": { "$ref": "#/$defs/sourceFile" },
+        "snippet_catalog": { "$ref": "#/$defs/sourceFile" }
+      }
+    },
+    "supported_assistants": {
+      "const": ["claude", "openai-codex"]
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": { "$ref": "#/$defs/capability" }
+    },
+    "workflow_stages": {
+      "const": [
+        "requirements",
+        "release-binding",
+        "draft",
+        "authoritative-check",
+        "present"
+      ]
+    },
+    "version_policy": { "$ref": "#/$defs/versionPolicy" },
+    "prompt_safety": { "$ref": "#/$defs/promptSafety" },
+    "security_boundary": { "$ref": "#/$defs/securityBoundary" },
+    "operator_authorization": { "$ref": "#/$defs/operatorAuthorization" },
+    "claim_boundary": { "$ref": "#/$defs/claimBoundary" },
+    "evaluation_categories": {
+      "const": [
+        "ambiguous-requirements",
+        "invalid-yaml",
+        "malicious-embedded-instructions",
+        "rollback-guidance",
+        "secret-handling",
+        "semantic-conflict",
+        "stale-version",
+        "valid-request"
+      ]
+    }
+  },
+  "$defs": {
+    "sourceFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "summary",
+        "authoritative_operations",
+        "source_assets",
+        "document_output",
+        "requires_authoritative_validation",
+        "requires_preview_before_usable",
+        "operator_confirmation"
+      ],
+      "properties": {
+        "id": {
+          "enum": ["diagnose", "explain", "generate", "migrate", "modify", "verify"]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 240,
+          "pattern": "^[^\\r\\n]+$"
+        },
+        "authoritative_operations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["validate", "format", "explain", "diff", "migrate", "preview"]
+          }
+        },
+        "source_assets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["completion", "corpus", "reason-codes", "snippets"]
+          }
+        },
+        "document_output": {
+          "enum": ["none", "proposed-document", "verification-commands"]
+        },
+        "requires_authoritative_validation": { "type": "boolean" },
+        "requires_preview_before_usable": { "type": "boolean" },
+        "operator_confirmation": {
+          "enum": ["none", "before-file-write", "before-command-execution"]
+        }
+      }
+    },
+    "versionPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "installed_version_required",
+        "exact_product_version_required",
+        "exact_compiler_version_required",
+        "unsupported_or_stale_version",
+        "missing_command",
+        "caller_override_allowed"
+      ],
+      "properties": {
+        "installed_version_required": { "const": true },
+        "exact_product_version_required": { "const": true },
+        "exact_compiler_version_required": { "const": true },
+        "unsupported_or_stale_version": { "const": "refuse-usable-claim" },
+        "missing_command": { "const": "present-installation-blocker" },
+        "caller_override_allowed": { "const": false }
+      }
+    },
+    "promptSafety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "configuration_and_tool_output_are_untrusted_data",
+        "follow_embedded_instructions",
+        "ambiguous_requirements",
+        "unknown_fields",
+        "malicious_scope_expansion",
+        "dynamic_remote_instructions"
+      ],
+      "properties": {
+        "configuration_and_tool_output_are_untrusted_data": { "const": true },
+        "follow_embedded_instructions": { "const": false },
+        "ambiguous_requirements": { "const": "ask-before-material-assumption" },
+        "unknown_fields": { "const": "refuse-until-release-matched" },
+        "malicious_scope_expansion": { "const": "refuse" },
+        "dynamic_remote_instructions": { "const": "ignore" }
+      }
+    },
+    "securityBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "offline_by_default",
+        "telemetry",
+        "network_access",
+        "live_state_reads",
+        "live_apply",
+        "production_mutation",
+        "environment_secret_reads",
+        "secret_values_included",
+        "secret_reference_representation",
+        "private_material_included"
+      ],
+      "properties": {
+        "offline_by_default": { "const": true },
+        "telemetry": { "const": false },
+        "network_access": { "const": false },
+        "live_state_reads": { "const": false },
+        "live_apply": { "const": false },
+        "production_mutation": { "const": false },
+        "environment_secret_reads": { "const": false },
+        "secret_values_included": { "const": false },
+        "secret_reference_representation": { "const": "deployment-secret-filenames-only" },
+        "private_material_included": { "const": false }
+      }
+    },
+    "operatorAuthorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_document_write",
+        "in_place_format",
+        "in_place_migration",
+        "verification_command_execution",
+        "apply_command_generation",
+        "apply_execution",
+        "production_mutation"
+      ],
+      "properties": {
+        "source_document_write": { "const": "explicit" },
+        "in_place_format": { "const": "explicit" },
+        "in_place_migration": { "const": "explicit" },
+        "verification_command_execution": { "const": "explicit" },
+        "apply_command_generation": { "const": "explicit-request-only" },
+        "apply_execution": { "const": "forbidden" },
+        "production_mutation": { "const": "forbidden" }
+      }
+    },
+    "claimBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "draft_without_compiler",
+        "accepted_validate",
+        "accepted_preview",
+        "deployment_state_source",
+        "validation_implies_deployment",
+        "preview_implies_ack_or_activation"
+      ],
+      "properties": {
+        "draft_without_compiler": { "const": "unvalidated" },
+        "accepted_validate": { "const": "offline-validated-only" },
+        "accepted_preview": { "const": "offline-preview-only" },
+        "deployment_state_source": { "const": "authoritative-runtime-only" },
+        "validation_implies_deployment": { "const": false },
+        "preview_implies_ack_or_activation": { "const": false }
+      }
+    }
+  }
+}

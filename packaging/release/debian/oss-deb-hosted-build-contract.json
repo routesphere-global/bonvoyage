@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-oss-deb-hosted-build-contract",
+  "activation": {
+    "state": "blocked-pending-public-builder-image",
+    "template_path": "packaging/release/debian/oss-deb-reproducibility.workflow.yml",
+    "active_workflow_path": ".github/workflows/oss-deb-reproducibility.yml",
+    "public_repository_created": false,
+    "builder_image_identity_verified": false,
+    "repository_settings_verified": false
+  },
+  "source": {
+    "repository": "https://github.com/routesphere-global/bonvoyage",
+    "event": "workflow_dispatch",
+    "ref_type": "tag",
+    "tag_pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$",
+    "protected_tag_required": true,
+    "pushed_commit_required": true,
+    "clean_checkout_required": true
+  },
+  "execution": {
+    "environment": "release",
+    "runner": "ubuntu-24.04",
+    "platform": "linux/amd64",
+    "permissions": {
+      "contents": "read"
+    },
+    "jobs": {
+      "preflight": {
+        "timeout_minutes": 5
+      },
+      "build-a": {
+        "timeout_minutes": 90
+      },
+      "build-b": {
+        "timeout_minutes": 90
+      },
+      "compare": {
+        "timeout_minutes": 15
+      }
+    },
+    "artifact_retention_days": 3,
+    "maximum_billable_job_minutes": 200,
+    "manual_only": true,
+    "scheduled_runs": false,
+    "self_hosted_runners": false,
+    "cancel_in_progress": false
+  },
+  "builder_image": {
+    "repository": "ghcr.io/routesphere-global/bonvoyage-debian-builder",
+    "reference": null,
+    "verification_receipt": null,
+    "entrypoint": "/usr/local/bin/bonvoyage-oss-deb-builder",
+    "network": "none",
+    "read_only_root": true
+  },
+  "actions": {
+    "checkout": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+    "upload_artifact": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+    "download_artifact": "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093"
+  },
+  "evidence": {
+    "builder_artifacts": [
+      "build-receipt.json",
+      "builder-execution.json",
+      "builder-image-observation.json",
+      "bonvoyage-gateway_*.deb"
+    ],
+    "comparison_artifacts": [
+      "reproducibility-receipt.json",
+      "hosted-reproducibility-receipt.json"
+    ],
+    "builder_names": [
+      "oss-deb-build-a",
+      "oss-deb-build-b"
+    ],
+    "comparison_name": "oss-deb-comparison"
+  },
+  "authority": {
+    "release_admitted": false,
+    "publishable": false,
+    "github_release_created": false,
+    "package_uploaded": false,
+    "container_uploaded": false,
+    "signature_created": false,
+    "provenance_created": false
+  }
+}

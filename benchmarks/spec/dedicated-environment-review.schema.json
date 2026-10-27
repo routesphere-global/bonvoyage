@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://routesphere.local/schemas/dedicated-environment-review.schema.json",
+  "title": "BonVoyage DQ-INFRA-002 operator review",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "campaign_id",
+    "environment_id",
+    "raw_manifest_sha256",
+    "reviewed_at",
+    "reviewer_id_sha256",
+    "attestations",
+    "notes"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "campaign_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "environment_id": { "type": "string", "pattern": "^dq-infra-002-[a-f0-9]{16}$" },
+    "raw_manifest_sha256": { "$ref": "#/$defs/digest" },
+    "reviewed_at": { "type": "string", "format": "date-time" },
+    "reviewer_id_sha256": { "$ref": "#/$defs/digest" },
+    "attestations": {
+      "type": "object",
+      "required": [
+        "unrelated_processes_absent",
+        "scheduled_work_quiesced",
+        "kernel_and_frequency_state_accepted",
+        "cloud_events_and_host_identity_accepted",
+        "clock_state_accepted",
+        "network_noise_accepted"
+      ],
+      "properties": {
+        "unrelated_processes_absent": { "type": "boolean" },
+        "scheduled_work_quiesced": { "type": "boolean" },
+        "kernel_and_frequency_state_accepted": { "type": "boolean" },
+        "cloud_events_and_host_identity_accepted": { "type": "boolean" },
+        "clock_state_accepted": { "type": "boolean" },
+        "network_noise_accepted": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

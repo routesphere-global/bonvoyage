@@ -1,0 +1,4 @@
+# Optional HOST-WIDE policy, not installed by the BonVoyage package.
+# Review journald and rsyslog together; see docs/deployment/native-logging.md.
+[Journal]
+ForwardToWall=no

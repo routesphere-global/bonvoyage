@@ -1,0 +1,18 @@
+{
+  "name": "@routesphere/bonvoyage-tooling",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Pinned JavaScript dependencies for BonVoyage benchmark and release tooling.",
+  "scripts": {
+    "test": "npm run test:benchmarks",
+    "test:benchmarks": "node --test --test-concurrency=1 benchmarks/scripts/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "js-yaml": "4.3.2"
+  }
+}

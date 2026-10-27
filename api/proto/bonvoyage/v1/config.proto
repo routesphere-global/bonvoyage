@@ -1,0 +1,358 @@
+syntax = "proto3";
+
+package bonvoyage.v1;
+
+option go_package = "github.com/routesphere-global/bonvoyage/api/gen/go/bonvoyage/v1;bonvoyagev1";
+
+// Snapshot is the immutable traffic configuration compiled by the control plane.
+// Node-local bootstrap settings such as admin addresses do not belong here.
+message Snapshot {
+  string snapshot_id = 1;
+  uint64 generation = 2;
+  string minimum_dataplane_version = 3;
+  repeated Listener listeners = 4;
+  repeated VirtualHost virtual_hosts = 5;
+  repeated Cluster clusters = 6;
+  RuntimeLimits runtime_limits = 7;
+  uint32 schema_version = 8;
+}
+
+message Listener {
+  string name = 1;
+  string address = 2;
+  uint32 port = 3;
+  Protocol protocol = 4;
+  repeated string virtual_host_names = 5;
+  DownstreamTls downstream_tls = 6;
+  TrustedProxyPolicy trusted_proxy = 7;
+}
+
+enum Protocol {
+  PROTOCOL_UNSPECIFIED = 0;
+  PROTOCOL_HTTP1 = 1;
+  PROTOCOL_HTTP2 = 2;
+  PROTOCOL_HTTP3 = 3;
+}
+
+message DownstreamTls {
+  string certificate_chain_secret = 1;
+  string private_key_secret = 2;
+  string trust_bundle_secret = 3;
+  bool require_client_certificate = 4;
+}
+
+// TrustedProxyPolicy allows a listener to derive client identity from one
+// strict X-Forwarded-For chain only when the connected peer is trusted.
+message TrustedProxyPolicy {
+  repeated string trusted_cidrs = 1;
+}
+
+message VirtualHost {
+  string name = 1;
+  repeated string domains = 2;
+  repeated Route routes = 3;
+}
+
+message Route {
+  string name = 1;
+  RouteMatch match = 2;
+  string cluster_name = 3;
+  FixedResponse fixed_response = 4;
+  // Maximum active requests admitted to this route on one data-plane shard.
+  // Zero disables route concurrency admission for wire compatibility.
+  uint32 max_concurrent_requests_per_shard = 5;
+  LocalRateLimit local_rate_limit = 6;
+  ApiKeyAuth api_key_auth = 7;
+  JwtAuth jwt_auth = 8;
+  SourceIpPolicy source_ip_policy = 9;
+  CorsPolicy cors = 10;
+  RequestContentPolicy request_content = 11;
+  RedirectResponse redirect = 12;
+  HeaderTransformations header_transformations = 13;
+  RouteRewrite rewrite = 14;
+  repeated WeightedCluster weighted_clusters = 15;
+  WebSocketPolicy websocket = 16;
+}
+
+// WeightedCluster assigns one static relative share to an upstream cluster.
+// Route-level weights are independent of endpoint weights inside each cluster.
+message WeightedCluster {
+  string cluster_name = 1;
+  uint32 weight = 2;
+}
+
+// RouteRewrite applies one immutable upstream HTTP authority and/or path
+// rewrite after route policy succeeds. It never changes cluster TLS identity.
+message RouteRewrite {
+  // Canonical lowercase DNS name or canonical numeric IP literal. IPv6 uses
+  // brackets. Empty preserves the downstream authority.
+  string host = 1;
+
+  // Optional upstream Host port. Zero preserves an omitted port.
+  uint32 port = 2;
+
+  oneof path_rewrite {
+    // Replaces the complete path while preserving the original raw query.
+    string path = 3;
+
+    // Replaces the matched route prefix and preserves its unmatched suffix
+    // plus the original raw query. Valid only on path-prefix routes.
+    string path_prefix = 4;
+  }
+}
+
+// HeaderTransformations applies bounded, snapshot-owned mutations only to
+// reverse-proxy request and response fields.
+message HeaderTransformations {
+  repeated HeaderMutation request = 1;
+  repeated HeaderMutation response = 2;
+}
+
+// HeaderMutation changes one lowercase end-to-end field. Every field may
+// appear at most once in each transformation direction.
+message HeaderMutation {
+  HeaderMutationOperation operation = 1;
+  string name = 2;
+  string value = 3;
+}
+
+enum HeaderMutationOperation {
+  HEADER_MUTATION_OPERATION_UNSPECIFIED = 0;
+  HEADER_MUTATION_OPERATION_SET = 1;
+  HEADER_MUTATION_OPERATION_APPEND = 2;
+  HEADER_MUTATION_OPERATION_REMOVE = 3;
+}
+
+// ApiKeyAuth validates one route credential against a bounded shard-local
+// table loaded from a file below the bootstrap secret directory.
+message ApiKeyAuth {
+  string header_name = 1;
+  string credentials_secret = 2;
+}
+
+// JwtAuth validates one route bearer token against a bounded policy and a
+// JWKS document loaded from a file below the bootstrap secret directory.
+message JwtAuth {
+  string jwks_secret = 1;
+  string issuer = 2;
+  string audience = 3;
+  string required_type = 4;
+  repeated JwtAlgorithm algorithms = 5;
+  uint32 clock_skew_seconds = 6;
+  uint32 max_token_lifetime_seconds = 7;
+  repeated string required_scopes = 8;
+  repeated JwtClaimMatch required_claims = 9;
+  LocalRateLimit verification_rate_limit = 10;
+}
+
+enum JwtAlgorithm {
+  JWT_ALGORITHM_UNSPECIFIED = 0;
+  JWT_ALGORITHM_RS256 = 1;
+  JWT_ALGORITHM_PS256 = 2;
+  JWT_ALGORITHM_ES256 = 3;
+}
+
+// JwtClaimMatch requires one non-reserved JWT claim to equal a configured
+// printable ASCII value.
+message JwtClaimMatch {
+  string name = 1;
+  string exact = 2;
+}
+
+// SourceIpPolicy applies one bounded route allow/deny decision to the
+// canonical client address established by the listener trust boundary.
+message SourceIpPolicy {
+  repeated string allow_cidrs = 1;
+  repeated string deny_cidrs = 2;
+}
+
+// CorsPolicy controls browser cross-origin access for one route. The data
+// plane answers validated preflight requests locally and owns every emitted
+// Access-Control-* response field for configured routes.
+message CorsPolicy {
+  bool allow_any_origin = 1;
+  repeated string allowed_origins = 2;
+  repeated string allowed_methods = 3;
+  repeated string allowed_headers = 4;
+  repeated string exposed_headers = 5;
+  bool allow_credentials = 6;
+  uint32 max_age_seconds = 7;
+}
+
+// RequestContentPolicy bounds one route representation and optionally permits
+// a closed set of exact base media types. A zero max_body_bytes inherits the
+// snapshot-wide request-body limit for protobuf wire compatibility.
+message RequestContentPolicy {
+  uint64 max_body_bytes = 1;
+  repeated string allowed_content_types = 2;
+}
+
+// LocalRateLimit is an unkeyed token bucket owned independently by every
+// data-plane shard. Aggregate capacity scales with the configured shard count.
+message LocalRateLimit {
+  uint32 capacity = 1;
+  uint32 refill_tokens_per_second = 2;
+}
+
+// FixedResponse serves a local response without selecting an upstream cluster.
+message FixedResponse {
+  uint32 status_code = 1;
+  string body = 2;
+  string content_type = 3;
+}
+
+// RedirectResponse serves one immutable, prevalidated Location without
+// selecting an upstream cluster. Scheme and host are either both empty for an
+// origin-relative reference or both present for an absolute HTTP(S) reference.
+message RedirectResponse {
+  uint32 status_code = 1;
+  string scheme = 2;
+  string host = 3;
+  uint32 port = 4;
+  string path = 5;
+  string query = 6;
+}
+
+message RouteMatch {
+  oneof path_match {
+    string path_exact = 1;
+    string path_prefix = 2;
+    string safe_regex = 3;
+  }
+
+  repeated string methods = 4;
+  repeated HeaderMatch headers = 5;
+  repeated QueryParameterMatch query_parameters = 6;
+}
+
+message HeaderMatch {
+  string name = 1;
+
+  oneof value_match {
+    string exact = 2;
+    bool present = 3;
+  }
+}
+
+// QueryParameterMatch applies to RFC 3986 percent-decoded query components.
+message QueryParameterMatch {
+  string name = 1;
+
+  oneof value_match {
+    string exact = 2;
+    bool present = 3;
+  }
+}
+
+message Cluster {
+  string name = 1;
+  repeated Endpoint endpoints = 2;
+  LoadBalancingPolicy load_balancing_policy = 3;
+  uint32 connect_timeout_ms = 4;
+  uint32 max_connections_per_shard = 5;
+  uint32 max_pending_requests_per_shard = 6;
+  UpstreamTls upstream_tls = 7;
+  PassiveHealthPolicy passive_health = 8;
+  ActiveHealthPolicy active_health = 9;
+  DnsRefreshPolicy dns_refresh = 10;
+  RetryPolicy retry = 11;
+  // Maximum active requests admitted to one endpoint on one shard. Zero uses
+  // the cluster connection-plus-pending admission limit for wire compatibility.
+  uint32 max_concurrent_requests_per_endpoint = 12;
+  // Upstream application protocol. Unspecified preserves the HTTP/1 default
+  // for snapshots produced before this field was introduced.
+  Protocol protocol = 13;
+  // Maximum concurrent HTTP/2 streams opened on one upstream connection.
+  // Zero applies the conservative runtime default of 100.
+  uint32 max_http2_streams_per_connection = 14;
+}
+
+// RetryPolicy permits bounded replay of explicitly idempotent requests only
+// before a valid upstream response head is handed to the downstream protocol.
+message RetryPolicy {
+  uint32 max_attempts = 1;
+  uint32 per_try_timeout_ms = 2;
+  repeated string retryable_methods = 3;
+  RetryBudget budget = 4;
+}
+
+// RetryBudget bounds retry amplification independently on every data-plane
+// shard. Original attempts do not consume this budget.
+message RetryBudget {
+  uint32 capacity = 1;
+  uint32 refill_tokens_per_second = 2;
+  uint32 max_concurrent_retries_per_shard = 3;
+}
+
+// PassiveHealthPolicy temporarily ejects endpoints after failures that occur
+// before a valid upstream response head. HTTP status codes do not count as
+// transport failures in this policy.
+message PassiveHealthPolicy {
+  uint32 consecutive_failures = 1;
+  uint32 ejection_time_ms = 2;
+  uint32 max_ejection_percent = 3;
+  // Successful half-open probes required before the endpoint circuit closes.
+  uint32 consecutive_successes = 4;
+}
+
+// ActiveHealthPolicy probes every configured endpoint from the maintenance
+// coordinator. Probe results are published asynchronously to shard-local
+// selectors and never become a synchronous request-path dependency.
+message ActiveHealthPolicy {
+  string path = 1;
+  uint32 interval_ms = 2;
+  uint32 timeout_ms = 3;
+  uint32 healthy_threshold = 4;
+  uint32 unhealthy_threshold = 5;
+  uint32 expected_status_min = 6;
+  uint32 expected_status_max = 7;
+  string host = 8;
+}
+
+// DnsRefreshPolicy periodically resolves DNS endpoint names while retaining
+// the last known address after a resolver failure.
+message DnsRefreshPolicy {
+  uint32 refresh_interval_ms = 1;
+  uint32 resolve_timeout_ms = 2;
+}
+
+// UpstreamTls authenticates and encrypts connections from one cluster pool.
+// Server certificate verification is mandatory; no insecure mode is exposed.
+message UpstreamTls {
+  string server_name = 1;
+  string trust_bundle_secret = 2;
+  string certificate_chain_secret = 3;
+  string private_key_secret = 4;
+}
+
+enum LoadBalancingPolicy {
+  LOAD_BALANCING_POLICY_UNSPECIFIED = 0;
+  LOAD_BALANCING_POLICY_ROUND_ROBIN = 1;
+  LOAD_BALANCING_POLICY_LEAST_REQUEST = 2;
+  LOAD_BALANCING_POLICY_RANDOM = 3;
+}
+
+message Endpoint {
+  string name = 1;
+  string address = 2;
+  uint32 port = 3;
+  uint32 weight = 4;
+}
+
+message RuntimeLimits {
+  uint32 max_request_header_bytes = 1;
+  uint64 max_request_body_bytes = 2;
+  uint32 request_timeout_ms = 3;
+  uint32 downstream_idle_timeout_ms = 4;
+  uint32 max_downstream_connections_per_shard = 5;
+  uint32 max_upstream_response_header_bytes = 6;
+  uint32 max_upstream_chunk_metadata_bytes = 7;
+}
+
+// WebSocketPolicy opts one reverse-proxy route into RFC 6455 upgrade and
+// bounded bidirectional tunneling over HTTP/1.1.
+message WebSocketPolicy {
+  // Closes an established tunnel when neither direction transfers bytes for
+  // this duration. Route concurrency admission remains held for its lifetime.
+  uint32 idle_timeout_ms = 1;
+}

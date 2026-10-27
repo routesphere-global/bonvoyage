@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://routesphere.local/schemas/dedicated-validation-plan.schema.json",
+  "title": "BonVoyage dedicated exact-release validation plan",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "campaign_id",
+    "platform",
+    "checks"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^dq-validation-plan-[a-z0-9-]+$" },
+    "campaign_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "platform": { "$ref": "#/$defs/platform" },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/check" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "platform": {
+      "type": "object",
+      "required": ["operating_system", "architecture", "container_platform"],
+      "properties": {
+        "operating_system": { "const": "Ubuntu 24.04 LTS" },
+        "architecture": { "const": "x86_64" },
+        "container_platform": { "const": "linux/amd64" }
+      },
+      "additionalProperties": false
+    },
+    "command": {
+      "type": "object",
+      "required": ["argv", "cwd"],
+      "properties": {
+        "argv": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "cwd": { "const": "repository-root" }
+      },
+      "additionalProperties": false
+    },
+    "check": {
+      "type": "object",
+      "required": [
+        "id",
+        "purpose",
+        "command",
+        "required_environment",
+        "derived_environment",
+        "fixed_environment"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "purpose": { "type": "string", "minLength": 1 },
+        "command": { "$ref": "#/$defs/command" },
+        "required_environment": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" }
+        },
+        "derived_environment": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" }
+        },
+        "fixed_environment": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Z][A-Z0-9_]*$" },
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,101 @@
+server:
+  node_id: phase6-gnutls-policy
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+snapshot:
+  schema_version: 1
+  snapshot_id: phase6-gnutls-policy
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+listeners:
+  - name: http
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [valid, cn-only, zero-key-usage, malformed-key-usage]
+virtual_hosts:
+  - name: valid
+    domains: [valid.client.example.test]
+    routes:
+      - name: valid
+        match:
+          path_prefix: /
+        cluster: valid
+  - name: cn-only
+    domains: [cn-only.client.example.test]
+    routes:
+      - name: cn-only
+        match:
+          path_prefix: /
+        cluster: cn-only
+  - name: zero-key-usage
+    domains: [zero-key-usage.client.example.test]
+    routes:
+      - name: zero-key-usage
+        match:
+          path_prefix: /
+        cluster: zero-key-usage
+  - name: malformed-key-usage
+    domains: [malformed-key-usage.client.example.test]
+    routes:
+      - name: malformed-key-usage
+        match:
+          path_prefix: /
+        cluster: malformed-key-usage
+clusters:
+  - name: valid
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 1000
+    max_connections_per_shard: 2
+    max_pending_requests_per_shard: 4
+    upstream_tls:
+      server_name: valid.example.test
+      trust_bundle_secret: policy-ca.pem
+    endpoints:
+      - name: valid-1
+        address: valid.example.test
+        port: 8081
+  - name: cn-only
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 1000
+    max_connections_per_shard: 2
+    max_pending_requests_per_shard: 4
+    upstream_tls:
+      server_name: cn-only.example.test
+      trust_bundle_secret: policy-ca.pem
+    endpoints:
+      - name: cn-only-1
+        address: cn-only.example.test
+        port: 8081
+  - name: zero-key-usage
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 1000
+    max_connections_per_shard: 2
+    max_pending_requests_per_shard: 4
+    upstream_tls:
+      server_name: zero-key-usage.example.test
+      trust_bundle_secret: policy-ca.pem
+    endpoints:
+      - name: zero-key-usage-1
+        address: zero-key-usage.example.test
+        port: 8081
+  - name: malformed-key-usage
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 1000
+    max_connections_per_shard: 2
+    max_pending_requests_per_shard: 4
+    upstream_tls:
+      server_name: malformed-key-usage.example.test
+      trust_bundle_secret: policy-ca.pem
+    endpoints:
+      - name: malformed-key-usage-1
+        address: malformed-key-usage.example.test
+        port: 8081
+runtime_limits:
+  max_downstream_connections_per_shard: 128
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 3000
+  downstream_idle_timeout_ms: 5000

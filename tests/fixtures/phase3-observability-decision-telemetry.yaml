@@ -1,0 +1,67 @@
+server:
+  node_id: phase3-observability-decision-telemetry
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-observability-decision-telemetry
+  generation: 37
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: decision-http1
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [decision-api]
+
+virtual_hosts:
+  - name: decision-api
+    domains: [telemetry.example.test]
+    routes:
+      - name: successful-request
+        match:
+          path_exact: /decision/success
+          methods: [GET]
+        cluster: decision-upstream
+        rewrite:
+          path: /identity
+      - name: rate-limited-request
+        match:
+          path_exact: /decision/rate
+          methods: [GET]
+        cluster: decision-upstream
+        local_rate_limit:
+          capacity: 1
+          refill_tokens_per_second: 1
+        rewrite:
+          path: /identity
+      - name: failed-upstream-request
+        match:
+          path_exact: /decision/failure
+          methods: [GET]
+        cluster: decision-upstream
+        rewrite:
+          path: /circuit-http1/always-fail
+
+clusters:
+  - name: decision-upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 500
+    max_connections_per_shard: 32
+    max_pending_requests_per_shard: 64
+    max_concurrent_requests_per_endpoint: 64
+    endpoints:
+      - name: decision-upstream-1
+        address: upstream
+        port: 8081
+
+runtime_limits:
+  max_downstream_connections_per_shard: 512
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 3000
+  downstream_idle_timeout_ms: 10000

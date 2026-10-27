@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://routesphere.local/schemas/benchmark-phase2-summary.schema.json",
+  "title": "BonVoyage Phase 2 competitive summary",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "workload_id",
+    "plan_id",
+    "environment_sha256",
+    "evidence_class",
+    "thresholds",
+    "result_documents",
+    "products",
+    "advantage",
+    "gates"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "run_id": { "type": "string", "pattern": "^phase2-comparison-[0-9]{8}T[0-9]{6}Z$" },
+    "workload_id": { "const": "http1-keepalive-phase2-baseline" },
+    "plan_id": { "type": "string", "pattern": "^phase2-[a-f0-9]{16}$" },
+    "environment_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "evidence_class": { "enum": ["local-functional", "native-qualification"] },
+    "thresholds": {
+      "type": "object",
+      "minProperties": 10,
+      "additionalProperties": { "type": "number" }
+    },
+    "result_documents": { "type": "integer", "minimum": 1 },
+    "products": {
+      "type": "object",
+      "required": ["bonvoyage", "envoy", "nginx", "haproxy"],
+      "properties": {
+        "bonvoyage": { "$ref": "#/$defs/product" },
+        "envoy": { "$ref": "#/$defs/product" },
+        "nginx": { "$ref": "#/$defs/product" },
+        "haproxy": { "$ref": "#/$defs/product" }
+      },
+      "additionalProperties": false
+    },
+    "advantage": {
+      "type": "object",
+      "required": ["1", "2"],
+      "properties": {
+        "1": { "$ref": "#/$defs/advantage" },
+        "2": { "$ref": "#/$defs/advantage" }
+      },
+      "additionalProperties": false
+    },
+    "gates": {
+      "type": "object",
+      "required": [
+        "confirmation_pass",
+        "operating_curves_pass",
+        "support_roles_pass",
+        "minimum_bonvoyage_advantage_percent",
+        "bonvoyage_advantage_pass",
+        "bonvoyage_two_core_scaling_efficiency",
+        "scaling_pass",
+        "resilience_pass",
+        "evidence_complete",
+        "publication_authorized",
+        "decision",
+        "phase2_exit_pass"
+      ],
+      "properties": {
+        "confirmation_pass": { "type": "boolean" },
+        "operating_curves_pass": { "type": "boolean" },
+        "support_roles_pass": { "type": "boolean" },
+        "minimum_bonvoyage_advantage_percent": { "type": ["number", "null"] },
+        "bonvoyage_advantage_pass": { "type": "boolean" },
+        "bonvoyage_two_core_scaling_efficiency": { "type": ["number", "null"] },
+        "scaling_pass": { "type": "boolean" },
+        "resilience_pass": { "type": "boolean" },
+        "evidence_complete": { "type": "boolean" },
+        "publication_authorized": { "type": "boolean" },
+        "decision": { "enum": ["incomplete", "pass", "optimization-cycle", "architecture-review"] },
+        "phase2_exit_pass": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "gateMap": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "boolean" }
+    },
+    "confirmation": {
+      "type": "object",
+      "required": [
+        "valid_repetitions",
+        "offered_rps",
+        "sustainable_successful_rps",
+        "rps_per_core",
+        "maximum_rate_deviation_percent",
+        "median_p999_ms",
+        "maximum_p999_ms",
+        "maximum_error_rate",
+        "maximum_support_role_capacity_percent",
+        "gates"
+      ],
+      "properties": {
+        "valid_repetitions": { "type": "integer", "minimum": 0 },
+        "offered_rps": { "type": ["number", "null"] },
+        "sustainable_successful_rps": { "type": ["number", "null"] },
+        "rps_per_core": { "type": ["number", "null"] },
+        "maximum_rate_deviation_percent": { "type": ["number", "null"] },
+        "median_p999_ms": { "type": ["number", "null"] },
+        "maximum_p999_ms": { "type": ["number", "null"] },
+        "maximum_error_rate": { "type": ["number", "null"] },
+        "maximum_support_role_capacity_percent": { "type": ["number", "null"] },
+        "gates": { "$ref": "#/$defs/gateMap" }
+      },
+      "additionalProperties": false
+    },
+    "curvePoint": {
+      "type": "object",
+      "required": [
+        "valid_repetitions",
+        "median_successful_rps",
+        "maximum_rate_deviation_percent",
+        "median_p50_ms",
+        "median_p95_ms",
+        "median_p99_ms",
+        "median_p999_ms",
+        "maximum_p999_ms",
+        "maximum_error_rate",
+        "maximum_support_role_capacity_percent"
+      ],
+      "properties": {
+        "valid_repetitions": { "type": "integer", "minimum": 0 },
+        "median_successful_rps": { "type": ["number", "null"] },
+        "maximum_rate_deviation_percent": { "type": ["number", "null"] },
+        "median_p50_ms": { "type": ["number", "null"] },
+        "median_p95_ms": { "type": ["number", "null"] },
+        "median_p99_ms": { "type": ["number", "null"] },
+        "median_p999_ms": { "type": ["number", "null"] },
+        "maximum_p999_ms": { "type": ["number", "null"] },
+        "maximum_error_rate": { "type": ["number", "null"] },
+        "maximum_support_role_capacity_percent": { "type": ["number", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "curve": {
+      "type": "object",
+      "required": ["points", "gates"],
+      "properties": {
+        "points": {
+          "type": "object",
+          "required": ["0.5", "0.7", "0.8", "0.9", "0.95"],
+          "properties": {
+            "0.5": { "$ref": "#/$defs/curvePoint" },
+            "0.7": { "$ref": "#/$defs/curvePoint" },
+            "0.8": { "$ref": "#/$defs/curvePoint" },
+            "0.9": { "$ref": "#/$defs/curvePoint" },
+            "0.95": { "$ref": "#/$defs/curvePoint" }
+          },
+          "additionalProperties": false
+        },
+        "gates": { "$ref": "#/$defs/gateMap" }
+      },
+      "additionalProperties": false
+    },
+    "coreProfile": {
+      "type": "object",
+      "required": ["confirmation", "operating_curve"],
+      "properties": {
+        "confirmation": { "$ref": "#/$defs/confirmation" },
+        "operating_curve": { "$ref": "#/$defs/curve" }
+      },
+      "additionalProperties": false
+    },
+    "resilience": {
+      "type": "object",
+      "required": [
+        "complete_repetitions",
+        "overload_runs",
+        "overload_observed_runs",
+        "valid_recovery_runs",
+        "valid_churn_runs",
+        "process_restarted",
+        "maximum_churn_rss_growth_bytes",
+        "maximum_churn_rss_slope_bytes_per_second",
+        "gates"
+      ],
+      "properties": {
+        "complete_repetitions": { "type": "integer", "minimum": 0 },
+        "overload_runs": { "type": "integer", "minimum": 0 },
+        "overload_observed_runs": { "type": "integer", "minimum": 0 },
+        "valid_recovery_runs": { "type": "integer", "minimum": 0 },
+        "valid_churn_runs": { "type": "integer", "minimum": 0 },
+        "process_restarted": { "type": "boolean" },
+        "maximum_churn_rss_growth_bytes": { "type": ["number", "null"] },
+        "maximum_churn_rss_slope_bytes_per_second": { "type": ["number", "null"] },
+        "gates": { "$ref": "#/$defs/gateMap" }
+      },
+      "additionalProperties": false
+    },
+    "product": {
+      "type": "object",
+      "required": ["core_profiles", "two_core_scaling_efficiency", "resilience"],
+      "properties": {
+        "core_profiles": {
+          "type": "object",
+          "required": ["1", "2"],
+          "properties": {
+            "1": { "$ref": "#/$defs/coreProfile" },
+            "2": { "$ref": "#/$defs/coreProfile" }
+          },
+          "additionalProperties": false
+        },
+        "two_core_scaling_efficiency": { "type": ["number", "null"] },
+        "resilience": { "$ref": "#/$defs/resilience" }
+      },
+      "additionalProperties": false
+    },
+    "advantage": {
+      "type": "object",
+      "required": [
+        "strongest_comparator",
+        "strongest_comparator_rps_per_core",
+        "bonvoyage_rps_per_core",
+        "advantage_percent"
+      ],
+      "properties": {
+        "strongest_comparator": { "type": ["string", "null"] },
+        "strongest_comparator_rps_per_core": { "type": ["number", "null"] },
+        "bonvoyage_rps_per_core": { "type": ["number", "null"] },
+        "advantage_percent": { "type": ["number", "null"] }
+      },
+      "additionalProperties": false
+    }
+  }
+}

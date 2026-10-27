@@ -1,0 +1,252 @@
+{
+  "$schema": "../../../schemas/bonvoyage-authoring-cross-surface-v1.schema.json",
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-configuration-cross-surface-contract",
+  "gate_version": "bonvoyage.configuration-cross-surface.v1",
+  "product_version": "0.2.0",
+  "contract_version": "bonvoyage.configuration-authoring.v1",
+  "compiler_version": "bonvoyage-control-plane-phase4-admin-v1",
+  "configuration_schema_versions": [1],
+  "authority": {
+    "semantic_validation": "snapshot.Compile",
+    "deterministic_serialization": "snapshot.MarshalDeterministic",
+    "structured_presentation": "configauthoring.ValidateReader",
+    "network_access": false,
+    "live_mutation": false
+  },
+  "sources": {
+    "authoring_contract": {
+      "path": "config/authoring/bonvoyage-authoring-v1.json",
+      "bytes": 13429,
+      "sha256": "098b41f7a57ac3eadff59137b358df8aaf5e6bd5759639f2beaa5b81b39dcebf"
+    },
+    "corpus_manifest": {
+      "path": "config/authoring/corpus/v1/manifest.json",
+      "bytes": 9680,
+      "sha256": "869c6a6993328a14b9496de9ad0044921c5a73fe55efc986cfd4557a26adc8b8"
+    },
+    "result_schema": {
+      "path": "config/schemas/bonvoyage-authoring-result-v1.schema.json",
+      "bytes": 17359,
+      "sha256": "a88914a51bc419c126745ac525bda840a6f754fa31a1c9fe4cc81660d579ecdf"
+    },
+    "skill_contract": {
+      "path": "config/authoring/skills/v1/contract.json",
+      "bytes": 7401,
+      "sha256": "59b566e868388388d052adc769dc44dbc45a2b7b2b93737ec2d9d1ac407a3bba"
+    },
+    "openai_codex_wrapper": {
+      "path": "config/authoring/skills/v1/wrappers/openai-codex.json",
+      "bytes": 6661,
+      "sha256": "00f70180121786778f4db565752ee3d284bf98ceb86cad3bce3ee6a29cc6e2eb"
+    },
+    "claude_wrapper": {
+      "path": "config/authoring/skills/v1/wrappers/claude.json",
+      "bytes": 6551,
+      "sha256": "b948c86b42ad6e0e86ae46b172dcc399cf23550a3742dae8d4cad12ac49a9daa"
+    },
+    "admin_openapi": {
+      "path": "api/openapi/bonvoyage-admin-v1.yaml",
+      "bytes": 55086,
+      "sha256": "fb00bde7709c337b40829402581e09f7233a298d00764f7934e7a4dcb4ce1bc4"
+    }
+  },
+  "corpus": {
+    "case_count": 11,
+    "accepted_count": 3,
+    "rejected_count": 8
+  },
+  "agreement": {
+    "accepted_projection": [
+      "decision",
+      "artifact.sha256",
+      "artifact.bytes",
+      "artifact.snapshot_id",
+      "artifact.schema_version",
+      "artifact.minimum_dataplane_version"
+    ],
+    "rejected_projection": [
+      "decision",
+      "diagnostic.code",
+      "diagnostic.path",
+      "diagnostic.source.start",
+      "diagnostic.source.end",
+      "diagnostic.redacted",
+      "forbidden-output-absence"
+    ],
+    "transport_normalization": [
+      "ignore-source-id",
+      "ignore-human-message-text",
+      "map-process-and-http-status-to-decision"
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "claude-code-skill",
+      "kind": "skill-package",
+      "state": "ready",
+      "interface": "skills/claude/bonvoyage-config-authoring",
+      "agreement_profile": "delegated-command",
+      "delegates_to": "local-command",
+      "evidence": ["scripts/config-authoring-claude-skill.test.mjs"],
+      "model_qualification": "deferred-separate-evidence",
+      "gap": null
+    },
+    {
+      "id": "console",
+      "kind": "console",
+      "state": "ready",
+      "interface": "POST /api/v1/configurations/validate",
+      "agreement_profile": "full-validation",
+      "delegates_to": "go-snapshot-compiler",
+      "evidence": [
+        "api/openapi/bonvoyage-admin-v1.yaml",
+        "control-plane/internal/adminservice/preview.go",
+        "control-plane/internal/adminservice/validation_test.go",
+        "control-plane/internal/adminapi/handler.go",
+        "control-plane/internal/adminapi/validation_corpus_test.go",
+        "console/server/gateway.go",
+        "console/server/server_test.go",
+        "console/src/api/client.ts",
+        "console/src/api/client.test.ts",
+        "console/src/features/configuration/ConfigurationEditor.tsx",
+        "console/src/features/configuration/ConfigurationValidationResult.tsx",
+        "console/src/features/configuration/ConfigurationValidationResult.test.tsx",
+        "console/src/features/configuration/ConfigurationEditor.test.tsx",
+        "console/e2e/live-source-ip-policy-lifecycle.spec.ts",
+        "console/e2e/live-authentication-lifecycle.spec.ts"
+      ],
+      "model_qualification": "not-applicable",
+      "gap": null
+    },
+    {
+      "id": "go-snapshot-compiler",
+      "kind": "compiler",
+      "state": "ready",
+      "interface": "control-plane/internal/snapshot.snapshot.Compile",
+      "agreement_profile": "compiler",
+      "delegates_to": null,
+      "evidence": [
+        "control-plane/internal/configauthoring/validate_test.go",
+        "scripts/config-authoring-corpus.test.mjs"
+      ],
+      "model_qualification": "not-applicable",
+      "gap": null
+    },
+    {
+      "id": "local-command",
+      "kind": "command",
+      "state": "ready",
+      "interface": "bonvoyage-config validate",
+      "agreement_profile": "full-validation",
+      "delegates_to": "go-snapshot-compiler",
+      "evidence": [
+        "scripts/config-authoring-cli.test.mjs",
+        "scripts/config-authoring-corpus.test.mjs"
+      ],
+      "model_qualification": "not-applicable",
+      "gap": null
+    },
+    {
+      "id": "openai-codex-skill",
+      "kind": "skill-package",
+      "state": "ready",
+      "interface": "skills/bonvoyage-config-authoring",
+      "agreement_profile": "delegated-command",
+      "delegates_to": "local-command",
+      "evidence": ["scripts/config-authoring-openai-codex-skill.test.mjs"],
+      "model_qualification": "accepted-separate-evidence",
+      "gap": null
+    },
+    {
+      "id": "public-ci",
+      "kind": "orchestration",
+      "state": "ready",
+      "interface": ".github/workflows/ci.yml -> make test",
+      "agreement_profile": "orchestration",
+      "delegates_to": "local-command",
+      "evidence": [
+        "tools/oss-export/public-root/.github/workflows/ci.yml",
+        "tools/oss-export/public-root/Makefile"
+      ],
+      "model_qualification": "not-applicable",
+      "gap": null
+    }
+  ],
+  "lifecycle_requirements": [
+    {
+      "id": "downgrade-rejection",
+      "state": "covered",
+      "evidence": ["scripts/config-authoring-skill-lifecycle.test.mjs"]
+    },
+    {
+      "id": "incompatible-version",
+      "state": "covered",
+      "evidence": [
+        "scripts/config-authoring-openai-codex-skill.test.mjs",
+        "scripts/config-authoring-claude-skill.test.mjs"
+      ]
+    },
+    {
+      "id": "malformed-output",
+      "state": "covered",
+      "evidence": [
+        "scripts/config-authoring-openai-codex-skill.test.mjs",
+        "scripts/config-authoring-claude-skill.test.mjs"
+      ]
+    },
+    {
+      "id": "missing-compiler",
+      "state": "covered",
+      "evidence": [
+        "scripts/config-authoring-openai-codex-skill.test.mjs",
+        "scripts/config-authoring-claude-skill.test.mjs"
+      ]
+    },
+    {
+      "id": "offline-install",
+      "state": "covered",
+      "evidence": [
+        "scripts/config-authoring-openai-codex-skill.test.mjs",
+        "scripts/config-authoring-claude-skill.test.mjs",
+        "scripts/config-authoring-skill-lifecycle.test.mjs"
+      ]
+    },
+    {
+      "id": "uninstall",
+      "state": "covered",
+      "evidence": ["scripts/config-authoring-skill-lifecycle.test.mjs"]
+    },
+    {
+      "id": "upgrade",
+      "state": "covered",
+      "evidence": ["scripts/config-authoring-skill-lifecycle.test.mjs"]
+    },
+    {
+      "id": "windows-large-file",
+      "state": "partial",
+      "evidence": [
+        "config/schemas/bonvoyage-windows-large-input-evidence-v1.schema.json",
+        "packaging/release/windows/config-authoring-large-input-contract.json",
+        "packaging/release/windows/config-authoring-large-input.workflow.yml",
+        "scripts/config-authoring-cli.test.mjs",
+        "scripts/config-authoring-windows-large-input.test.mjs",
+        "scripts/run-config-authoring-windows-large-input.mjs"
+      ]
+    }
+  ],
+  "deferred_surfaces": [
+    {
+      "id": "notepad-plus-plus",
+      "release_boundary": "oss-1.1-or-ga-beta",
+      "gate_behavior": "joins-this-gate-when-shipped"
+    }
+  ],
+  "release_gate": {
+    "status": "open",
+    "blocking_surfaces": [],
+    "blocking_lifecycle_requirements": [
+      "windows-large-file"
+    ]
+  }
+}

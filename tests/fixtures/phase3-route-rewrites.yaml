@@ -1,0 +1,109 @@
+server:
+  node_id: route-rewrites-node
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-route-rewrites
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+listeners:
+  - name: rewrites-http1
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [api]
+  - name: rewrites-http2
+    address: 0.0.0.0
+    port: 8443
+    protocol: http2
+    virtual_hosts: [api]
+    downstream_tls:
+      certificate_chain_secret: server-chain.pem
+      private_key_secret: server-key.pem
+virtual_hosts:
+  - name: api
+    domains: [api.example.test]
+    routes:
+      - name: legacy-orders
+        match:
+          path_prefix: /legacy/
+          methods: [GET]
+        cluster: upstream
+        api_key_auth:
+          header_name: x-api-key
+          credentials_secret: phase3-route-rewrites-api-keys.txt
+        cors:
+          allowed_origins: [https://app.example.com]
+          allowed_methods: [GET]
+        rewrite:
+          host: orders.internal.test
+          port: 9443
+          path_prefix: /v2/
+        header_transformations:
+          request:
+            - operation: set
+              name: x-route-tier
+              value: gold
+      - name: catalog
+        match:
+          path_exact: /catalog
+          methods: [GET]
+        cluster: upstream
+        rewrite:
+          path: /internal/catalog
+      - name: authority-only
+        match:
+          path_exact: /authority
+          methods: [GET]
+        cluster: upstream
+        rewrite:
+          host: authority.internal.test
+          port: 8088
+      - name: retry
+        match:
+          path_exact: /retry
+          methods: [GET]
+        cluster: upstream
+        rewrite:
+          host: retry.internal.test
+          path: /internal/retry
+      - name: rewritten-target-limit
+        match:
+          path_exact: /limit
+          methods: [GET]
+        cluster: upstream
+        rewrite:
+          path: /xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      - name: untouched
+        match:
+          path_exact: /plain
+          methods: [GET]
+        cluster: upstream
+clusters:
+  - name: upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 1000
+    max_connections_per_shard: 8
+    max_pending_requests_per_shard: 16
+    retry:
+      max_attempts: 2
+      per_try_timeout_ms: 1000
+      retryable_methods: [GET]
+      budget:
+        capacity: 32
+        refill_tokens_per_second: 32
+        max_concurrent_retries_per_shard: 8
+    endpoints:
+      - name: upstream-1
+        address: upstream
+        port: 8081
+        weight: 1
+runtime_limits:
+  max_downstream_connections_per_shard: 128
+  max_request_header_bytes: 1024
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 4096
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 5000
+  downstream_idle_timeout_ms: 10000

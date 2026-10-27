@@ -1,0 +1,269 @@
+{
+  "$schema": "../../../schemas/bonvoyage-authoring-corpus-v1.schema.json",
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-configuration-authoring-corpus",
+  "corpus_version": 1,
+  "product_version": "0.2.0",
+  "contract_version": "bonvoyage.configuration-authoring.v1",
+  "configuration_schema_version": 1,
+  "compiler_version": "bonvoyage-control-plane-phase4-admin-v1",
+  "authority": {
+    "semantic_validation": "snapshot.Compile",
+    "result_contract": "config/schemas/bonvoyage-authoring-result-v1.schema.json",
+    "network_access": false,
+    "live_mutation": false
+  },
+  "cases": [
+    {
+      "id": "accepted-api-key-policy",
+      "purpose": "Compile a representative API-key policy shared by HTTP/1.1 and HTTP/2 listeners.",
+      "document": "tests/fixtures/phase3-api-key.yaml",
+      "bytes": 1843,
+      "sha256": "6e400dfa5f617bd3ce8bd66bd3a31b438c95cf80c71e9fa201f89326a70ec3ca",
+      "expected": {
+        "status": "accepted",
+        "exit_code": 0,
+        "failure_kind": "none",
+        "input_configuration_schema_version": 1,
+        "artifact": {
+          "sha256": "bb192d7770dd6e060d63e23570e8216457a195a5b5c906511d205fa06db87016",
+          "bytes": 493,
+          "snapshot_id": "phase3-api-key",
+          "schema_version": 1,
+          "minimum_dataplane_version": "0.2.0"
+        },
+        "diagnostic": null
+      }
+    },
+    {
+      "id": "accepted-local-baseline",
+      "purpose": "Compile the minimal local fixed-response and upstream-routing example.",
+      "document": "config/examples/local.yaml",
+      "bytes": 1297,
+      "sha256": "f8fd66340d769ee505e4135e0cabd713e338b9fc8323ba1d9c21e28ecc03e4a8",
+      "expected": {
+        "status": "accepted",
+        "exit_code": 0,
+        "failure_kind": "none",
+        "input_configuration_schema_version": 1,
+        "artifact": {
+          "sha256": "0df685415364762d826d71e722864ba2b7ed1f53508999c8be080897c0b1774b",
+          "bytes": 267,
+          "snapshot_id": "local-bootstrap",
+          "schema_version": 1,
+          "minimum_dataplane_version": "0.2.0"
+        },
+        "diagnostic": null
+      }
+    },
+    {
+      "id": "accepted-tls-listener",
+      "purpose": "Compile a TLS listener that uses deployment-secret filenames rather than embedded secret material.",
+      "document": "config/examples/tls.yaml",
+      "bytes": 1350,
+      "sha256": "1cabf7e80599ff06924f3db511cf2b340d9adccc860c343edefb0083686e071c",
+      "expected": {
+        "status": "accepted",
+        "exit_code": 0,
+        "failure_kind": "none",
+        "input_configuration_schema_version": 1,
+        "artifact": {
+          "sha256": "eed95ca767294a4ee2999c7856e584ef494460b57c49597c3ddb71cfa18223a3",
+          "bytes": 301,
+          "snapshot_id": "local-tls-bootstrap",
+          "schema_version": 1,
+          "minimum_dataplane_version": "0.2.0"
+        },
+        "diagnostic": null
+      }
+    },
+    {
+      "id": "rejected-reference-missing-cluster",
+      "purpose": "Reject a route whose cluster reference does not resolve.",
+      "document": "config/authoring/corpus/v1/invalid/reference-missing-cluster.yaml",
+      "bytes": 1057,
+      "sha256": "e0586fa158f29123909a0c41b48eafa0343ddbf4e8f852ace5375b5f411e3598",
+      "expected": {
+        "status": "rejected",
+        "exit_code": 2,
+        "failure_kind": "validation",
+        "input_configuration_schema_version": 1,
+        "artifact": null,
+        "diagnostic": {
+          "code": "BV_CFG_REFERENCE_MISSING",
+          "severity": "error",
+          "path": "/virtual_hosts/0/routes/0/cluster",
+          "source": {
+            "start": {"line": 26, "column": 18, "byte_offset": 479},
+            "end": {"line": 26, "column": 18, "byte_offset": 479}
+          },
+          "redacted": true
+        }
+      }
+    },
+    {
+      "id": "rejected-schema-unknown-field",
+      "purpose": "Reject an unknown field without echoing its synthetic private value.",
+      "document": "config/authoring/corpus/v1/invalid/schema-unknown-field.yaml",
+      "bytes": 101,
+      "sha256": "8200a40bc8bdb69a02f5dd69323906edb04648f945e2122b4a4782412ce0f601",
+      "forbidden_output_literals": ["corpus-private-value-must-not-echo"],
+      "expected": {
+        "status": "rejected",
+        "exit_code": 2,
+        "failure_kind": "validation",
+        "input_configuration_schema_version": null,
+        "artifact": null,
+        "diagnostic": {
+          "code": "BV_CFG_SCHEMA_UNKNOWN_FIELD",
+          "severity": "error",
+          "path": null,
+          "source": {
+            "start": {"line": 3, "column": 3, "byte_offset": 42},
+            "end": {"line": 3, "column": 3, "byte_offset": 42}
+          },
+          "redacted": true
+        }
+      }
+    },
+    {
+      "id": "rejected-schema-version-unsupported",
+      "purpose": "Reject a configuration schema version not implemented by this release.",
+      "document": "config/authoring/corpus/v1/invalid/schema-version-unsupported.yaml",
+      "bytes": 865,
+      "sha256": "9ce6a45881266137faeda35eba1b5d3f0c3ac6492e95c0983f7f4946d92790a9",
+      "expected": {
+        "status": "rejected",
+        "exit_code": 2,
+        "failure_kind": "validation",
+        "input_configuration_schema_version": 2,
+        "artifact": null,
+        "diagnostic": {
+          "code": "BV_CFG_SCHEMA_VERSION_UNSUPPORTED",
+          "severity": "error",
+          "path": "/snapshot/schema_version",
+          "source": {
+            "start": {"line": 7, "column": 19, "byte_offset": 130},
+            "end": {"line": 7, "column": 19, "byte_offset": 130}
+          },
+          "redacted": true
+        }
+      }
+    },
+    {
+      "id": "rejected-schema-wrong-type",
+      "purpose": "Reject a mapping field supplied with a scalar value.",
+      "document": "config/authoring/corpus/v1/invalid/schema-wrong-type.yaml",
+      "bytes": 88,
+      "sha256": "0854690ea474e9c36809acc1031c4547a83f89ccbb0ae8241751a5e4a6284d1c",
+      "expected": {
+        "status": "rejected",
+        "exit_code": 2,
+        "failure_kind": "validation",
+        "input_configuration_schema_version": null,
+        "artifact": null,
+        "diagnostic": {
+          "code": "BV_CFG_SCHEMA_TYPE",
+          "severity": "error",
+          "path": null,
+          "source": {
+            "start": {"line": 4, "column": 5, "byte_offset": 51},
+            "end": {"line": 4, "column": 5, "byte_offset": 51}
+          },
+          "redacted": true
+        }
+      }
+    },
+    {
+      "id": "rejected-secret-literal",
+      "purpose": "Reject pasted private-key material without echoing the synthetic marker.",
+      "document": "config/authoring/corpus/v1/invalid/secret-literal.yaml",
+      "bytes": 1516,
+      "sha256": "edadc5addf9ced53fcfc5e5aaf50a0d7c109fa83c9d793aa7d8f1db2dd78dad9",
+      "forbidden_output_literals": ["corpus-private-material-must-not-echo"],
+      "expected": {
+        "status": "rejected",
+        "exit_code": 2,
+        "failure_kind": "validation",
+        "input_configuration_schema_version": 1,
+        "artifact": null,
+        "diagnostic": {
+          "code": "BV_CFG_SECRET_LITERAL_FORBIDDEN",
+          "severity": "error",
+          "path": "/listeners/0/downstream_tls/private_key_secret",
+          "source": {
+            "start": {"line": 20, "column": 27, "byte_offset": 428},
+            "end": {"line": 20, "column": 27, "byte_offset": 428}
+          },
+          "redacted": true
+        }
+      }
+    },
+    {
+      "id": "rejected-yaml-alias",
+      "purpose": "Reject YAML aliases before semantic compilation.",
+      "document": "config/authoring/corpus/v1/invalid/yaml-alias.yaml",
+      "bytes": 298,
+      "sha256": "cff3694731d07fcf82d5f5ede67637315e83b71ece339c43f950a9305e01f62c",
+      "expected": {
+        "status": "rejected",
+        "exit_code": 2,
+        "failure_kind": "validation",
+        "input_configuration_schema_version": null,
+        "artifact": null,
+        "diagnostic": {
+          "code": "BV_CFG_YAML_ALIAS_UNSUPPORTED",
+          "severity": "error",
+          "path": null,
+          "source": null,
+          "redacted": true
+        }
+      }
+    },
+    {
+      "id": "rejected-yaml-multiple-documents",
+      "purpose": "Reject a YAML stream containing more than one document.",
+      "document": "config/authoring/corpus/v1/invalid/yaml-multiple-documents.yaml",
+      "bytes": 10,
+      "sha256": "52a7b9586ffb182b84798ad521f85c47e6dbfe179a16efdb900663cdb0b9f220",
+      "expected": {
+        "status": "rejected",
+        "exit_code": 2,
+        "failure_kind": "validation",
+        "input_configuration_schema_version": null,
+        "artifact": null,
+        "diagnostic": {
+          "code": "BV_CFG_YAML_MULTIPLE_DOCUMENTS",
+          "severity": "error",
+          "path": null,
+          "source": null,
+          "redacted": true
+        }
+      }
+    },
+    {
+      "id": "rejected-yaml-syntax",
+      "purpose": "Reject malformed YAML with an exact source coordinate.",
+      "document": "config/authoring/corpus/v1/invalid/yaml-syntax.yaml",
+      "bytes": 34,
+      "sha256": "8e14db905764909be8247b4fd66c961887ae7b0f5030a641c05f0ddf21af8105",
+      "expected": {
+        "status": "rejected",
+        "exit_code": 2,
+        "failure_kind": "validation",
+        "input_configuration_schema_version": null,
+        "artifact": null,
+        "diagnostic": {
+          "code": "BV_CFG_YAML_SYNTAX",
+          "severity": "error",
+          "path": null,
+          "source": {
+            "start": {"line": 2, "column": 3, "byte_offset": 10},
+            "end": {"line": 2, "column": 3, "byte_offset": 10}
+          },
+          "redacted": true
+        }
+      }
+    }
+  ]
+}

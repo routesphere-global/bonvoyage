@@ -1,0 +1,44 @@
+diff --git a/lib/nghttp2_session.c b/lib/nghttp2_session.c
+index b9ce80db..e8472979 100644
+--- a/lib/nghttp2_session.c
++++ b/lib/nghttp2_session.c
+@@ -4778,10 +4778,9 @@ static int session_on_stream_window_update_received(nghttp2_session *session,
+   }
+   if (NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
+       stream->remote_window_size) {
+-    return session_handle_invalid_connection(
+-      session, frame, NGHTTP2_ERR_FLOW_CONTROL,
+-      "WINDOW_UPDATE: window size overflow");
++    return session_handle_invalid_stream2(session, frame->hd.stream_id, frame,
++                                          NGHTTP2_ERR_FLOW_CONTROL);
+   }
+   stream->remote_window_size += frame->window_update.window_size_increment;
+
+   if (stream->remote_window_size > 0 &&
+@@ -4898,7 +4897,8 @@ static int session_on_data_received_fail_fast(nghttp2_session *session) {
+     if (stream->state == NGHTTP2_STREAM_CLOSING) {
+       return NGHTTP2_ERR_IGN_PAYLOAD;
+     }
+-    if (stream->state != NGHTTP2_STREAM_OPENED) {
++    if (stream->state != NGHTTP2_STREAM_OPENING &&
++        stream->state != NGHTTP2_STREAM_OPENED) {
+       failure_reason = "DATA: stream not opened";
+       goto fail;
+     }
+@@ -5706,6 +5706,16 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
+ 
+           break;
+         }
++
++        if (iframe->frame.hd.stream_id == 0) {
++          rv = nghttp2_session_terminate_session_with_reason(
++            session, NGHTTP2_PROTOCOL_ERROR,
++            "PRIORITY: stream_id == 0");
++          if (nghttp2_is_fatal(rv)) {
++            return rv;
++          }
++          return (nghttp2_ssize)inlen;
++        }
+ 
+         /* This is deprecated RFC 7540 priorities mechanism which is
+            very unpopular.  We do not expect it is received so

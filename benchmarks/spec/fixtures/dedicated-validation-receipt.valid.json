@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "receipt_id": "dq-validation-fixture-valid",
+  "campaign_id": "phase1-phase3-dedicated-qualification-v1",
+  "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "artifact_lock": {
+    "path": "benchmarks/spec/fixtures/dedicated-artifact-lock.valid.json",
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "validation_plan": {
+    "path": "benchmarks/plans/dedicated-rc-validation-v1.yaml",
+    "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "started_at": "2026-09-05T00:00:00Z",
+  "completed_at": "2026-09-05T01:00:00Z",
+  "platform": {
+    "operating_system": "Ubuntu 24.04 LTS",
+    "architecture": "x86_64",
+    "container_platform": "linux/amd64"
+  },
+  "checks": [
+    { "id": "project-validation", "status": "pass", "record": { "path": "evidence/project-validation/check.json", "sha256": "1111111111111111111111111111111111111111111111111111111111111111" }, "evidence": [{ "path": "evidence/project-validation/command.log", "sha256": "1111111111111111111111111111111111111111111111111111111111111111" }] },
+    { "id": "api-contracts", "status": "pass", "record": { "path": "evidence/api-contracts/check.json", "sha256": "2222222222222222222222222222222222222222222222222222222222222222" }, "evidence": [{ "path": "evidence/api-contracts/command.log", "sha256": "2222222222222222222222222222222222222222222222222222222222222222" }] },
+    { "id": "control-plane-tests", "status": "pass", "record": { "path": "evidence/control-plane-tests/check.json", "sha256": "3333333333333333333333333333333333333333333333333333333333333333" }, "evidence": [{ "path": "evidence/control-plane-tests/command.log", "sha256": "3333333333333333333333333333333333333333333333333333333333333333" }] },
+    { "id": "host-tune-tests", "status": "pass", "record": { "path": "evidence/host-tune-tests/check.json", "sha256": "4444444444444444444444444444444444444444444444444444444444444444" }, "evidence": [{ "path": "evidence/host-tune-tests/command.log", "sha256": "4444444444444444444444444444444444444444444444444444444444444444" }] },
+    { "id": "dataplane-release-tests", "status": "pass", "record": { "path": "evidence/dataplane-release-tests/check.json", "sha256": "5555555555555555555555555555555555555555555555555555555555555555" }, "evidence": [{ "path": "evidence/dataplane-release-tests/command.log", "sha256": "5555555555555555555555555555555555555555555555555555555555555555" }] },
+    { "id": "phase3-integration", "status": "pass", "record": { "path": "evidence/phase3-integration/check.json", "sha256": "6666666666666666666666666666666666666666666666666666666666666666" }, "evidence": [{ "path": "evidence/phase3-integration/command.log", "sha256": "6666666666666666666666666666666666666666666666666666666666666666" }] },
+    { "id": "asan-ubsan", "status": "pass", "record": { "path": "evidence/asan-ubsan/check.json", "sha256": "7777777777777777777777777777777777777777777777777777777777777777" }, "evidence": [{ "path": "evidence/asan-ubsan/command.log", "sha256": "7777777777777777777777777777777777777777777777777777777777777777" }] },
+    { "id": "static-analysis", "status": "pass", "record": { "path": "evidence/static-analysis/check.json", "sha256": "8888888888888888888888888888888888888888888888888888888888888888" }, "evidence": [{ "path": "evidence/static-analysis/command.log", "sha256": "8888888888888888888888888888888888888888888888888888888888888888" }] },
+    { "id": "upstream-http1-fuzz", "status": "pass", "record": { "path": "evidence/upstream-http1-fuzz/check.json", "sha256": "9999999999999999999999999999999999999999999999999999999999999999" }, "evidence": [{ "path": "evidence/upstream-http1-fuzz/command.log", "sha256": "9999999999999999999999999999999999999999999999999999999999999999" }] },
+    { "id": "http2-fuzz", "status": "pass", "record": { "path": "evidence/http2-fuzz/check.json", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }, "evidence": [{ "path": "evidence/http2-fuzz/command.log", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }] },
+    { "id": "runtime-sbom-scan", "status": "pass", "record": { "path": "evidence/runtime-sbom-scan/check.json", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }, "evidence": [{ "path": "evidence/runtime-sbom-scan/command.log", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }] },
+    { "id": "comparator-qualification", "status": "pass", "record": { "path": "evidence/comparator-qualification/check.json", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }, "evidence": [{ "path": "evidence/comparator-qualification/command.log", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }] },
+    { "id": "retained-evidence", "status": "pass", "record": { "path": "evidence/retained-evidence/check.json", "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" }, "evidence": [{ "path": "evidence/retained-evidence/command.log", "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" }] }
+  ],
+  "passed": true
+}

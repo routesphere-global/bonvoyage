@@ -1,0 +1,7 @@
+interface:
+  display_name: "BonVoyage Configuration"
+  short_description: "Author and validate BonVoyage gateway YAML"
+  default_prompt: "Use $bonvoyage-config-authoring to create and validate a BonVoyage configuration for my requirements."
+
+policy:
+  allow_implicit_invocation: true

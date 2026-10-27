@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-oss-native-fresh-install-contract",
+  "product": "BonVoyage API Gateway",
+  "target": {
+    "distribution": "ubuntu",
+    "version_id": "24.04",
+    "architecture": "amd64",
+    "package": "bonvoyage-gateway",
+    "service": "bonvoyage.service"
+  },
+  "fixture": {
+    "path": "tests/fixtures/oss-native-fresh-install.yaml",
+    "bytes": 1338,
+    "sha256": "8dc182a0b554f161828539dc847753b26d08c43efdbfad42cca70545f34b2e3f",
+    "snapshot": {
+      "path": "tests/fixtures/oss-native-fresh-install.pb",
+      "snapshot_id": "oss-native-fresh-install",
+      "generation": 1,
+      "bytes": 300,
+      "sha256": "994c972fec3feeae03d0b93e81a95db5a86cf2d6193f7785edd36bfc1085bb09"
+    }
+  },
+  "phases": [
+    {
+      "id": "preflight",
+      "required_checks": [
+        "disposable_host_confirmed",
+        "package_absent",
+        "service_account_absent",
+        "state_absent",
+        "shadow_unit_absent"
+      ]
+    },
+    {
+      "id": "installed-inactive",
+      "required_checks": [
+        "package_identity_exact",
+        "payload_identity_exact",
+        "service_account_non_root",
+        "state_modes_safe",
+        "service_disabled",
+        "service_inactive",
+        "package_unit_authoritative"
+      ]
+    },
+    {
+      "id": "commissioned",
+      "required_checks": [
+        "snapshot_identity_exact",
+        "snapshot_mode_safe",
+        "service_enabled",
+        "service_active",
+        "effective_hardening_exact",
+        "process_non_root",
+        "process_binary_exact",
+        "loopback_admin",
+        "loopback_metrics"
+      ]
+    },
+    {
+      "id": "traffic",
+      "required_checks": [
+        "fixed_route_exact",
+        "proxied_route_exact",
+        "admin_ready",
+        "metrics_accounting_exact",
+        "runtime_error_counters_zero",
+        "process_identity_stable",
+        "automatic_restarts_zero"
+      ]
+    },
+    {
+      "id": "stopped",
+      "required_checks": [
+        "graceful_stop",
+        "service_inactive",
+        "process_absent"
+      ]
+    },
+    {
+      "id": "removed",
+      "required_checks": [
+        "package_absent",
+        "binary_absent",
+        "package_unit_absent",
+        "service_account_retained",
+        "snapshot_retained",
+        "operator_state_retained"
+      ]
+    }
+  ],
+  "required_evidence_files": [
+    "raw/commands.jsonl",
+    "raw/installed-state.txt",
+    "raw/journal.txt",
+    "raw/metrics-after.txt",
+    "raw/metrics-before.txt",
+    "raw/os-release.txt",
+    "raw/package-control.txt",
+    "raw/package-files.txt",
+    "raw/preflight.txt",
+    "raw/process-status.txt",
+    "raw/removed-state.txt",
+    "raw/service-properties.txt",
+    "raw/socket-state.txt",
+    "raw/stopped-state.txt",
+    "raw/traffic.txt"
+  ],
+  "traffic": {
+    "minimum_requests_per_route": 25,
+    "expected_configured_routes": 2,
+    "zero_counters": [
+      "responses_4xx",
+      "responses_5xx",
+      "route_misses",
+      "request_timeouts",
+      "overload_rejections",
+      "upstream_failures",
+      "allocator_failures",
+      "abandoned_failed_futures",
+      "reactor_stalls"
+    ]
+  },
+  "resource_bounds": {
+    "maximum_rss_growth_kib": 16384,
+    "maximum_descriptor_growth": 2,
+    "maximum_automatic_restarts": 0
+  },
+  "qualifications": {
+    "fresh_install_qualified": true,
+    "upgrade_qualified": false,
+    "rollback_qualified": false,
+    "kubernetes_qualified": false,
+    "benchmark_reproduction_qualified": false,
+    "release_admitted": false,
+    "publishable": false
+  }
+}

@@ -1,0 +1,116 @@
+server:
+  node_id: phase3-websocket-node
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-websocket-smoke
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: cleartext-websocket
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [api]
+  - name: tls-websocket
+    address: 0.0.0.0
+    port: 8443
+    protocol: http1
+    virtual_hosts: [api]
+    downstream_tls:
+      certificate_chain_secret: server-chain.pem
+      private_key_secret: server-key.pem
+
+virtual_hosts:
+  - name: api
+    domains: [api.example.test]
+    routes:
+      - name: websocket-echo
+        match:
+          path_exact: /socket
+          methods: [GET]
+        cluster: upstream
+        max_concurrent_requests_per_shard: 4
+        websocket:
+          idle_timeout_ms: 5000
+        rewrite:
+          host: ws.internal.test
+          path: /echo
+        header_transformations:
+          request:
+            - {operation: set, name: x-route-action, value: websocket}
+          response:
+            - {operation: set, name: x-gateway-policy, value: enforced}
+      - name: websocket-hold
+        match:
+          path_exact: /hold
+          methods: [GET]
+        cluster: upstream
+        max_concurrent_requests_per_shard: 1
+        websocket:
+          idle_timeout_ms: 10000
+      - name: websocket-idle
+        match:
+          path_exact: /idle
+          methods: [GET]
+        cluster: upstream
+        max_concurrent_requests_per_shard: 2
+        websocket:
+          idle_timeout_ms: 1000
+      - name: websocket-bad-accept
+        match: {path_exact: /bad-accept, methods: [GET]}
+        cluster: upstream
+        max_concurrent_requests_per_shard: 2
+        websocket: {}
+      - name: websocket-bad-protocol
+        match: {path_exact: /bad-protocol, methods: [GET]}
+        cluster: upstream
+        max_concurrent_requests_per_shard: 2
+        websocket: {}
+      - name: websocket-bad-extension
+        match: {path_exact: /bad-extension, methods: [GET]}
+        cluster: upstream
+        max_concurrent_requests_per_shard: 2
+        websocket: {}
+      - name: websocket-framed-upgrade
+        match: {path_exact: /framed, methods: [GET]}
+        cluster: upstream
+        max_concurrent_requests_per_shard: 2
+        websocket: {}
+      - name: websocket-ordinary-rejection
+        match: {path_exact: /reject, methods: [GET]}
+        cluster: upstream
+        max_concurrent_requests_per_shard: 2
+        websocket: {}
+      - name: websocket-stalled-handshake
+        match: {path_exact: /stall, methods: [GET]}
+        cluster: upstream
+        max_concurrent_requests_per_shard: 2
+        websocket: {}
+      - name: ordinary-http
+        match: {path_exact: /ordinary, methods: [GET]}
+        cluster: upstream
+
+clusters:
+  - name: upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 500
+    max_connections_per_shard: 16
+    max_pending_requests_per_shard: 16
+    max_concurrent_requests_per_endpoint: 32
+    endpoints:
+      - name: upstream-1
+        address: upstream
+        port: 8081
+
+runtime_limits:
+  max_downstream_connections_per_shard: 128
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 1200
+  downstream_idle_timeout_ms: 10000

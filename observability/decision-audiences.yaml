@@ -1,0 +1,115 @@
+schema_version: 1
+status: phase3_local_contract
+purpose: role_oriented_operational_decisions
+
+shared_boundaries:
+  - operational_aggregates_only
+  - not_billing_grade
+  - no_customer_or_tenant_derived_metric_labels
+  - no_contractual_slo_without_an_approved_workload_target
+  - no_performance_or_capacity_claim_without_the_publication_gate
+
+audiences:
+  - id: infrastructure_engineer
+    title: Infrastructure Engineer
+    decisions:
+      - Is the gateway ready, balanced, and within CPU and memory headroom?
+      - Is customer impact caused by demand, policy, an upstream, or the gateway?
+      - Should the response be scale out, configuration repair, or upstream remediation?
+      - Is connection placement or HTTP/1 upstream pool pressure causing tail imbalance?
+    dashboard_panels:
+      - Success Ratio
+      - Tail Latency p99.9
+      - Gateway 5xx Ratio
+      - Policy and Capacity Rejections
+      - Reactor Utilization
+      - Shard Traffic Balance
+      - Memory Budget
+      - Upstream and Recovery Outcomes
+      - Active Configuration Scale
+      - Rollout Integrity
+      - Access Log Delivery
+      - Trace Delivery
+    owner: sre_and_platform
+
+  - id: systems_expert
+    title: Systems Expert
+    decisions:
+      - Which protocol, shard, allocator, circuit, or upstream boundary is limiting the system?
+      - Did failure containment and recovery follow the configured architecture?
+      - Is a measured change an optimization candidate or an architecture-review trigger?
+      - Do accepted connections, requests, IRQ work, and upstream pressure diverge on the same shard?
+    dashboard_panels:
+      - Tail Latency p99.9
+      - Reactor Utilization
+      - Shard Traffic Balance
+      - Memory Budget
+      - Upstream and Recovery Outcomes
+      - Protocol Adoption
+      - Active Configuration Scale
+      - Rollout Integrity
+      - Access Log Delivery
+      - Trace Delivery
+    owner: dataplane_engineering
+
+  - id: sales
+    title: Sales
+    decisions:
+      - Which evidenced service outcomes and protocol capabilities are relevant to the prospect?
+      - Is the available evidence approved for customer use or still local engineering evidence?
+      - Which operational pain point can be demonstrated without overstating performance or readiness?
+    dashboard_panels:
+      - Successful Traffic
+      - Success Ratio
+      - Protocol Adoption
+      - Payload Throughput
+      - Rollout Integrity
+    owner: go_to_market
+
+  - id: business_analyst
+    title: Business Analyst
+    decisions:
+      - How much successful demand is flowing and how is usage changing?
+      - Which policy or capacity outcomes explain rejected demand?
+      - Which protocol and payload patterns should influence product investment?
+    dashboard_panels:
+      - Successful Traffic
+      - Success Ratio
+      - Response Outcomes
+      - Policy and Capacity Rejections
+      - Protocol Adoption
+      - Payload Throughput
+    owner: product_and_finance
+
+  - id: ceo
+    title: CEO
+    decisions:
+      - Is service quality stable and is failed demand visible?
+      - Is growth consuming infrastructure headroom faster than expected?
+      - Are rollout and evidence boundaries strong enough for the claim being considered?
+    dashboard_panels:
+      - Successful Traffic
+      - Success Ratio
+      - Gateway 5xx Ratio
+      - Memory Budget
+      - Rollout Integrity
+    owner: executive
+
+  - id: cto
+    title: CTO
+    decisions:
+      - Is the architecture meeting its latency, isolation, resource, and recovery objectives?
+      - Are configuration scale and rollout integrity controlled across the selected deployment?
+      - Which residual risk requires engineering investment before the next product gate?
+    dashboard_panels:
+      - Success Ratio
+      - Tail Latency p99.9
+      - Gateway 5xx Ratio
+      - Reactor Utilization
+      - Memory Budget
+      - Upstream and Recovery Outcomes
+      - Active Configuration Scale
+      - Rollout Integrity
+      - Access Log Delivery
+      - Trace Delivery
+    owner: technology_leadership

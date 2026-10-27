@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bonvoyage-acceptance-upstream
+  namespace: bonvoyage
+  labels:
+    app.kubernetes.io/name: bonvoyage-acceptance-upstream
+    app.kubernetes.io/component: controlled-upstream
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: bonvoyage-acceptance-upstream
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: bonvoyage-acceptance-upstream
+        app.kubernetes.io/component: controlled-upstream
+        routesphere.global/metrics-access: "true"
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: upstream
+          image: routesphere-global/bonvoyage-test-upstream:0.2.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: BONVOYAGE_UPSTREAM_ID
+              value: oss-kubernetes-upstream
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+          ports:
+            - name: http
+              containerPort: 8081
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 1
+            failureThreshold: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: upstream
+  namespace: bonvoyage
+  labels:
+    app.kubernetes.io/name: bonvoyage-acceptance-upstream
+spec:
+  selector:
+    app.kubernetes.io/name: bonvoyage-acceptance-upstream
+  ports:
+    - name: http
+      port: 8081
+      targetPort: http

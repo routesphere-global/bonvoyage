@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "check_id": "project-validation",
+  "campaign_id": "phase1-phase3-dedicated-qualification-v1",
+  "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "artifact_lock": {
+    "path": "benchmarks/spec/fixtures/dedicated-artifact-lock.valid.json",
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "validation_plan": {
+    "path": "benchmarks/plans/dedicated-rc-validation-v1.yaml",
+    "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "started_at": "2026-09-05T00:00:00Z",
+  "completed_at": "2026-09-05T00:01:00Z",
+  "artifact_platform": {
+    "operating_system": "Ubuntu 24.04 LTS",
+    "architecture": "x86_64",
+    "container_platform": "linux/amd64"
+  },
+  "executor": {
+    "operating_system": "Ubuntu 24.04 LTS",
+    "architecture": "x86_64",
+    "container_platform": "linux/amd64"
+  },
+  "command": {
+    "argv": ["make", "config-validate"],
+    "cwd": "repository-root"
+  },
+  "environment": [
+    {
+      "name": "BONVOYAGE_BUILD_JOBS",
+      "value_sha256": "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35"
+    },
+    {
+      "name": "BONVOYAGE_BUILD_PLATFORM",
+      "value_sha256": "baf0239e48ff4c47ebac3ba02b5cf1506b69cd5a0c0d0c825a53ba65976fb942"
+    },
+    {
+      "name": "BONVOYAGE_DATAPLANE_IMAGE",
+      "value_sha256": "8c3a456f4f64a20424a253b815df94d79d1a0c8860bd1f79f3075615145a564a"
+    },
+    {
+      "name": "BONVOYAGE_DEDICATED_ARTIFACT_LOCK",
+      "value_sha256": "a174fe940df7865f360501e1847d048f1db8af9ff65616708c14e8b43203f607"
+    },
+    {
+      "name": "BONVOYAGE_DEDICATED_REMOTE_REF",
+      "value_sha256": "e52d7adb77ca8882c7f346c368848fae98a35e43d41daedab1cf576537ad136e"
+    },
+    {
+      "name": "BONVOYAGE_LOCKED_DATAPLANE_IMAGE_ID",
+      "value_sha256": "5d4cc820b37f3d1fd0c6e04ed50a56ead8d497ecfd3c25c749855ed9d852837d"
+    },
+    {
+      "name": "BONVOYAGE_UPSTREAM_HTTP1_CLIENT",
+      "value_sha256": "33da80cef4115da9cde63ce1050c252823648cb4d18251d4ff07bab75bea80a1"
+    }
+  ],
+  "runtime_image": {
+    "reference": "bonvoyage-dataplane:rc-fixture",
+    "image_digest_before": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "image_digest_after": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "remote_ref": "origin/main",
+  "exit_code": 0,
+  "source_clean_before": true,
+  "source_clean_after": true,
+  "evidence": [
+    {
+      "path": "benchmarks/results/local-archives/fixture/project-validation/command.log",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  ],
+  "status": "pass"
+}

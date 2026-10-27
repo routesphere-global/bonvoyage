@@ -1,0 +1,534 @@
+#!/usr/bin/env node
+
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+
+import yaml from 'js-yaml';
+
+const CLASSIFICATION = 'routesphere-bonvoyage-oss-deb-hosted-build-contract';
+const RESULT_CLASSIFICATION = 'routesphere-bonvoyage-oss-deb-hosted-build-contract-result';
+const IMAGE_OBSERVATION_CLASSIFICATION =
+  'routesphere-bonvoyage-oss-deb-builder-image-observation';
+const HOSTED_RECEIPT_CLASSIFICATION =
+  'routesphere-bonvoyage-oss-deb-hosted-reproducibility';
+const PUBLIC_REPOSITORY = 'https://github.com/routesphere-global/bonvoyage';
+const PUBLIC_REPOSITORY_SLUG = 'routesphere-global/bonvoyage';
+const ACTIVATABLE = 'activatable';
+const BLOCKED = 'blocked-pending-public-builder-image';
+const SHA256 = /^[a-f0-9]{64}$/u;
+const COMMIT = /^[a-f0-9]{40}$/u;
+const IMAGE_REFERENCE = /^(ghcr\.io\/routesphere-global\/bonvoyage-debian-builder)@sha256:([a-f0-9]{64})$/u;
+
+function fail(message) {
+  throw new Error(message);
+}
+
+function requireCondition(condition, message) {
+  if (!condition) fail(message);
+}
+
+function requireObject(value, label) {
+  requireCondition(value !== null && typeof value === 'object' && !Array.isArray(value),
+    `${label} must be an object`);
+  return value;
+}
+
+function requireArray(value, label) {
+  requireCondition(Array.isArray(value), `${label} must be an array`);
+  return value;
+}
+
+function exactKeys(value, expected, label) {
+  const actual = Object.keys(requireObject(value, label)).sort();
+  const wanted = [...expected].sort();
+  requireCondition(actual.length === wanted.length &&
+    actual.every((item, index) => item === wanted[index]),
+  `${label} fields must be exactly [${wanted.join(', ')}]`);
+}
+
+function readJson(filePath, label) {
+  let value;
+  try {
+    value = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (error) {
+    fail(`${label} is not valid JSON: ${error.message}`);
+  }
+  return requireObject(value, label);
+}
+
+function readYaml(filePath, label) {
+  let value;
+  try {
+    value = yaml.load(fs.readFileSync(filePath, 'utf8'));
+  } catch (error) {
+    fail(`${label} is not valid YAML: ${error.message}`);
+  }
+  return requireObject(value, label);
+}
+
+function sha256File(filePath) {
+  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+}
+
+function validateRelativePath(value, label) {
+  requireCondition(typeof value === 'string' && value.length > 0, `${label} is required`);
+  requireCondition(!value.includes('\\') && !value.includes('\0') &&
+    !path.posix.isAbsolute(value) && path.posix.normalize(value) === value &&
+    !value.startsWith('./') && !value.split('/').some((part) => part === '' || part === '..'),
+  `${label} must be a normalized POSIX-relative path`);
+  return value;
+}
+
+function validateContract(contract) {
+  exactKeys(contract, [
+    'schema_version', 'classification', 'activation', 'source', 'execution',
+    'builder_image', 'actions', 'evidence', 'authority',
+  ], 'contract');
+  requireCondition(contract.schema_version === 1 && contract.classification === CLASSIFICATION,
+    'unsupported hosted-build contract');
+
+  const activation = contract.activation;
+  exactKeys(activation, [
+    'state', 'template_path', 'active_workflow_path', 'public_repository_created',
+    'builder_image_identity_verified', 'repository_settings_verified',
+  ], 'contract.activation');
+  requireCondition([BLOCKED, ACTIVATABLE].includes(activation.state),
+    'unsupported activation state');
+  validateRelativePath(activation.template_path, 'contract.activation.template_path');
+  validateRelativePath(activation.active_workflow_path,
+    'contract.activation.active_workflow_path');
+  requireCondition(activation.template_path ===
+    'packaging/release/debian/oss-deb-reproducibility.workflow.yml',
+  'unexpected workflow template path');
+  requireCondition(activation.active_workflow_path ===
+    '.github/workflows/oss-deb-reproducibility.yml',
+  'unexpected active workflow path');
+
+  exactKeys(contract.source, [
+    'repository', 'event', 'ref_type', 'tag_pattern', 'protected_tag_required',
+    'pushed_commit_required', 'clean_checkout_required',
+  ], 'contract.source');
+  requireCondition(contract.source.repository === PUBLIC_REPOSITORY,
+    'unexpected public source repository');
+  requireCondition(contract.source.event === 'workflow_dispatch' &&
+    contract.source.ref_type === 'tag', 'hosted build must be manual and tag-only');
+  requireCondition(contract.source.protected_tag_required === true &&
+    contract.source.pushed_commit_required === true &&
+    contract.source.clean_checkout_required === true,
+  'source protections must remain enabled');
+  let tagPattern;
+  try {
+    tagPattern = new RegExp(contract.source.tag_pattern, 'u');
+  } catch (error) {
+    fail(`invalid tag pattern: ${error.message}`);
+  }
+  requireCondition(tagPattern.test('v1.0.0') && tagPattern.test('v1.0.0-rc.1') &&
+    !tagPattern.test('main') && !tagPattern.test('v01.0.0'), 'tag pattern is not strict SemVer');
+
+  exactKeys(contract.execution, [
+    'environment', 'runner', 'platform', 'permissions', 'jobs',
+    'artifact_retention_days', 'maximum_billable_job_minutes', 'manual_only',
+    'scheduled_runs', 'self_hosted_runners', 'cancel_in_progress',
+  ], 'contract.execution');
+  requireCondition(contract.execution.environment === 'release' &&
+    contract.execution.runner === 'ubuntu-24.04' &&
+    contract.execution.platform === 'linux/amd64', 'unexpected hosted execution target');
+  requireCondition(JSON.stringify(contract.execution.permissions) ===
+    JSON.stringify({contents: 'read'}), 'workflow permissions must be read-only contents');
+  const expectedTimeouts = {preflight: 5, 'build-a': 90, 'build-b': 90, compare: 15};
+  requireCondition(JSON.stringify(contract.execution.jobs) === JSON.stringify(
+    Object.fromEntries(Object.entries(expectedTimeouts).map(([name, timeout]) =>
+      [name, {timeout_minutes: timeout}]))), 'unexpected hosted job budget');
+  requireCondition(contract.execution.artifact_retention_days === 3 &&
+    contract.execution.maximum_billable_job_minutes === 200 &&
+    contract.execution.manual_only === true && contract.execution.scheduled_runs === false &&
+    contract.execution.self_hosted_runners === false &&
+    contract.execution.cancel_in_progress === false, 'hosted cost or runner boundary changed');
+
+  exactKeys(contract.builder_image, [
+    'repository', 'reference', 'verification_receipt', 'entrypoint', 'network',
+    'read_only_root',
+  ], 'contract.builder_image');
+  requireCondition(contract.builder_image.repository ===
+    'ghcr.io/routesphere-global/bonvoyage-debian-builder' &&
+    contract.builder_image.entrypoint === '/usr/local/bin/bonvoyage-oss-deb-builder' &&
+    contract.builder_image.network === 'none' && contract.builder_image.read_only_root === true,
+  'builder image isolation contract changed');
+
+  exactKeys(contract.actions, ['checkout', 'upload_artifact', 'download_artifact'],
+    'contract.actions');
+  for (const [name, value] of Object.entries(contract.actions)) {
+    requireCondition(/^actions\/[a-z-]+@[a-f0-9]{40}$/u.test(value),
+      `contract.actions.${name} must be a GitHub-owned action pinned to a full commit`);
+  }
+
+  exactKeys(contract.evidence, [
+    'builder_artifacts', 'comparison_artifacts', 'builder_names', 'comparison_name',
+  ], 'contract.evidence');
+  requireCondition(JSON.stringify(contract.evidence.builder_names) ===
+    JSON.stringify(['oss-deb-build-a', 'oss-deb-build-b']) &&
+    contract.evidence.comparison_name === 'oss-deb-comparison',
+  'hosted evidence names changed');
+  requireCondition(JSON.stringify(requireArray(contract.evidence.builder_artifacts,
+    'contract.evidence.builder_artifacts')) === JSON.stringify([
+      'build-receipt.json', 'builder-execution.json',
+      'builder-image-observation.json', 'bonvoyage-gateway_*.deb',
+    ]) && JSON.stringify(requireArray(contract.evidence.comparison_artifacts,
+    'contract.evidence.comparison_artifacts')) === JSON.stringify([
+      'reproducibility-receipt.json', 'hosted-reproducibility-receipt.json',
+    ]),
+  'hosted evidence inventory must remain exact');
+
+  exactKeys(contract.authority, [
+    'release_admitted', 'publishable', 'github_release_created', 'package_uploaded',
+    'container_uploaded', 'signature_created', 'provenance_created',
+  ], 'contract.authority');
+  requireCondition(Object.values(contract.authority).every((value) => value === false),
+    'hosted reproducibility contract must not grant release authority');
+
+  const active = activation.state === ACTIVATABLE;
+  if (active) {
+    requireCondition(activation.public_repository_created === true &&
+      activation.builder_image_identity_verified === true &&
+      activation.repository_settings_verified === true,
+    'activatable state requires all external controls to be verified');
+    const imageMatch = IMAGE_REFERENCE.exec(contract.builder_image.reference ?? '');
+    requireCondition(imageMatch !== null && imageMatch[1] === contract.builder_image.repository,
+      'activatable builder image must use the approved digest-pinned GHCR repository');
+    validateRelativePath(contract.builder_image.verification_receipt,
+      'contract.builder_image.verification_receipt');
+  } else {
+    requireCondition(activation.public_repository_created === false &&
+      activation.builder_image_identity_verified === false &&
+      activation.repository_settings_verified === false &&
+      contract.builder_image.reference === null &&
+      contract.builder_image.verification_receipt === null,
+    'blocked contract must not carry unverified activation state');
+  }
+  return {active, tagPattern};
+}
+
+function actionName(value) {
+  return typeof value === 'string' ? value.split('@', 1)[0] : '';
+}
+
+function validateWorkflow(contract, workflow, workflowSource) {
+  requireCondition(workflow.name === 'OSS Debian Reproducibility Candidate',
+    'unexpected hosted workflow name');
+  requireCondition(JSON.stringify(workflow.on) === JSON.stringify({workflow_dispatch: null}),
+    'hosted workflow must have only a parameterless manual trigger');
+  requireCondition(JSON.stringify(workflow.permissions) === JSON.stringify({contents: 'read'}),
+    'hosted workflow permissions must remain read-only');
+  requireCondition(workflow.concurrency?.['cancel-in-progress'] === false,
+    'hosted evidence runs must not be silently cancelled');
+  requireCondition(workflow.env?.CONTRACT_PATH ===
+    'packaging/release/debian/oss-deb-hosted-build-contract.json' &&
+    workflow.env?.WORKFLOW_TEMPLATE === contract.activation.template_path,
+  'workflow must use the reviewed contract and template paths');
+  requireCondition(JSON.stringify(Object.keys(workflow.jobs)) ===
+    JSON.stringify(['preflight', 'build-a', 'build-b', 'compare']),
+  'workflow must contain the exact preflight, two builders and comparison jobs');
+
+  const allowedActions = new Set(Object.values(contract.actions));
+  for (const [jobName, expected] of Object.entries(contract.execution.jobs)) {
+    const job = requireObject(workflow.jobs[jobName], `workflow.jobs.${jobName}`);
+    requireCondition(job['runs-on'] === contract.execution.runner &&
+      job['timeout-minutes'] === expected.timeout_minutes &&
+      job.environment === contract.execution.environment,
+    `${jobName} execution policy changed`);
+    requireCondition(job.permissions === undefined && job.container === undefined,
+      `${jobName} must inherit read-only permissions and use the reviewed Docker boundary`);
+    for (const step of requireArray(job.steps, `${jobName}.steps`)) {
+      if (step.uses !== undefined) {
+        requireCondition(allowedActions.has(step.uses), `${step.uses} is not an approved action`);
+      }
+    }
+  }
+  requireCondition(workflow.jobs['build-a'].needs === 'preflight' &&
+    workflow.jobs['build-b'].needs === 'preflight', 'builders must depend on protected preflight');
+  requireCondition(JSON.stringify(workflow.jobs.compare.needs) ===
+    JSON.stringify(['preflight', 'build-a', 'build-b']),
+  'comparison must depend on both independent builders');
+
+  for (const job of Object.values(workflow.jobs)) {
+    const checkouts = job.steps.filter((step) => actionName(step.uses) === 'actions/checkout');
+    requireCondition(checkouts.length === 1 && checkouts[0].with['fetch-depth'] === 0 &&
+      checkouts[0].with['persist-credentials'] === false &&
+      checkouts[0].with.ref === '${{ github.sha }}',
+    'every job must check out the exact tagged commit without retained credentials');
+    for (const step of job.steps.filter((item) =>
+      actionName(item.uses) === 'actions/upload-artifact')) {
+      requireCondition(step.with['retention-days'] ===
+        contract.execution.artifact_retention_days &&
+        step.with['if-no-files-found'] === 'error' && step.with.overwrite === false &&
+        step.with['include-hidden-files'] === false,
+      'artifact upload must be bounded and fail closed');
+    }
+  }
+  const firstUpload = workflow.jobs['build-a'].steps.find((step) =>
+    actionName(step.uses) === 'actions/upload-artifact');
+  const secondUpload = workflow.jobs['build-b'].steps.find((step) =>
+    actionName(step.uses) === 'actions/upload-artifact');
+  requireCondition(firstUpload?.with?.name === 'oss-deb-build-a' &&
+    secondUpload?.with?.name === 'oss-deb-build-b' && firstUpload?.if === 'always()' &&
+    secondUpload?.if === 'always()',
+  'builder evidence names must be distinct and failed attempts must be retained');
+  requireCondition(workflow.jobs.compare.steps.filter((step) =>
+    actionName(step.uses) === 'actions/download-artifact').length === 2,
+  'comparison must download both builder artifacts');
+
+  for (const forbidden of [
+    /pull_request_target/u, /self-hosted/u, /secrets\s*[.[]/u,
+    /(?:id-token|packages|pull-requests|contents)\s*:\s*write/iu,
+    /\bgh\s+release\b/iu, /\bdocker\s+push\b/iu, /\bnpm\s+publish\b/iu,
+    /\bcosign\s+sign\b/iu,
+  ]) {
+    requireCondition(!forbidden.test(workflowSource),
+      `workflow contains forbidden authority or execution pattern ${forbidden}`);
+  }
+  requireCondition(workflowSource.includes('docker run --rm --network none --read-only') &&
+    workflowSource.includes('--cap-drop ALL') &&
+    workflowSource.includes('--security-opt no-new-privileges'),
+  'builder container isolation flags are incomplete');
+}
+
+function validateVerificationReceipt(contract, repositoryRoot) {
+  if (contract.activation.state !== ACTIVATABLE) return null;
+  const receiptPath = path.resolve(repositoryRoot, contract.builder_image.verification_receipt);
+  const receipt = readJson(receiptPath, 'builder-image verification receipt');
+  exactKeys(receipt, [
+    'schema_version', 'classification', 'repository', 'reference', 'digest', 'platform',
+    'registry', 'verified_at', 'verification_methods', 'release_admitted', 'publishable',
+  ], 'builder-image verification receipt');
+  const match = IMAGE_REFERENCE.exec(contract.builder_image.reference);
+  requireCondition(receipt.schema_version === 1 &&
+    receipt.classification === 'routesphere-bonvoyage-oss-deb-builder-image-verification' &&
+    receipt.repository === contract.builder_image.repository &&
+    receipt.reference === contract.builder_image.reference && receipt.digest === match[2] &&
+    receipt.platform === contract.execution.platform && receipt.registry === 'ghcr.io' &&
+    Number.isFinite(Date.parse(receipt.verified_at)) &&
+    JSON.stringify(receipt.verification_methods) ===
+      JSON.stringify(['registry-manifest', 'anonymous-pull', 'local-image-inspect']) &&
+    receipt.release_admitted === false && receipt.publishable === false,
+  'builder-image verification receipt does not satisfy the contract');
+  return {path: contract.builder_image.verification_receipt, sha256: sha256File(receiptPath)};
+}
+
+function validateImageInspection(contract, inspection) {
+  requireCondition(contract.activation.state === ACTIVATABLE,
+    'builder image inspection requires an activatable contract');
+  const records = requireArray(inspection, 'Docker image inspection');
+  requireCondition(records.length === 1, 'exactly one Docker image inspection is required');
+  const record = requireObject(records[0], 'Docker image inspection record');
+  const match = IMAGE_REFERENCE.exec(contract.builder_image.reference);
+  requireCondition(record.Os === 'linux' && record.Architecture === 'amd64',
+    'builder image platform must be linux/amd64');
+  requireCondition(Array.isArray(record.RepoDigests) &&
+    record.RepoDigests.includes(contract.builder_image.reference),
+  'pulled builder image does not expose the contracted repository digest');
+  requireCondition(typeof record.Id === 'string' && /^sha256:[a-f0-9]{64}$/u.test(record.Id),
+    'pulled builder image ID is invalid');
+  return {
+    schema_version: 1,
+    classification: IMAGE_OBSERVATION_CLASSIFICATION,
+    repository: contract.builder_image.repository,
+    reference: contract.builder_image.reference,
+    manifest_digest: match[2],
+    image_id: record.Id,
+    platform: contract.execution.platform,
+    externally_resolved: true,
+    release_admitted: false,
+    publishable: false,
+  };
+}
+
+function validateRuntimeSource(contract, options) {
+  const supplied = [
+    options.githubRepository, options.githubRefType, options.githubRefName, options.githubSha,
+  ];
+  if (supplied.every((value) => value === undefined)) return;
+  requireCondition(supplied.every((value) => typeof value === 'string' && value.length > 0),
+    'complete GitHub source context is required');
+  requireCondition(options.githubRepository === PUBLIC_REPOSITORY_SLUG &&
+    options.githubRefType === contract.source.ref_type &&
+    new RegExp(contract.source.tag_pattern, 'u').test(options.githubRefName) &&
+    COMMIT.test(options.githubSha), 'GitHub source context is not an approved tagged public commit');
+}
+
+function hostedReceipt(contract, technicalReceipt, options) {
+  requireCondition(contract.activation.state === ACTIVATABLE,
+    'hosted reproducibility requires an activatable contract');
+  requireCondition(technicalReceipt.classification ===
+    'routesphere-bonvoyage-oss-deb-reproducibility' &&
+    technicalReceipt.outcome === 'byte-identical-technical-candidates' &&
+    technicalReceipt.technical_reproducibility_observed === true &&
+    technicalReceipt.hosted_builder_independence_qualified === false &&
+    technicalReceipt.release_admitted === false && technicalReceipt.publishable === false,
+  'technical reproducibility receipt is not an accepted powerless input');
+  requireCondition(technicalReceipt.source?.repository === PUBLIC_REPOSITORY &&
+    technicalReceipt.source?.commit === options.githubSha &&
+    technicalReceipt.source?.dirty === false,
+  'technical receipt source does not match the hosted run');
+  requireCondition(Array.isArray(technicalReceipt.builders) &&
+    technicalReceipt.builders.length === 2 &&
+    new Set(technicalReceipt.builders).size === 2,
+  'two distinct technical builders are required');
+  for (const [label, digest] of [
+    ['first artifact digest', options.firstArtifactDigest],
+    ['second artifact digest', options.secondArtifactDigest],
+  ]) requireCondition(SHA256.test(digest), `${label} must be a lowercase SHA-256 digest`);
+  requireCondition(options.firstArtifactDigest !== options.secondArtifactDigest,
+    'two distinct uploaded evidence artifacts are required');
+  requireCondition(/^[1-9][0-9]*$/u.test(options.githubRunId) &&
+    /^[1-9][0-9]*$/u.test(options.githubRunAttempt) && COMMIT.test(options.githubSha) &&
+    new RegExp(contract.source.tag_pattern, 'u').test(options.githubRefName),
+  'hosted run identity is invalid');
+  return {
+    schema_version: 1,
+    classification: HOSTED_RECEIPT_CLASSIFICATION,
+    outcome: 'byte-identical-hosted-technical-candidates',
+    source: {
+      repository: PUBLIC_REPOSITORY,
+      commit: options.githubSha,
+      tag: options.githubRefName,
+      dirty: false,
+    },
+    workflow: {
+      name: 'OSS Debian Reproducibility Candidate',
+      run_id: options.githubRunId,
+      run_attempt: options.githubRunAttempt,
+      jobs: ['build-a', 'build-b', 'compare'],
+    },
+    builder_image: contract.builder_image.reference,
+    evidence_artifacts: [
+      {name: 'oss-deb-build-a', sha256: options.firstArtifactDigest},
+      {name: 'oss-deb-build-b', sha256: options.secondArtifactDigest},
+    ],
+    technical_receipt_sha256: options.technicalReceiptSha256,
+    package: technicalReceipt.package,
+    technical_reproducibility_observed: true,
+    hosted_builder_independence_qualified: true,
+    release_admitted: false,
+    publishable: false,
+  };
+}
+
+function parseArguments(argv) {
+  const options = {};
+  const mapping = {
+    '--contract': 'contract', '--workflow': 'workflow',
+    '--github-repository': 'githubRepository', '--github-ref-type': 'githubRefType',
+    '--github-ref-name': 'githubRefName', '--github-sha': 'githubSha',
+    '--github-output': 'githubOutput', '--image-inspection': 'imageInspection',
+    '--image-observation': 'imageObservation', '--technical-receipt': 'technicalReceipt',
+    '--first-artifact-digest': 'firstArtifactDigest',
+    '--second-artifact-digest': 'secondArtifactDigest', '--github-run-id': 'githubRunId',
+    '--github-run-attempt': 'githubRunAttempt', '--hosted-receipt': 'hostedReceipt',
+  };
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+    if (argument === '--require-activatable') {
+      options.requireActivatable = true;
+      continue;
+    }
+    requireCondition(mapping[argument] !== undefined && index + 1 < argv.length,
+      `unsupported or incomplete argument ${argument}`);
+    options[mapping[argument]] = argv[index + 1];
+    index += 1;
+  }
+  return options;
+}
+
+export function verifyHostedBuildContract(contractPath, workflowPath, options = {}) {
+  const repositoryRoot = path.resolve(path.dirname(contractPath), '..', '..', '..');
+  const contract = readJson(contractPath, 'hosted-build contract');
+  const workflowSource = fs.readFileSync(workflowPath, 'utf8');
+  const workflow = readYaml(workflowPath, 'hosted-build workflow template');
+  const state = validateContract(contract);
+  validateWorkflow(contract, workflow, workflowSource);
+  validateRuntimeSource(contract, options);
+  const verificationReceipt = validateVerificationReceipt(contract, repositoryRoot);
+  const activeWorkflowPath = path.resolve(repositoryRoot,
+    contract.activation.active_workflow_path);
+  if (!state.active) {
+    requireCondition(!fs.existsSync(activeWorkflowPath),
+      'blocked hosted-build contract must not have an active GitHub workflow');
+  }
+  if (options.githubRepository !== undefined) {
+    requireCondition(fs.existsSync(activeWorkflowPath) &&
+      fs.statSync(activeWorkflowPath).isFile() &&
+      sha256File(activeWorkflowPath) === sha256File(workflowPath),
+    'active hosted workflow must exactly match the reviewed template');
+  }
+  if (options.requireActivatable) {
+    requireCondition(state.active, 'hosted-build contract is not activatable');
+  }
+  return {
+    contract,
+    result: {
+      schema_version: 1,
+      classification: RESULT_CLASSIFICATION,
+      outcome: state.active ? 'activatable' : 'blocked',
+      activation_state: contract.activation.state,
+      activation_ready: state.active,
+      blockers: state.active ? [] : [
+        'public repository not created',
+        'digest-pinned public builder image not externally verified',
+        'protected release environment settings not verified',
+      ],
+      contract_sha256: sha256File(contractPath),
+      workflow_template_sha256: sha256File(workflowPath),
+      builder_image_verification: verificationReceipt,
+      release_admitted: false,
+      publishable: false,
+    },
+  };
+}
+
+function writeNewJson(filePath, value) {
+  requireCondition(!fs.existsSync(filePath), `${filePath} must be a new output`);
+  fs.mkdirSync(path.dirname(filePath), {recursive: true});
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, {flag: 'wx', mode: 0o600});
+}
+
+if (import.meta.url === new URL(`file://${process.argv[1]}`).href) {
+  try {
+    const options = parseArguments(process.argv.slice(2));
+    requireCondition(options.contract && options.workflow,
+      '--contract and --workflow are required');
+    const {contract, result} = verifyHostedBuildContract(
+      path.resolve(options.contract), path.resolve(options.workflow), options);
+    if (options.githubOutput) {
+      requireCondition(contract.builder_image.reference !== null,
+        'activatable builder image is required for GitHub output');
+      fs.appendFileSync(options.githubOutput,
+        `builder_image=${contract.builder_image.reference}\n`, {encoding: 'utf8'});
+    }
+    if (options.imageInspection || options.imageObservation) {
+      requireCondition(options.imageInspection && options.imageObservation,
+        'both --image-inspection and --image-observation are required');
+      const observation = validateImageInspection(contract,
+        readJson(path.resolve(options.imageInspection), 'Docker image inspection'));
+      writeNewJson(path.resolve(options.imageObservation), observation);
+    }
+    if (options.technicalReceipt || options.hostedReceipt) {
+      requireCondition(options.technicalReceipt && options.hostedReceipt,
+        'both --technical-receipt and --hosted-receipt are required');
+      const technicalPath = path.resolve(options.technicalReceipt);
+      const receipt = hostedReceipt(contract,
+        readJson(technicalPath, 'technical reproducibility receipt'), {
+          ...options,
+          technicalReceiptSha256: sha256File(technicalPath),
+        });
+      writeNewJson(path.resolve(options.hostedReceipt), receipt);
+    }
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  } catch (error) {
+    process.stderr.write(`OSS hosted Debian build contract rejected: ${error.message}\n`);
+    process.exitCode = 1;
+  }
+}
+
+export {hostedReceipt, validateImageInspection};

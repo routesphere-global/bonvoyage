@@ -1,0 +1,172 @@
+{
+  "schema_version": 1,
+  "environment_id": "dq-infra-002-aaaaaaaaaaaaaaaa",
+  "generated_at": "2026-09-05T02:00:00Z",
+  "campaign_id": "phase1-phase3-dedicated-qualification-v1",
+  "mode": "rehearsal",
+  "evidence_class": "distributed-rehearsal",
+  "status": "review-required",
+  "measurement_authorized": false,
+  "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "evidence": {
+    "topology": { "path": "evidence/topology.yaml", "sha256": "1111111111111111111111111111111111111111111111111111111111111111" },
+    "preflight": { "path": "evidence/preflight.json", "sha256": "2222222222222222222222222222222222222222222222222222222222222222" },
+    "host_tune_binary": { "path": "evidence/host-tune", "sha256": "3333333333333333333333333333333333333333333333333333333333333333" },
+    "raw_manifest": { "path": "evidence/raw-checksums.sha256", "sha256": "4444444444444444444444444444444444444444444444444444444444444444" }
+  },
+  "cloud": {
+    "region": "ap-southeast-1",
+    "availability_zone": "ap-southeast-1a",
+    "image_id": "ami-11111111111111111",
+    "records": [
+      { "path": "evidence/aws-before-instances.json", "sha256": "5111111111111111111111111111111111111111111111111111111111111111" },
+      { "path": "evidence/aws-before-status.json", "sha256": "5222222222222222222222222222222222222222222222222222222222222222" },
+      { "path": "evidence/aws-after-instances.json", "sha256": "5444444444444444444444444444444444444444444444444444444444444444" },
+      { "path": "evidence/aws-after-status.json", "sha256": "5555555555555555555555555555555555555555555555555555555555555555" }
+    ]
+  },
+  "roles": [
+    {
+      "role": "load-generator",
+      "instance_id": "i-11111111111111111",
+      "image_id": "ami-11111111111111111",
+      "private_ipv4": "10.42.0.11",
+      "availability_zone": "ap-southeast-1a",
+      "tenancy": "default",
+      "instance_type": "c7a.16xlarge",
+      "cloud_state": "running",
+      "host_fingerprint_sha256": "6111111111111111111111111111111111111111111111111111111111111111",
+      "boot_id": "fixture-boot-load-generator",
+      "operating_system": "Ubuntu 24.04.3 LTS",
+      "architecture": "amd64",
+      "kernel_release": "6.8.0-fixture",
+      "logical_cpu_count": 64,
+      "physical_core_count": 64,
+      "numa_node_count": 2,
+      "memory_total_bytes": 137438953472,
+      "cgroup_version": 2,
+      "swap_total_bytes": 0,
+      "network": {
+        "interface": "ens5",
+        "driver": "ena",
+        "pci_bus_address": "0000:00:05.0",
+        "numa_node": 0,
+        "mtu": 9001,
+        "link_speed_mbps": 50000,
+        "rx_queue_count": 32,
+        "tx_queue_count": 32,
+        "irq_count": 32,
+        "hardware_rss_inventory_passed": true
+      },
+      "observation": {
+        "duration_seconds": 60,
+        "steal_percent": 0,
+        "network_error_delta": 0,
+        "clock_synchronized_before": true,
+        "clock_synchronized_after": true
+      },
+      "inventory": { "path": "evidence/load-generator-inventory.json", "sha256": "7111111111111111111111111111111111111111111111111111111111111111" },
+      "tuning_plans": []
+    },
+    {
+      "role": "gateway-target",
+      "instance_id": "i-22222222222222222",
+      "image_id": "ami-11111111111111111",
+      "private_ipv4": "10.42.0.12",
+      "availability_zone": "ap-southeast-1a",
+      "tenancy": "default",
+      "instance_type": "c7a.16xlarge",
+      "cloud_state": "running",
+      "host_fingerprint_sha256": "6222222222222222222222222222222222222222222222222222222222222222",
+      "boot_id": "fixture-boot-gateway-target",
+      "operating_system": "Ubuntu 24.04.3 LTS",
+      "architecture": "amd64",
+      "kernel_release": "6.8.0-fixture",
+      "logical_cpu_count": 64,
+      "physical_core_count": 64,
+      "numa_node_count": 2,
+      "memory_total_bytes": 137438953472,
+      "cgroup_version": 2,
+      "swap_total_bytes": 0,
+      "network": {
+        "interface": "ens5",
+        "driver": "ena",
+        "pci_bus_address": "0000:00:05.0",
+        "numa_node": 0,
+        "mtu": 9001,
+        "link_speed_mbps": 50000,
+        "rx_queue_count": 32,
+        "tx_queue_count": 32,
+        "irq_count": 32,
+        "hardware_rss_inventory_passed": true
+      },
+      "observation": {
+        "duration_seconds": 60,
+        "steal_percent": 0,
+        "network_error_delta": 0,
+        "clock_synchronized_before": true,
+        "clock_synchronized_after": true
+      },
+      "inventory": { "path": "evidence/gateway-target-inventory.json", "sha256": "7222222222222222222222222222222222222222222222222222222222222222" },
+      "tuning_plans": [
+        {
+          "physical_cores": 16,
+          "gateway_cpuset": "8-23",
+          "reference": { "path": "evidence/gateway-plan-16.json", "sha256": "8222222222222222222222222222222222222222222222222222222222222222" }
+        }
+      ]
+    },
+    {
+      "role": "controlled-upstream",
+      "instance_id": "i-33333333333333333",
+      "image_id": "ami-11111111111111111",
+      "private_ipv4": "10.42.0.13",
+      "availability_zone": "ap-southeast-1a",
+      "tenancy": "default",
+      "instance_type": "c7a.16xlarge",
+      "cloud_state": "running",
+      "host_fingerprint_sha256": "6333333333333333333333333333333333333333333333333333333333333333",
+      "boot_id": "fixture-boot-controlled-upstream",
+      "operating_system": "Ubuntu 24.04.3 LTS",
+      "architecture": "amd64",
+      "kernel_release": "6.8.0-fixture",
+      "logical_cpu_count": 64,
+      "physical_core_count": 64,
+      "numa_node_count": 2,
+      "memory_total_bytes": 137438953472,
+      "cgroup_version": 2,
+      "swap_total_bytes": 0,
+      "network": {
+        "interface": "ens5",
+        "driver": "ena",
+        "pci_bus_address": "0000:00:05.0",
+        "numa_node": 0,
+        "mtu": 9001,
+        "link_speed_mbps": 50000,
+        "rx_queue_count": 32,
+        "tx_queue_count": 32,
+        "irq_count": 32,
+        "hardware_rss_inventory_passed": true
+      },
+      "observation": {
+        "duration_seconds": 60,
+        "steal_percent": 0,
+        "network_error_delta": 0,
+        "clock_synchronized_before": true,
+        "clock_synchronized_after": true
+      },
+      "inventory": { "path": "evidence/controlled-upstream-inventory.json", "sha256": "7333333333333333333333333333333333333333333333333333333333333333" },
+      "tuning_plans": []
+    }
+  ],
+  "checks": [
+    {
+      "id": "operator-review",
+      "status": "warn",
+      "message": "Operator review is required before measurements begin."
+    }
+  ],
+  "blockers": [],
+  "warnings": ["operator-review"],
+  "claim_boundary": "Environment suitability only; no gateway performance, capacity, production-readiness, competitive, security, or marketing claim is authorized."
+}

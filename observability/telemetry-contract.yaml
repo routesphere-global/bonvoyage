@@ -1,0 +1,210 @@
+contract_version: 3
+status: phase3_local_qualified
+purpose: operational_and_product_decision_support
+
+collection:
+  transport: prometheus_pull
+  path: /metrics
+  default_scrape_interval_seconds: 10
+  request_path_export_calls: forbidden
+  exporter_failure_affects_traffic: false
+
+access_logging:
+  schema: bonvoyage.access.v1
+  default_enabled: false
+  ownership: shard_local
+  transport: bounded_async_jsonl
+  queue_overflow_policy: drop_newest
+  request_path_waits_for_sink: false
+  sink_failure_affects_traffic: false
+  deterministic_sampling: true
+  disk_budget: bounded_per_shard_process_lifetime
+  record_fields:
+    - timestamp_unix_us
+    - snapshot_generation
+    - shard
+    - listener
+    - route
+    - cluster
+    - protocol
+    - method
+    - action
+    - status
+    - completion
+    - duration_us
+    - request_body_bytes
+    - response_body_bytes
+  forbidden_fields:
+    - authority
+    - host
+    - client_ip
+    - forwarded_for
+    - request_path
+    - query
+    - user_id
+    - tenant_id
+    - api_key
+    - jwt
+    - cookie
+    - headers
+    - request_body
+    - response_body
+
+tracing:
+  schema: bonvoyage.trace.otlp.v1
+  default_enabled: false
+  ownership: shard_local
+  transport: bounded_async_otlp_http_protobuf
+  context: w3c_trace_context_v00
+  local_sampling_authority: true
+  queue_overflow_policy: drop_newest
+  request_path_waits_for_exporter: false
+  exporter_failure_affects_traffic: false
+  tracestate_forwarded: false
+  baggage_forwarded: false
+  span_attributes:
+    - service_name
+    - service_namespace
+    - service_version
+    - snapshot_id
+    - snapshot_generation
+    - shard
+    - listener
+    - route
+    - cluster
+    - protocol
+    - method
+    - action
+    - completion
+    - status
+    - request_body_bytes
+    - response_body_bytes
+  forbidden_fields:
+    - authority
+    - host
+    - client_ip
+    - forwarded_for
+    - request_path
+    - query
+    - user_id
+    - tenant_id
+    - api_key
+    - jwt
+    - cookie
+    - arbitrary_headers
+    - request_body
+    - response_body
+    - tracestate
+    - baggage
+
+identity:
+  native_gateway_labels:
+    - shard
+    - le
+  permitted_scrape_resource_labels:
+    - job
+    - instance
+    - service
+    - environment
+    - deployment
+    - region
+    - zone
+    - node
+  rollout_signals:
+    - bonvoyage_bonvoyage_gateway_ready
+    - bonvoyage_bonvoyage_gateway_snapshot_generation
+    - bonvoyage_bonvoyage_gateway_telemetry_contract_version
+
+decision_views:
+  audience_catalog: observability/decision-audiences.yaml
+  audiences:
+    - infrastructure_engineer
+    - systems_expert
+    - sales
+    - business_analyst
+    - ceo
+    - cto
+  business:
+    - successful_request_rate
+    - response_volume
+    - request_and_response_bytes
+    - protocol_adoption
+    - policy_rejection_mix
+    - retry_recovery
+  infrastructure:
+    - readiness_and_snapshot_convergence
+    - p99_and_p999_latency
+    - error_budget_signal
+    - reactor_and_memory_saturation
+    - shard_balance
+    - connection_acceptance_balance
+    - upstream_http1_pool_pressure
+    - upstream_health_and_circuits
+    - allocator_and_runtime_failures
+    - trace_delivery_health
+
+privacy:
+  forbidden_metric_labels:
+    - route_path
+    - request_path
+    - query
+    - authority
+    - host
+    - client_ip
+    - forwarded_for
+    - user_id
+    - tenant_id
+    - api_key
+    - jwt
+    - cookie
+    - header_value
+    - request_body
+    - response_body
+  forbidden_operational_log_fields:
+    - client_ip
+    - forwarded_for
+    - request_path
+    - query
+    - header_value
+    - api_key
+    - jwt
+    - cookie
+    - request_body
+    - response_body
+  permitted_operational_log_fields:
+    - event
+    - product
+    - version
+    - outcome
+    - action
+    - shards
+    - snapshot_id
+    - snapshot_generation
+    - shard
+    - segment
+    - reason
+    - cluster
+    - endpoint
+    - spans
+    - exported
+    - dropped
+
+cardinality:
+  request_derived_labels: forbidden
+  configured_route_labels: deferred_until_explicit_allowlist
+  configured_cluster_labels: deferred_until_explicit_allowlist
+  configured_endpoint_labels: deferred_until_explicit_allowlist
+  histogram_dimensions:
+    - shard
+    - le
+
+durability:
+  billing_grade: false
+  reason: prometheus_counters_are_operational_and_may_reset
+  future_billing_boundary: durable_idempotent_control_plane_metering
+
+ownership:
+  business_metrics: product_and_finance
+  infrastructure_metrics: sre_and_platform
+  security_metrics: security_engineering
+  contract_changes: architecture_review

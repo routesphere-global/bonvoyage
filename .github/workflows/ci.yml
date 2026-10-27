@@ -1,0 +1,49 @@
+name: Public CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  ASTRO_TELEMETRY_DISABLED: "1"
+  GOTOOLCHAIN: local
+
+jobs:
+  foundation:
+    name: Foundation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out source without retained credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: 1.23.0
+          cache: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.12.0
+      - name: Install pinned public tooling without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Run the portable public test surface
+        run: make test
+      - name: Install pinned documentation dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+        working-directory: docs-site
+      - name: Build public documentation
+        run: npm run build
+        working-directory: docs-site

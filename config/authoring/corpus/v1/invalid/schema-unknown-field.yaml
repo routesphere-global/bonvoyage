@@ -1,0 +1,3 @@
+server:
+  node_id: corpus-unknown-field
+  private_customer_token: corpus-private-value-must-not-echo

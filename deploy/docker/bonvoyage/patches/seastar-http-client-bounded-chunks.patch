@@ -1,0 +1,488 @@
+diff --git a/include/seastar/http/client.hh b/include/seastar/http/client.hh
+--- a/include/seastar/http/client.hh
++++ b/include/seastar/http/client.hh
+@@ -81,6 +81,8 @@
+     // too and thus the connection will be persistent by default. If the server
+     // responds with older version, this flag will be dropped (see recv_reply())
+     bool _persistent = true;
++    size_t _max_response_header_bytes;
++    size_t _max_chunk_metadata_bytes;
+ 
+ public:
+     /**
+@@ -89,7 +91,9 @@
+      * Construct the connection that will work over the provided \fd transport socket
+      *
+      */
+-    connection(connected_socket&& fd, internal::client_ref cr);
++    connection(connected_socket&& fd, internal::client_ref cr,
++            size_t max_response_header_bytes,
++            size_t max_chunk_metadata_bytes);
+ 
+     /**
+      * \brief Send the request and wait for response
+@@ -158,11 +162,15 @@
+     using connections_list_t = bi::list<connection, bi::member_hook<connection, typename connection::hook_t, &connection::_hook>, bi::constant_time_size<false>>;
+     static constexpr unsigned default_max_connections = 100;
+     static constexpr size_t default_max_bytes_to_drain = 128 * 1024;
++    static constexpr size_t default_max_response_header_bytes = 32 * 1024;
++    static constexpr size_t default_max_chunk_metadata_bytes = 32 * 1024;
+ 
+     std::unique_ptr<connection_factory> _new_connections;
+     unsigned _nr_connections = 0;
+     unsigned _max_connections;
+     size_t _max_bytes_to_drain;
++    size_t _max_response_header_bytes;
++    size_t _max_chunk_metadata_bytes;
+     unsigned long _total_new_connections = 0;
+     const retry_requests _retry;
+     condition_variable _wait_con;
+@@ -246,8 +254,12 @@
+      * When enabled, it makes client catch the transport error, close the broken connection, open
+      * another one and retry the very same request one more time over this new connection. If the
+      * second attempt fails, this error is reported back to user.
++     *
++     * max_response_header_bytes limits the response start line and fields.
++     * max_chunk_metadata_bytes limits cumulative chunk-size lines, extensions,
++     * delimiters, and trailers in one response.
+      */
+-    explicit client(std::unique_ptr<connection_factory> f, unsigned max_connections = default_max_connections, retry_requests retry = retry_requests::no, size_t max_bytes_to_drain = default_max_bytes_to_drain);
++    explicit client(std::unique_ptr<connection_factory> f, unsigned max_connections = default_max_connections, retry_requests retry = retry_requests::no, size_t max_bytes_to_drain = default_max_bytes_to_drain, size_t max_response_header_bytes = default_max_response_header_bytes, size_t max_chunk_metadata_bytes = default_max_chunk_metadata_bytes);
+ 
+     /**
+      * \brief Send the request and handle the response
+diff --git a/include/seastar/http/internal/content_source.hh b/include/seastar/http/internal/content_source.hh
+--- a/include/seastar/http/internal/content_source.hh
++++ b/include/seastar/http/internal/content_source.hh
+@@ -28,6 +28,8 @@
+ #include <seastar/util/log.hh>
+ #include <seastar/http/exception.hh>
+ 
++#include <limits>
++
+ namespace seastar {
+ 
+ namespace httpd {
+@@ -100,14 +102,33 @@
+         size_t _current_chunk_length;
+         parsing_state _ps = parsing_state::size_and_ext;
+         bool _end_of_request = false;
++        size_t _metadata_bytes = 0;
++        size_t _max_metadata_bytes;
+         // references to fields in the request structure
+         std::unordered_map<sstring, sstring>& _chunk_extensions;
+         std::unordered_map<sstring, sstring>& _trailing_headers;
+         using consumption_result_type = consumption_result<char>;
++
++        size_t remaining_metadata_bytes() const noexcept {
++            return _metadata_bytes < _max_metadata_bytes
++                    ? _max_metadata_bytes - _metadata_bytes : 0;
++        }
++
++        bool account_metadata_bytes(size_t bytes) noexcept {
++            if (bytes > remaining_metadata_bytes()) {
++                return false;
++            }
++            _metadata_bytes += bytes;
++            return true;
++        }
+     public:
+-        chunk_parser(std::unordered_map<sstring, sstring>& chunk_extensions, std::unordered_map<sstring, sstring>& trailing_headers)
+-            : _chunk_extensions(chunk_extensions), _trailing_headers(trailing_headers) {
+-                _size_and_ext_parser.init();
++        chunk_parser(std::unordered_map<sstring, sstring>& chunk_extensions,
++                std::unordered_map<sstring, sstring>& trailing_headers,
++                size_t max_metadata_bytes)
++            : _max_metadata_bytes(max_metadata_bytes)
++            , _chunk_extensions(chunk_extensions)
++            , _trailing_headers(trailing_headers) {
++                _size_and_ext_parser.init(remaining_metadata_bytes());
+         }
+         temporary_buffer<char> buf() {
+             _current_chunk_bytes_read += _buf.size();
+@@ -115,19 +136,28 @@
+         }
+ 
+         future<consumption_result_type> operator()(temporary_buffer<char> data) {
+-            if (_buf.size() || _end_of_request || data.empty()) {
++            if (_buf.size() || _end_of_request) {
+                 // return if we have already read some content (_buf.size()), we have already reached the end of the chunked request (_end_of_request),
+-                // or the underlying stream reached eof (data.empty())
+                 return make_ready_future<consumption_result_type>(stop_consuming(std::move(data)));
+             }
++            if (data.empty()) {
++                return make_exception_future<consumption_result_type>(
++                        bad_chunk_exception("Chunked body ended before the terminal chunk"));
++            }
+             switch (_ps) {
+             // "data" buffer is non-empty
+             case parsing_state::size_and_ext:
+                 return _size_and_ext_parser(std::move(data)).then([this] (std::optional<temporary_buffer<char>> res) {
+                     if (res.has_value()) {
++                        if (_size_and_ext_parser.too_large()) {
++                            return make_exception_future<consumption_result_type>(bad_request_exception("Chunk metadata exceeds the configured limit"));
++                        }
+                         if (_size_and_ext_parser.failed()) {
+                             return make_exception_future<consumption_result_type>(bad_request_exception("Can't parse chunk size and extensions"));
+                         }
++                        if (!account_metadata_bytes(_size_and_ext_parser.parsed_bytes())) {
++                            return make_exception_future<consumption_result_type>(bad_request_exception("Chunk metadata exceeds the configured limit"));
++                        }
+                         // save extensions
+                         auto parsed_extensions = _size_and_ext_parser.get_parsed_extensions();
+                         _chunk_extensions.merge(parsed_extensions);
+@@ -145,7 +175,7 @@
+ 
+                         if (_current_chunk_length == 0) {
+                             _ps = parsing_state::trailer_part;
+-                            _trailer_parser.init();
++                            _trailer_parser.init(remaining_metadata_bytes());
+                         } else {
+                             _ps = parsing_state::body;
+                         }
+@@ -174,6 +204,9 @@
+                     if (data.get()[0] != '\r') {
+                         return make_exception_future<consumption_result_type>(bad_chunk_exception("The actual chunk length exceeds the specified length"));
+                     } else {
++                        if (!account_metadata_bytes(1)) {
++                            return make_exception_future<consumption_result_type>(bad_request_exception("Chunk metadata exceeds the configured limit"));
++                        }
+                         _current_chunk_bytes_read++;
+                         data.trim_front(1);
+                         if (data.empty()) {
+@@ -186,8 +219,11 @@
+                     if (data.get()[0] != '\n') {
+                         return make_exception_future<consumption_result_type>(bad_chunk_exception("The actual chunk length exceeds the specified length"));
+                     } else {
++                        if (!account_metadata_bytes(1)) {
++                            return make_exception_future<consumption_result_type>(bad_request_exception("Chunk metadata exceeds the configured limit"));
++                        }
+                         _ps = parsing_state::size_and_ext;
+-                        _size_and_ext_parser.init();
++                        _size_and_ext_parser.init(remaining_metadata_bytes());
+                         data.trim_front(1);
+                         if (data.empty()) {
+                             return make_ready_future<consumption_result_type>(continue_consuming{});
+@@ -198,9 +234,15 @@
+             case parsing_state::trailer_part:
+                 return _trailer_parser(std::move(data)).then([this] (std::optional<temporary_buffer<char>> res) {
+                     if (res.has_value()) {
++                        if (_trailer_parser.too_large()) {
++                            return make_exception_future<consumption_result_type>(bad_request_exception("Chunk metadata exceeds the configured limit"));
++                        }
+                         if (_trailer_parser.failed()) {
+                             return make_exception_future<consumption_result_type>(bad_request_exception("Can't parse chunked request trailer"));
+                         }
++                        if (!account_metadata_bytes(_trailer_parser.parsed_bytes())) {
++                            return make_exception_future<consumption_result_type>(bad_request_exception("Chunk metadata exceeds the configured limit"));
++                        }
+                         // save trailing headers
+                         _trailing_headers = _trailer_parser.get_parsed_headers();
+                         _end_of_request = true;
+@@ -217,8 +259,11 @@
+     chunk_parser _chunk;
+ 
+ public:
+-    chunked_source_impl(input_stream<char>& inp, std::unordered_map<sstring, sstring>& chunk_extensions, std::unordered_map<sstring, sstring>& trailing_headers)
+-        : _inp(inp), _chunk(chunk_extensions, trailing_headers) {
++    chunked_source_impl(input_stream<char>& inp,
++            std::unordered_map<sstring, sstring>& chunk_extensions,
++            std::unordered_map<sstring, sstring>& trailing_headers,
++            size_t max_metadata_bytes = std::numeric_limits<size_t>::max())
++        : _inp(inp), _chunk(chunk_extensions, trailing_headers, max_metadata_bytes) {
+     }
+ 
+     virtual future<temporary_buffer<char>> get() override {
+diff --git a/src/http/chunk_parsers.rl b/src/http/chunk_parsers.rl
+--- a/src/http/chunk_parsers.rl
++++ b/src/http/chunk_parsers.rl
+@@ -23,6 +23,7 @@
+ 
+ #include <seastar/core/ragel.hh>
+ #include <seastar/core/sstring.hh>
++#include <limits>
+ #include <unordered_map>
+ 
+ namespace seastar {
+@@ -87,15 +88,20 @@
+         error,
+         eof,
+         done,
++        too_large,
+     };
++    size_t _max_bytes;
++    size_t _parsed_bytes;
+     std::unordered_map<sstring, sstring> _extensions;
+     sstring _name;
+     sstring _value;
+     sstring _size;
+     state _state;
+ public:
+-    void init() {
++    void init(size_t max_bytes = std::numeric_limits<size_t>::max()) {
+         init_base();
++        _max_bytes = max_bytes;
++        _parsed_bytes = 0;
+         _extensions = std::unordered_map<sstring, sstring>();
+         _value = "";
+         _size = "";
+@@ -103,6 +109,12 @@
+         %% write init;
+     }
+     char* parse(char* p, char* pe, char* eof) {
++        auto* const begin = p;
++        const auto remaining = _parsed_bytes < _max_bytes ? _max_bytes - _parsed_bytes : 0;
++        const bool input_limited = static_cast<size_t>(pe - p) > remaining;
++        if (input_limited) {
++            pe = p + remaining;
++        }
+         sstring_builder::guard g(_builder, p, pe);
+         [[maybe_unused]] auto str = [this, &g, &p] { g.mark_end(p); return get_str(); };
+         bool done = false;
+@@ -120,6 +132,11 @@
+ #ifdef __clang__
+ #pragma clang diagnostic pop
+ #endif
++        _parsed_bytes += static_cast<size_t>(p - begin);
++        if (!done && input_limited && p == pe) {
++            _state = state::too_large;
++            return p;
++        }
+         if (!done) {
+             if (p == eof) {
+                 _state = state::eof;
+@@ -145,6 +162,12 @@
+     bool failed() const {
+         return _state == state::error;
+     }
++    bool too_large() const {
++        return _state == state::too_large;
++    }
++    size_t parsed_bytes() const noexcept {
++        return _parsed_bytes;
++    }
+ };
+ 
+ %% machine chunk_tail;
+@@ -215,14 +238,19 @@
+         error,
+         eof,
+         done,
++        too_large,
+     };
++    size_t _max_bytes;
++    size_t _parsed_bytes;
+     std::unordered_map<sstring, sstring> _headers;
+     sstring _field_name;
+     sstring _value;
+     state _state;
+ public:
+-    void init() {
++    void init(size_t max_bytes = std::numeric_limits<size_t>::max()) {
+         init_base();
++        _max_bytes = max_bytes;
++        _parsed_bytes = 0;
+         _headers = std::unordered_map<sstring, sstring>();
+         _field_name = "";
+         _value = "";
+@@ -230,6 +258,12 @@
+         %% write init;
+     }
+     char* parse(char* p, char* pe, char* eof) {
++        auto* const begin = p;
++        const auto remaining = _parsed_bytes < _max_bytes ? _max_bytes - _parsed_bytes : 0;
++        const bool input_limited = static_cast<size_t>(pe - p) > remaining;
++        if (input_limited) {
++            pe = p + remaining;
++        }
+         sstring_builder::guard g(_builder, p, pe);
+         [[maybe_unused]] auto str = [this, &g, &p] { g.mark_end(p); return get_str(); };
+         bool done = false;
+@@ -247,6 +281,11 @@
+ #ifdef __clang__
+ #pragma clang diagnostic pop
+ #endif
++        _parsed_bytes += static_cast<size_t>(p - begin);
++        if (!done && input_limited && p == pe) {
++            _state = state::too_large;
++            return p;
++        }
+         if (!done) {
+             if (p == eof) {
+                 _state = state::eof;
+@@ -269,6 +308,12 @@
+     bool failed() const {
+         return _state == state::error;
+     }
++    bool too_large() const {
++        return _state == state::too_large;
++    }
++    size_t parsed_bytes() const noexcept {
++        return _parsed_bytes;
++    }
+ };
+ 
+ }
+diff --git a/src/http/response_parser.rl b/src/http/response_parser.rl
+--- a/src/http/response_parser.rl
++++ b/src/http/response_parser.rl
+@@ -20,6 +20,7 @@
+  */
+ 
+ #ifndef SEASTAR_MODULE
++#include <limits>
+ #include <memory>
+ #include <unordered_map>
+ #endif
+@@ -127,7 +128,10 @@
+         error,
+         eof,
+         done,
++        too_large,
+     };
++    size_t _max_bytes;
++    size_t _parsed_bytes;
+     std::unique_ptr<http::reply> _rsp;
+     sstring _field_name;
+     sstring _value;
+@@ -135,8 +139,10 @@
+     sstring _error_message;
+ 
+ public:
+-    void init() {
++    void init(size_t max_bytes = std::numeric_limits<size_t>::max()) {
+         init_base();
++        _max_bytes = max_bytes;
++        _parsed_bytes = 0;
+         _rsp.reset(new http::reply());
+         _state = state::eof;
+         _error_message = {};
+@@ -145,6 +151,11 @@
+     char* parse(char* p, char* pe, char* eof) {
+         // Save the start pointer to compute offsets for error context.
+         char* start_ptr = p;
++        const auto remaining = _parsed_bytes < _max_bytes ? _max_bytes - _parsed_bytes : 0;
++        const bool input_limited = static_cast<size_t>(pe - p) > remaining;
++        if (input_limited) {
++            pe = p + remaining;
++        }
+         sstring_builder::guard g(_builder, p, pe);
+         auto str = [this, &g, &p] { g.mark_end(p); return get_str(); };
+         bool done = false;
+@@ -162,7 +173,12 @@
+ #ifdef __clang__
+ #pragma clang diagnostic pop
+ #endif
+-        if (done) {
++        _parsed_bytes += static_cast<size_t>(p - start_ptr);
++        if (!done && input_limited && p == pe) {
++            _state = state::too_large;
++            _error_message = "HTTP response header exceeds the configured limit.";
++            return p;
++        } else if (done) {
+             _state = state::done;
+         } else if (p == eof) {
+             _state = state::eof;
+@@ -191,6 +207,9 @@
+     bool failed() const {
+         return _state == state::error;
+     }
++    bool too_large() const {
++        return _state == state::too_large;
++    }
+     const sstring& error_message() const {
+         return _error_message;
+     }
+diff --git a/src/http/client.cc b/src/http/client.cc
+--- a/src/http/client.cc
++++ b/src/http/client.cc
+@@ -65,12 +65,16 @@
+ 
+ namespace experimental {
+ 
+-connection::connection(connected_socket&& fd, internal::client_ref cr)
++connection::connection(connected_socket&& fd, internal::client_ref cr,
++        size_t max_response_header_bytes,
++        size_t max_chunk_metadata_bytes)
+         : _fd(std::move(fd))
+         , _read_buf(_fd.input())
+         , _write_buf(_fd.output())
+         , _closed(_fd.wait_input_shutdown().finally([me = shared_from_this()] {}))
+         , _ref(std::move(cr))
++        , _max_response_header_bytes(max_response_header_bytes)
++        , _max_chunk_metadata_bytes(max_chunk_metadata_bytes)
+ {
+ }
+ 
+@@ -134,8 +138,12 @@
+ future<connection::reply_ptr> connection::recv_reply() {
+     http_response_parser parser;
+     return do_with(std::move(parser), [this] (auto& parser) {
+-        parser.init();
++        parser.init(_max_response_header_bytes);
+         return _read_buf.consume(parser).then([this, &parser] {
++            if (parser.too_large()) {
++                http_log.trace("Parsing response exceeded configured header limit");
++                throw httpd::response_parsing_exception(parser.error_message());
++            }
+             if (parser.eof()) {
+                 http_log.trace("Parsing response EOFed");
+                 throw std::system_error(ECONNABORTED, std::system_category());
+@@ -183,7 +191,8 @@
+ 
+ input_stream<char> connection::in(reply& rep) {
+     if (seastar::internal::case_insensitive_cmp()(rep.get_header("Transfer-Encoding"), "chunked")) {
+-        return input_stream<char>(data_source(std::make_unique<httpd::internal::chunked_source_impl>(_read_buf, rep.chunk_extensions, rep.trailing_headers)));
++        return input_stream<char>(data_source(std::make_unique<httpd::internal::chunked_source_impl>(
++                _read_buf, rep.chunk_extensions, rep.trailing_headers, _max_chunk_metadata_bytes)));
+     }
+ 
+     return input_stream<char>(data_source(std::make_unique<httpd::internal::content_length_source_impl>(_read_buf, rep.content_length, &rep.consumed_content)));
+@@ -219,10 +228,12 @@
+ {
+ }
+ 
+-client::client(std::unique_ptr<connection_factory> f, unsigned max_connections, retry_requests retry, size_t max_bytes_to_drain)
++client::client(std::unique_ptr<connection_factory> f, unsigned max_connections, retry_requests retry, size_t max_bytes_to_drain, size_t max_response_header_bytes, size_t max_chunk_metadata_bytes)
+         : _new_connections(std::move(f))
+         , _max_connections(max_connections)
+         , _max_bytes_to_drain(max_bytes_to_drain)
++        , _max_response_header_bytes(max_response_header_bytes)
++        , _max_chunk_metadata_bytes(max_chunk_metadata_bytes)
+         , _retry(retry)
+ {
+ }
+@@ -252,11 +263,14 @@
+ 
+ future<client::connection_ptr> client::make_connection(abort_source* as) {
+     _total_new_connections++;
+-    return _new_connections->make(as).then([cr = internal::client_ref(this)] (connected_socket cs) mutable {
++    return _new_connections->make(as).then([cr = internal::client_ref(this),
++            max_response_header_bytes = _max_response_header_bytes,
++            max_chunk_metadata_bytes = _max_chunk_metadata_bytes] (connected_socket cs) mutable {
+         if (http_log.is_enabled(log_level::trace)) {
+             http_log.trace("created new http connection {}", cs.local_address());
+         }
+-        auto con = seastar::make_shared<connection>(std::move(cs), std::move(cr));
++        auto con = seastar::make_shared<connection>(std::move(cs), std::move(cr),
++                max_response_header_bytes, max_chunk_metadata_bytes);
+         return make_ready_future<connection_ptr>(std::move(con));
+     });
+ }
+
+diff --git a/include/seastar/core/iostream.hh b/include/seastar/core/iostream.hh
+index 8f4567d5..9ed19290 100644
+--- a/include/seastar/core/iostream.hh
++++ b/include/seastar/core/iostream.hh
+@@ -330,6 +330,10 @@ public:
+     template <typename Consumer>
+     requires InputStreamConsumer<Consumer, CharType> || ObsoleteInputStreamConsumer<Consumer, CharType>
+     future<> consume(Consumer& c) noexcept(std::is_nothrow_move_constructible_v<Consumer>);
++    /// Returns bytes already buffered beyond the last completed consumer boundary.
++    size_t buffered_bytes() const noexcept {
++        return available();
++    }
+     /// Returns true if the end-of-file flag is set on the stream.
+     /// Note that the eof flag is only set after a previous attempt to read
+     /// from the stream noticed the end of the stream. In other words, it is
+

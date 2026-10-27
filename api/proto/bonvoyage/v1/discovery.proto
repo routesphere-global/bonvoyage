@@ -1,0 +1,226 @@
+syntax = "proto3";
+
+package bonvoyage.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/routesphere-global/bonvoyage/api/gen/go/bonvoyage/v1;bonvoyagev1";
+
+// SnapshotDiscoveryService distributes complete immutable snapshot artifacts.
+// Rollback sends retained snapshot bytes with a newer rollout sequence.
+service SnapshotDiscoveryService {
+  rpc StreamSnapshots(stream StreamSnapshotsRequest) returns (stream StreamSnapshotsResponse);
+}
+
+// NodeIdentityService bootstraps and renews the certificate-bound identity
+// consumed by SnapshotDiscoveryService. Enrollment is authorized by a
+// short-lived, single-use token. Renewal is authorized by the current mTLS
+// node identity; neither request is allowed to select an arbitrary SPIFFE ID.
+service NodeIdentityService {
+  rpc EnrollNode(EnrollNodeRequest) returns (EnrollNodeResponse);
+  rpc RenewNode(RenewNodeRequest) returns (RenewNodeResponse);
+}
+
+message EnrollNodeRequest {
+  string node_id = 1;
+  string bootstrap_token = 2;
+  bytes pkcs10_certificate_request = 3;
+  google.protobuf.Timestamp observed_at = 4;
+}
+
+message RenewNodeRequest {
+  string node_id = 1;
+  bytes pkcs10_certificate_request = 2;
+  google.protobuf.Timestamp observed_at = 3;
+}
+
+message EnrollNodeResponse {
+  NodeCredentialBundle credential = 1;
+}
+
+message RenewNodeResponse {
+  NodeCredentialBundle credential = 1;
+}
+
+// NodeCredentialBundle is an immutable candidate generation. The node must
+// validate and durably publish the complete generation before using it for a
+// new discovery connection. Private keys are generated and retained locally
+// and are never transmitted through this service.
+message NodeCredentialBundle {
+  string credential_generation = 1;
+  bytes certificate_chain_pem = 2;
+  bytes trust_bundle_pem = 3;
+  bytes certificate_sha256 = 4;
+  bytes issuer_sha256 = 5;
+  string serial_number = 6;
+  google.protobuf.Timestamp not_before = 7;
+  google.protobuf.Timestamp not_after = 8;
+  google.protobuf.Timestamp renew_after = 9;
+  google.protobuf.Timestamp server_time = 10;
+}
+
+message StreamSnapshotsRequest {
+  oneof request {
+    NodeHello hello = 1;
+    Acknowledgement acknowledgement = 2;
+    NodeRolloutReport rollout_report = 3;
+    NodeHeartbeat heartbeat = 4;
+  }
+}
+
+message StreamSnapshotsResponse {
+  SnapshotDelivery delivery = 1;
+  RolloutCommand command = 2;
+}
+
+message NodeHello {
+  string node_id = 1;
+  string dataplane_version = 2;
+  repeated uint32 supported_schema_versions = 3;
+  string active_snapshot_id = 4;
+  bytes active_snapshot_sha256 = 5;
+  uint64 last_rollout_sequence = 6;
+  string process_instance_id = 7;
+  repeated NodeCapability capabilities = 8;
+  NodeRuntimeState runtime_state = 9;
+}
+
+// SnapshotDelivery is the Phase 1 compatibility path. Nodes advertising the
+// two-phase rollout capability use RolloutCommand instead.
+message SnapshotDelivery {
+  uint64 rollout_sequence = 1;
+  string snapshot_id = 2;
+  bytes snapshot_bytes = 3;
+  bytes snapshot_sha256 = 4;
+}
+
+// NodeCapability is a versioned behavior implemented by one data-plane node.
+// Unknown capability types and unsupported versions fail closed.
+message NodeCapability {
+  NodeCapabilityType capability = 1;
+  uint32 version = 2;
+}
+
+enum NodeCapabilityType {
+  NODE_CAPABILITY_TYPE_UNSPECIFIED = 0;
+  NODE_CAPABILITY_TYPE_TWO_PHASE_ROLLOUT = 1;
+  NODE_CAPABILITY_TYPE_EXACT_ARTIFACT_ROLLBACK = 2;
+  NODE_CAPABILITY_TYPE_HEARTBEAT_STATE_REPORT = 3;
+}
+
+// SnapshotReference identifies immutable bytes. The ID is an operator-facing
+// identity; the SHA-256 digest is the authoritative byte identity.
+message SnapshotReference {
+  string snapshot_id = 1;
+  bytes snapshot_sha256 = 2;
+}
+
+// SnapshotArtifact carries the exact bytes prepared by every target node.
+message SnapshotArtifact {
+  SnapshotReference snapshot = 1;
+  bytes snapshot_bytes = 2;
+  uint32 schema_version = 3;
+  string minimum_dataplane_version = 4;
+  repeated NodeCapability required_capabilities = 5;
+}
+
+// PreparedSnapshot reports an artifact prepared on every local shard but not
+// active. shard_count is non-zero proof of the completed node-local barrier.
+message PreparedSnapshot {
+  uint64 rollout_sequence = 1;
+  SnapshotReference snapshot = 2;
+  uint32 shard_count = 3;
+}
+
+// NodeRuntimeState is authoritative node-observed state used at stream start
+// and during heartbeats. Active state means every active_shard_count shard is
+// serving the named artifact. It supports deterministic reconciliation.
+message NodeRuntimeState {
+  SnapshotReference active_snapshot = 1;
+  PreparedSnapshot prepared_snapshot = 2;
+  uint64 last_rollout_sequence = 3;
+  uint32 active_shard_count = 4;
+}
+
+// NodeHeartbeat proves stream liveness and reports active/prepared state. An
+// authenticated reconnect may reconcile a report lost with the prior stream;
+// routine heartbeat receipt alone is not an operation ACK.
+message NodeHeartbeat {
+  string node_id = 1;
+  string process_instance_id = 2;
+  NodeRuntimeState runtime_state = 3;
+  google.protobuf.Timestamp observed_at = 4;
+}
+
+// RolloutCommand separates preparation from activation. Rollback is a normal
+// prepare/activate rollout of retained exact bytes under a newer sequence.
+message RolloutCommand {
+  uint64 rollout_sequence = 1;
+
+  oneof command {
+    PrepareSnapshot prepare = 2;
+    ActivateSnapshot activate = 3;
+    CancelRollout cancel = 4;
+  }
+}
+
+message PrepareSnapshot {
+  SnapshotArtifact artifact = 1;
+  SnapshotReference expected_active_snapshot = 2;
+}
+
+message ActivateSnapshot {
+  SnapshotReference prepared_snapshot = 1;
+  SnapshotReference expected_active_snapshot = 2;
+}
+
+message CancelRollout {
+  SnapshotReference snapshot = 1;
+  string reason = 2;
+}
+
+// NodeRolloutReport is emitted only after the named operation has completed on
+// every local shard or has failed without a partial local activation.
+message NodeRolloutReport {
+  string node_id = 1;
+  string process_instance_id = 2;
+  uint64 rollout_sequence = 3;
+  SnapshotReference snapshot = 4;
+  RolloutOperation operation = 5;
+  AcknowledgementResult result = 6;
+  SnapshotReference previous_active_snapshot = 7;
+  SnapshotReference current_active_snapshot = 8;
+  repeated ValidationError errors = 9;
+  uint32 shard_count = 10;
+  uint32 completed_shards = 11;
+  google.protobuf.Timestamp completed_at = 12;
+}
+
+enum RolloutOperation {
+  ROLLOUT_OPERATION_UNSPECIFIED = 0;
+  ROLLOUT_OPERATION_PREPARE = 1;
+  ROLLOUT_OPERATION_ACTIVATE = 2;
+  ROLLOUT_OPERATION_CANCEL = 3;
+}
+
+// Acknowledgement is the Phase 1 final-activation compatibility report.
+message Acknowledgement {
+  uint64 rollout_sequence = 1;
+  string snapshot_id = 2;
+  AcknowledgementResult result = 3;
+  string previous_snapshot_id = 4;
+  repeated ValidationError errors = 5;
+  google.protobuf.Timestamp completed_at = 6;
+}
+
+enum AcknowledgementResult {
+  ACKNOWLEDGEMENT_RESULT_UNSPECIFIED = 0;
+  ACKNOWLEDGEMENT_RESULT_ACK = 1;
+  ACKNOWLEDGEMENT_RESULT_NACK = 2;
+}
+
+message ValidationError {
+  string code = 1;
+  string field_path = 2;
+  string message = 3;
+}

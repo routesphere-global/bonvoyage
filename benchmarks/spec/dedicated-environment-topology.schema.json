@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://routesphere.local/schemas/dedicated-environment-topology.schema.json",
+  "title": "BonVoyage DQ-INFRA-002 distributed topology input",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "campaign_id",
+    "mode",
+    "source_commit",
+    "observation",
+    "aws",
+    "roles"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "campaign_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "mode": { "enum": ["rehearsal", "qualification"] },
+    "source_commit": { "$ref": "#/$defs/gitCommit" },
+    "observation": {
+      "type": "object",
+      "required": [
+        "idle_seconds",
+        "maximum_steal_percent",
+        "maximum_network_error_delta",
+        "required_gateway_physical_cores"
+      ],
+      "properties": {
+        "idle_seconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "maximum_steal_percent": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maximum_network_error_delta": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "required_gateway_physical_cores": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 1, "maximum": 256 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "aws": {
+      "type": "object",
+      "required": ["region", "availability_zone", "image_id"],
+      "properties": {
+        "region": { "type": "string", "pattern": "^[a-z]{2}(?:-[a-z]+)+-[0-9]+$" },
+        "availability_zone": { "type": "string", "pattern": "^[a-z]{2}(?:-[a-z]+)+-[0-9]+[a-z]$" },
+        "image_id": { "$ref": "#/$defs/imageId" },
+        "dedicated_host_id": { "$ref": "#/$defs/hostId" }
+      },
+      "additionalProperties": false
+    },
+    "roles": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/role" },
+      "allOf": [
+        { "contains": { "type": "object", "properties": { "role": { "const": "load-generator" } }, "required": ["role"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "type": "object", "properties": { "role": { "const": "gateway-target" } }, "required": ["role"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "type": "object", "properties": { "role": { "const": "controlled-upstream" } }, "required": ["role"] }, "minContains": 1, "maxContains": 1 }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "mode": { "const": "qualification" } }, "required": ["mode"] },
+      "then": {
+        "properties": {
+          "observation": {
+            "type": "object",
+            "properties": { "idle_seconds": { "type": "integer", "minimum": 900 } }
+          },
+          "aws": {
+            "type": "object",
+            "required": ["dedicated_host_id"],
+            "properties": {
+              "dedicated_host_id": { "$ref": "#/$defs/hostId" }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "gitCommit": { "type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$" },
+    "imageId": { "type": "string", "pattern": "^ami-[a-f0-9]{8,32}$" },
+    "instanceId": { "type": "string", "pattern": "^i-[a-f0-9]{8,32}$" },
+    "hostId": { "type": "string", "pattern": "^h-[a-f0-9]{8,32}$" },
+    "sshTarget": {
+      "type": "string",
+      "pattern": "^(?:[A-Za-z0-9][A-Za-z0-9._-]{0,31}@)?[A-Za-z0-9][A-Za-z0-9._-]{0,252}$"
+    },
+    "interface": { "type": "string", "pattern": "^(?:auto|[A-Za-z0-9][A-Za-z0-9_.:-]{0,31})$" },
+    "role": {
+      "type": "object",
+      "required": [
+        "role",
+        "ssh_target",
+        "instance_id",
+        "instance_type",
+        "private_ipv4",
+        "network_interface",
+        "expected_tenancy"
+      ],
+      "properties": {
+        "role": { "enum": ["load-generator", "gateway-target", "controlled-upstream"] },
+        "ssh_target": { "$ref": "#/$defs/sshTarget" },
+        "instance_id": { "$ref": "#/$defs/instanceId" },
+        "instance_type": { "type": "string", "pattern": "^[a-z0-9][a-z0-9.-]{1,31}$" },
+        "private_ipv4": { "type": "string", "format": "ipv4" },
+        "network_interface": { "$ref": "#/$defs/interface" },
+        "expected_tenancy": { "enum": ["default", "host"] },
+        "expected_host_id": { "$ref": "#/$defs/hostId" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

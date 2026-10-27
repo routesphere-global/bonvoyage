@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://routesphere.local/schemas/dedicated-artifact-lock.schema.json",
+  "title": "BonVoyage dedicated qualification artifact lock",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "lock_id",
+    "campaign_id",
+    "captured_at",
+    "source_commit",
+    "platform",
+    "scope_complete",
+    "input_bindings",
+    "artifacts",
+    "sboms",
+    "evidence",
+    "passed"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "lock_id": { "type": "string", "pattern": "^dq-artifacts-[a-z0-9-]+$" },
+    "campaign_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "captured_at": { "type": "string", "format": "date-time" },
+    "source_commit": { "$ref": "#/$defs/gitCommit" },
+    "platform": { "$ref": "#/$defs/platform" },
+    "scope_complete": { "const": true },
+    "input_bindings": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "$ref": "#/$defs/binding" }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 6,
+      "items": { "$ref": "#/$defs/artifact" }
+    },
+    "sboms": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "$ref": "#/$defs/sbom" }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 4,
+      "items": { "$ref": "#/$defs/namedEvidence" }
+    },
+    "passed": { "const": true }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "gitCommit": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "platform": {
+      "type": "object",
+      "required": ["operating_system", "architecture", "container_platform"],
+      "properties": {
+        "operating_system": { "const": "Ubuntu 24.04 LTS" },
+        "architecture": { "const": "x86_64" },
+        "container_platform": { "const": "linux/amd64" }
+      },
+      "additionalProperties": false
+    },
+    "binding": {
+      "type": "object",
+      "required": ["id", "path", "sha256"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._:-]*$" },
+        "path": { "$ref": "#/$defs/path" },
+        "sha256": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    },
+    "fileIdentity": {
+      "type": "object",
+      "required": ["purpose", "path", "sha256"],
+      "properties": {
+        "purpose": {
+          "enum": ["executable", "configuration", "entrypoint", "payload", "policy", "license"]
+        },
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    },
+    "artifact": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "version",
+        "image_reference",
+        "image_digest",
+        "platform_digest",
+        "files"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "kind": {
+          "enum": ["gateway", "control-plane", "upstream", "load-generator", "telemetry", "security-tool"]
+        },
+        "version": { "type": "string", "minLength": 1 },
+        "image_reference": {
+          "type": "string",
+          "pattern": "^[^\\s]+@sha256:[a-f0-9]{64}$"
+        },
+        "image_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "platform_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "metadata": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z][a-z0-9_]*$" },
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/fileIdentity" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "sbom": {
+      "type": "object",
+      "required": ["artifact_id", "format", "path", "sha256"],
+      "properties": {
+        "artifact_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "format": { "enum": ["CycloneDX JSON", "SPDX JSON"] },
+        "path": { "$ref": "#/$defs/path" },
+        "sha256": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    },
+    "namedEvidence": {
+      "type": "object",
+      "required": ["id", "path", "sha256"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "path": { "$ref": "#/$defs/path" },
+        "sha256": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

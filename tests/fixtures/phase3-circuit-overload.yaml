@@ -1,0 +1,107 @@
+server:
+  node_id: phase3-circuit-overload-node
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-circuit-overload-smoke
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: tls-http2
+    address: 0.0.0.0
+    port: 8443
+    protocol: http2
+    virtual_hosts: [api]
+    downstream_tls:
+      certificate_chain_secret: server-chain.pem
+      private_key_secret: server-key.pem
+  - name: cleartext-http1
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [api]
+
+virtual_hosts:
+  - name: api
+    domains: [api.example.test]
+    routes:
+      - name: circuit-http1
+        match:
+          path_prefix: /circuit-http1/
+        cluster: circuit-http1
+      - name: circuit-http2
+        match:
+          path_prefix: /circuit-http2/
+        cluster: circuit-http2
+      - name: endpoint-overload
+        match:
+          path_prefix: /endpoint-overload/
+        cluster: endpoint-overload
+      - name: cluster-overload
+        match:
+          path_prefix: /cluster-overload/
+        cluster: cluster-overload
+
+clusters:
+  - name: circuit-http1
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 500
+    max_connections_per_shard: 2
+    max_pending_requests_per_shard: 2
+    max_concurrent_requests_per_endpoint: 4
+    passive_health:
+      consecutive_failures: 1
+      ejection_time_ms: 500
+      max_ejection_percent: 100
+      consecutive_successes: 1
+    endpoints:
+      - name: upstream-1
+        address: upstream
+        port: 8081
+  - name: circuit-http2
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 500
+    max_connections_per_shard: 2
+    max_pending_requests_per_shard: 2
+    max_concurrent_requests_per_endpoint: 4
+    passive_health:
+      consecutive_failures: 1
+      ejection_time_ms: 500
+      max_ejection_percent: 100
+      consecutive_successes: 1
+    endpoints:
+      - name: upstream-1
+        address: upstream
+        port: 8081
+  - name: endpoint-overload
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 500
+    max_connections_per_shard: 2
+    max_pending_requests_per_shard: 2
+    max_concurrent_requests_per_endpoint: 1
+    endpoints:
+      - name: upstream-1
+        address: upstream
+        port: 8081
+  - name: cluster-overload
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 500
+    max_connections_per_shard: 1
+    max_pending_requests_per_shard: 1
+    max_concurrent_requests_per_endpoint: 2
+    endpoints:
+      - name: upstream-1
+        address: upstream
+        port: 8081
+
+runtime_limits:
+  max_downstream_connections_per_shard: 256
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 3000
+  downstream_idle_timeout_ms: 30000

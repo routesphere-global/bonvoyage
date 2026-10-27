@@ -1,0 +1,11 @@
+**
+!api/
+!api/gen/
+!api/gen/**
+!control-plane/
+!control-plane/go.mod
+!control-plane/go.sum
+!tests/
+!tests/fixtures/
+!tests/fixtures/http2-deadline/
+!tests/fixtures/http2-deadline/**

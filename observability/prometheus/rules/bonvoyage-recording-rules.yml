@@ -1,0 +1,194 @@
+groups:
+  - name: bonvoyage-rollout-and-capacity
+    interval: 15s
+    rules:
+      - record: bonvoyage:gateway_ready:min
+        expr: min without (shard) (bonvoyage_bonvoyage_gateway_ready)
+      - record: bonvoyage:snapshot_generation:min
+        expr: min without (shard) (bonvoyage_bonvoyage_gateway_snapshot_generation)
+      - record: bonvoyage:snapshot_generation:max
+        expr: max without (shard) (bonvoyage_bonvoyage_gateway_snapshot_generation)
+      - record: bonvoyage:snapshot_generation:mismatch
+        expr: bonvoyage:snapshot_generation:max - bonvoyage:snapshot_generation:min
+      - record: bonvoyage:configured_listeners:max
+        expr: max without (shard) (bonvoyage_bonvoyage_gateway_configured_listeners)
+      - record: bonvoyage:configured_routes:max
+        expr: max without (shard) (bonvoyage_bonvoyage_gateway_configured_routes)
+      - record: bonvoyage:configured_clusters:max
+        expr: max without (shard) (bonvoyage_bonvoyage_gateway_configured_clusters)
+      - record: bonvoyage:configured_endpoints:max
+        expr: max without (shard) (bonvoyage_bonvoyage_gateway_configured_endpoints)
+      - record: bonvoyage:gateway_requests_per_shard:rate5m
+        expr: rate(bonvoyage_bonvoyage_gateway_requests_total[5m])
+      - record: bonvoyage:gateway_requests:rate5m
+        expr: sum without (shard) (bonvoyage:gateway_requests_per_shard:rate5m)
+      - record: bonvoyage:gateway_shard_imbalance:ratio5m
+        expr: (max without (shard) (bonvoyage:gateway_requests_per_shard:rate5m) - min without (shard) (bonvoyage:gateway_requests_per_shard:rate5m)) / clamp_min(avg without (shard) (bonvoyage:gateway_requests_per_shard:rate5m), 1)
+      - record: bonvoyage:gateway_connections_accepted_per_shard:rate5m
+        expr: rate(bonvoyage_bonvoyage_gateway_downstream_connections_accepted_total[5m])
+      - record: bonvoyage:gateway_connection_shard_imbalance:ratio5m
+        expr: (max without (shard) (bonvoyage:gateway_connections_accepted_per_shard:rate5m) - min without (shard) (bonvoyage:gateway_connections_accepted_per_shard:rate5m)) / clamp_min(avg without (shard) (bonvoyage:gateway_connections_accepted_per_shard:rate5m), 0.000001)
+      - record: bonvoyage:upstream_http1_pool_waits:rate5m
+        expr: rate(bonvoyage_bonvoyage_gateway_upstream_http1_pool_waits_total[5m])
+      - record: bonvoyage:upstream_http1_pool_wait_duration:mean_microseconds5m
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_upstream_http1_pool_wait_nanoseconds_total[5m])) / clamp_min(sum without (shard) (rate(bonvoyage_bonvoyage_gateway_upstream_http1_pool_waits_total[5m])), 0.000001) / 1000
+      - record: bonvoyage:upstream_http1_pool_wait_duration:lifetime_max_microseconds
+        expr: max without (shard) (bonvoyage_bonvoyage_gateway_upstream_http1_pool_wait_max_nanoseconds) / 1000
+      - record: bonvoyage:upstream_http1_pool_pressure:max
+        expr: max without (shard) (bonvoyage_bonvoyage_gateway_active_upstream_http1_requests / clamp_min(bonvoyage_bonvoyage_gateway_configured_upstream_http1_connections, 1))
+      - record: bonvoyage:reactor_utilization:max
+        expr: max without (shard) (bonvoyage_reactor_utilization)
+      - record: bonvoyage:reactor_tasks_pending:max
+        expr: max without (shard) (bonvoyage_reactor_tasks_pending)
+      - record: bonvoyage:memory_utilization:ratio
+        expr: sum without (shard) (bonvoyage_memory_allocated_memory) / clamp_min(sum without (shard) (bonvoyage_memory_total_memory), 1)
+
+  - name: bonvoyage-access-log-delivery
+    interval: 15s
+    rules:
+      - record: bonvoyage:access_log_enabled:min
+        expr: min without (shard) (bonvoyage_bonvoyage_gateway_access_log_enabled)
+      - record: bonvoyage:access_log_sink_healthy:min
+        expr: min without (shard) (bonvoyage_bonvoyage_gateway_access_log_sink_healthy)
+      - record: bonvoyage:access_log_queue_utilization:max
+        expr: max without (shard) (bonvoyage_bonvoyage_gateway_access_log_queue_depth / clamp_min(bonvoyage_bonvoyage_gateway_access_log_queue_capacity, 1))
+      - record: bonvoyage:access_log_drops:rate5m
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_access_log_records_dropped_total[5m]))
+      - record: bonvoyage:access_log_write_failures:rate5m
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_access_log_write_failures_total[5m]))
+      - record: bonvoyage:access_log_capacity_exhaustions:increase5m
+        expr: sum without (shard) (increase(bonvoyage_bonvoyage_gateway_access_log_capacity_exhaustions_total[5m]))
+
+  - name: bonvoyage-trace-delivery
+    interval: 15s
+    rules:
+      - record: bonvoyage:otlp_traces_enabled:min
+        expr: min without (shard) (bonvoyage_bonvoyage_gateway_otlp_traces_enabled)
+      - record: bonvoyage:otlp_trace_exporter_healthy:min
+        expr: min without (shard) (bonvoyage_bonvoyage_gateway_otlp_trace_exporter_healthy)
+      - record: bonvoyage:otlp_trace_queue_utilization:max
+        expr: max without (shard) (bonvoyage_bonvoyage_gateway_otlp_trace_queue_depth / clamp_min(bonvoyage_bonvoyage_gateway_otlp_trace_queue_capacity, 1))
+      - record: bonvoyage:otlp_trace_spans_exported:rate5m
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_otlp_trace_spans_exported_total[5m]))
+      - record: bonvoyage:otlp_trace_spans_dropped:rate5m
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_otlp_trace_spans_dropped_total[5m]))
+      - record: bonvoyage:otlp_trace_export_failures:rate5m
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_otlp_trace_export_failures_total[5m]))
+      - record: bonvoyage:otlp_trace_retry_exhaustions:increase5m
+        expr: sum without (shard) (increase(bonvoyage_bonvoyage_gateway_otlp_trace_retry_exhaustions_total[5m]))
+      - record: bonvoyage:otlp_trace_partial_success:increase5m
+        expr: sum without (shard) (increase(bonvoyage_bonvoyage_gateway_otlp_trace_partial_success_responses_total[5m]))
+
+  - name: bonvoyage-traffic-outcomes
+    interval: 15s
+    rules:
+      - record: bonvoyage:gateway_responses:rate5m
+        labels:
+          outcome: successful
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_responses_2xx_total[5m])) + sum without (shard) (rate(bonvoyage_bonvoyage_gateway_responses_3xx_total[5m]))
+      - record: bonvoyage:gateway_responses:rate5m
+        labels:
+          outcome: client_error
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_responses_4xx_total[5m]))
+      - record: bonvoyage:gateway_responses:rate5m
+        labels:
+          outcome: gateway_error
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_responses_5xx_total[5m]))
+      - record: bonvoyage:gateway_responses:rate5m_total
+        expr: sum without (outcome) (bonvoyage:gateway_responses:rate5m)
+      - record: bonvoyage:gateway_success:ratio5m
+        expr: bonvoyage:gateway_responses:rate5m{outcome="successful"} / ignoring (outcome) clamp_min(bonvoyage:gateway_responses:rate5m_total, 0.000001)
+      - record: bonvoyage:gateway_5xx:ratio5m
+        expr: bonvoyage:gateway_responses:rate5m{outcome="gateway_error"} / ignoring (outcome) clamp_min(bonvoyage:gateway_responses:rate5m_total, 0.000001)
+      - record: bonvoyage:gateway_latency:p99_microseconds5m
+        expr: histogram_quantile(0.99, sum without (shard) (rate(bonvoyage_bonvoyage_gateway_request_latency_microseconds_bucket{le!="inf"}[5m])))
+      - record: bonvoyage:gateway_latency:p999_microseconds5m
+        expr: histogram_quantile(0.999, sum without (shard) (rate(bonvoyage_bonvoyage_gateway_request_latency_microseconds_bucket{le!="inf"}[5m])))
+      - record: bonvoyage:gateway_latency:mean_microseconds5m
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_request_latency_microseconds_sum[5m])) / clamp_min(sum without (shard) (rate(bonvoyage_bonvoyage_gateway_request_latency_microseconds_count[5m])), 0.000001)
+      - record: bonvoyage:gateway_request_bytes:rate5m
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_request_bytes_total[5m]))
+      - record: bonvoyage:gateway_response_bytes:rate5m
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_response_bytes_total[5m]))
+      - record: bonvoyage:gateway_websocket_bytes:rate5m
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_websocket_downstream_bytes_total[5m]) + rate(bonvoyage_bonvoyage_gateway_websocket_upstream_bytes_total[5m]))
+      - record: bonvoyage:gateway_protocol_requests:rate5m
+        labels:
+          protocol: http2
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_http2_streams_total[5m]))
+      - record: bonvoyage:gateway_protocol_requests:rate5m
+        labels:
+          protocol: grpc
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_grpc_requests_total[5m]))
+      - record: bonvoyage:gateway_protocol_requests:rate5m
+        labels:
+          protocol: websocket
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_websocket_connections_total[5m]))
+
+  - name: bonvoyage-policy-and-resilience
+    interval: 15s
+    rules:
+      - record: bonvoyage:gateway_rejections:rate5m
+        labels: {reason: rate_limited}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_route_rate_limit_rejections_total[5m]))
+      - record: bonvoyage:gateway_rejections:rate5m
+        labels: {reason: route_overloaded}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_route_overload_rejections_total[5m]))
+      - record: bonvoyage:gateway_rejections:rate5m
+        labels: {reason: cluster_overloaded}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_cluster_overload_rejections_total[5m]))
+      - record: bonvoyage:gateway_rejections:rate5m
+        labels: {reason: endpoint_overloaded}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_endpoint_overload_rejections_total[5m]))
+      - record: bonvoyage:gateway_rejections:rate5m
+        labels: {reason: downstream_connection_limit}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_downstream_connection_rejections_total[5m]))
+      - record: bonvoyage:gateway_rejections:rate5m
+        labels: {reason: jwt_cpu_budget}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_jwt_verification_overload_rejections_total[5m]))
+      - record: bonvoyage:gateway_rejections:rate5m
+        labels: {reason: api_key_authentication}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_api_key_auth_rejections_total[5m]))
+      - record: bonvoyage:gateway_rejections:rate5m
+        labels: {reason: jwt_authentication}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_jwt_auth_rejections_total[5m]))
+      - record: bonvoyage:gateway_rejections:rate5m
+        labels: {reason: jwt_authorization}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_jwt_authorization_rejections_total[5m]))
+      - record: bonvoyage:gateway_rejections:rate5m
+        labels: {reason: source_ip_policy}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_source_ip_policy_rejections_total[5m]))
+      - record: bonvoyage:gateway_rejections:rate5m
+        labels: {reason: cors_policy}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_cors_rejections_total[5m]))
+      - record: bonvoyage:gateway_rejections:rate5m
+        labels: {reason: request_content_type}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_request_content_type_rejections_total[5m]))
+      - record: bonvoyage:gateway_rejections:rate5m
+        labels: {reason: request_body_limit}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_request_body_limit_rejections_total[5m]))
+      - record: bonvoyage:gateway_resilience_events:rate5m
+        labels: {event: upstream_failure}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_upstream_failures_total[5m]))
+      - record: bonvoyage:gateway_resilience_events:rate5m
+        labels: {event: request_timeout}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_request_timeouts_total[5m]))
+      - record: bonvoyage:gateway_resilience_events:rate5m
+        labels: {event: no_eligible_endpoint}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_upstream_no_eligible_endpoints_total[5m]))
+      - record: bonvoyage:gateway_resilience_events:rate5m
+        labels: {event: circuit_opened}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_endpoint_circuit_opens_total[5m]))
+      - record: bonvoyage:gateway_resilience_events:rate5m
+        labels: {event: retry_recovered}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_retry_successes_total[5m]))
+      - record: bonvoyage:gateway_resilience_events:rate5m
+        labels: {event: active_health_failure}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_active_health_failures_total[5m]))
+      - record: bonvoyage:gateway_resilience_events:rate5m
+        labels: {event: dns_refresh_failure}
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_dns_refresh_failures_total[5m]))
+      - record: bonvoyage:retry_recovery:ratio5m
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_retry_successes_total[5m])) / clamp_min(sum without (shard) (rate(bonvoyage_bonvoyage_gateway_retry_attempts_total[5m])), 0.000001)
+      - record: bonvoyage:grpc_application_error:ratio5m
+        expr: sum without (shard) (rate(bonvoyage_bonvoyage_gateway_grpc_application_errors_total[5m])) / clamp_min(sum without (shard) (rate(bonvoyage_bonvoyage_gateway_grpc_requests_total[5m])), 0.000001)

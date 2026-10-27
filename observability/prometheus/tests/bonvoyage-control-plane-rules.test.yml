@@ -1,0 +1,66 @@
+rule_files:
+  - ../rules/bonvoyage-control-plane-alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: control-plane recovery decisions
+    interval: 1m
+    input_series:
+      - series: 'up{job="bonvoyage-control-plane",instance="control:9444"}'
+        values: '0x5'
+      - series: 'bonvoyage_control_plane_runtime_authority_match{job="bonvoyage-control-plane",instance="control:9444"}'
+        values: '0x5'
+      - series: 'bonvoyage_control_plane_recovery_required{job="bonvoyage-control-plane",instance="control:9444"}'
+        values: '1x5'
+      - series: 'bonvoyage_control_plane_unreconciled_nodes{job="bonvoyage-control-plane",instance="control:9444"}'
+        values: '2x5'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: BonVoyageControlPlaneTargetMissing
+        exp_alerts:
+          - exp_labels:
+              instance: control:9444
+              job: bonvoyage-control-plane
+              severity: critical
+              owner: infrastructure
+              decision: restore_control_plane
+            exp_annotations:
+              summary: BonVoyage control-plane telemetry is unavailable
+              action: Confirm dataplanes still serve their last-known-good snapshots, then restore the same durable repository and control-plane identity before attempting any rollout.
+      - eval_time: 1m
+        alertname: BonVoyageControlPlaneAuthorityMismatch
+        exp_alerts:
+          - exp_labels:
+              instance: control:9444
+              job: bonvoyage-control-plane
+              severity: critical
+              owner: infrastructure
+              decision: halt_mutations_and_reconcile_authority
+            exp_annotations:
+              summary: BonVoyage durable and runtime rollout authority disagree
+              action: Halt configuration mutations, inspect the selected sequence and restart replay, and restore one matching runtime authority before resuming changes.
+      - eval_time: 1m
+        alertname: BonVoyageControlPlaneRecoveryRequired
+        exp_alerts:
+          - exp_labels:
+              instance: control:9444
+              job: bonvoyage-control-plane
+              severity: critical
+              owner: infrastructure
+              decision: reconcile_or_rollback
+            exp_annotations:
+              summary: BonVoyage rollout requires operator recovery
+              action: Inspect rollout status and integrity-bound audit events, reconcile every target, and complete exact cleanup or rollback without bypassing artifact checks.
+      - eval_time: 3m
+        alertname: BonVoyageControlPlaneNodesUnreconciled
+        exp_alerts:
+          - exp_labels:
+              instance: control:9444
+              job: bonvoyage-control-plane
+              severity: warning
+              owner: infrastructure
+              decision: restore_node_reconciliation
+            exp_annotations:
+              summary: One or more BonVoyage targets remain unreconciled
+              action: Check authenticated discovery ownership, node heartbeat, active artifact identity, and pending commands before promoting or starting another rollout.

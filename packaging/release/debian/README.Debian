@@ -1,0 +1,32 @@
+BonVoyage API Gateway native package
+================================
+
+This package contains the RouteSphere BonVoyage gateway executable and its
+hardened systemd unit. It supplies neither a configuration snapshot, secret
+material, control-plane process nor host-tuning policy.
+
+Install a reviewed snapshot at /etc/bonvoyage/snapshot.pb with root ownership,
+the bonvoyage group and mode 0640. After verifying configuration and runtime
+dependencies, explicitly enable and start bonvoyage.service. The packaged unit
+keeps administrative and metrics endpoints on loopback by default.
+
+Runtime logger severity is sent through the local syslog socket to journald.
+Raw stdout and stderr are retained at info priority. Ensure /dev/log and
+journald are available before starting the service. The package does not alter
+host-wide journald, rsyslog, CPU, NUMA, NIC, IRQ, sysctl or power policy.
+
+A fresh installation does not enable or start the service. Upgrades preserve an
+operator's prior enabled state, stop a running service and do not start it again
+automatically. Perform upgrades in a reviewed maintenance window, verify the
+package and snapshot, and then explicitly start the service. Keep the prior
+admitted package available for rollback.
+
+Removal and purge retain the service identity, snapshots, secrets, state and
+logs. The source-install unit at /etc/systemd/system/bonvoyage.service must be
+reconciled before installation; this package never replaces that administrator
+unit silently.
+
+A successfully assembled package is only a technical candidate. Verify its
+release manifest, SBOMs, vulnerability review, provenance, signature and
+lifecycle receipts before installation. Documentation is available at
+https://docs.routesphere.global/.

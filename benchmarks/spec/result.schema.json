@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://routesphere.local/schemas/benchmark-result.schema.json",
+  "title": "BonVoyage benchmark run result",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "fixture",
+    "run_id",
+    "workload_id",
+    "environment_sha256",
+    "product",
+    "execution",
+    "metrics"
+  ],
+  "properties": {
+    "schema_version": { "enum": [1, 2] },
+    "fixture": { "type": "boolean" },
+    "run_id": { "type": "string", "pattern": "^[a-zA-Z0-9._-]+$" },
+    "workload_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "environment_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "product": {
+      "type": "object",
+      "required": ["name", "version", "image_digest", "config_sha256"],
+      "properties": {
+        "name": { "enum": ["bonvoyage", "envoy", "nginx", "haproxy", "apisix"] },
+        "version": { "type": "string", "minLength": 1 },
+        "image_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "config_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "executable_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "execution": {
+      "type": "object",
+      "required": ["started_at", "gateway_cores", "repetition", "offered_rps"],
+      "properties": {
+        "started_at": { "type": "string", "format": "date-time" },
+        "gateway_cores": { "type": "integer", "enum": [1, 2] },
+        "repetition": { "type": "integer", "minimum": 1 },
+        "offered_rps": { "type": "number", "minimum": 0 },
+        "stage": {
+          "enum": [
+            "capacity-probe",
+            "capacity-discovery",
+            "capacity-confirmation",
+            "operating-curve",
+            "overload",
+            "recovery",
+            "connection-churn"
+          ]
+        },
+        "plan_id": { "type": "string", "pattern": "^phase2-[a-f0-9]{16}$" },
+        "schedule_key": { "type": "string", "pattern": "^[a-z0-9][a-z0-9.-]*$" },
+        "randomized_position": { "type": "integer", "minimum": 1, "maximum": 4 },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "utilization_target": { "type": "number", "minimum": 0, "maximum": 1.5 },
+        "duration_seconds": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "successful_rps",
+        "error_rate",
+        "latency_ms",
+        "gateway_cpu_percent",
+        "gateway_rss_bytes",
+        "connections"
+      ],
+      "properties": {
+        "successful_rps": { "type": "number", "minimum": 0 },
+        "error_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "latency_ms": {
+          "type": "object",
+          "required": ["p50", "p95", "p99", "p999"],
+          "properties": {
+            "p50": { "type": "number", "minimum": 0 },
+            "p95": { "type": "number", "minimum": 0 },
+            "p99": { "type": "number", "minimum": 0 },
+            "p999": { "type": "number", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "gateway_cpu_percent": { "type": "number", "minimum": 0 },
+        "gateway_container_memory_usage_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gateway_rss_bytes": { "type": "integer", "minimum": 0 },
+        "connections": { "type": "integer", "minimum": 0 },
+        "context_switches_per_second": { "type": "number", "minimum": 0 },
+        "network_bytes_per_second": { "type": "number", "minimum": 0 },
+        "completed_requests": { "type": "integer", "minimum": 0 },
+        "gateway_rss_start_bytes": { "type": "integer", "minimum": 0 },
+        "gateway_rss_end_bytes": { "type": "integer", "minimum": 0 },
+        "upstream_cpu_percent": { "type": "number", "minimum": 0 },
+        "upstream_capacity_percent": { "type": "number", "minimum": 0 },
+        "load_generator_cpu_percent": { "type": "number", "minimum": 0 },
+        "load_generator_capacity_percent": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "qualification": {
+      "type": "object",
+      "required": ["valid", "reasons", "intentional_overload"],
+      "properties": {
+        "valid": { "type": "boolean" },
+        "reasons": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "intentional_overload": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "resilience": {
+      "type": "object",
+      "required": [
+        "gateway_container_id",
+        "process_restarted",
+        "rss_growth_bytes",
+        "rss_slope_bytes_per_second"
+      ],
+      "properties": {
+        "gateway_container_id": { "type": "string", "pattern": "^[a-f0-9]{12,64}$" },
+        "process_restarted": { "type": "boolean" },
+        "rss_growth_bytes": { "type": "integer" },
+        "rss_slope_bytes_per_second": { "type": "number" },
+        "recovery_of": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "raw_artifacts": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "schema_version": { "const": 2 } },
+        "required": ["schema_version"]
+      },
+      "then": {
+        "type": "object",
+        "required": ["qualification", "resilience", "raw_artifacts"],
+        "properties": {
+          "qualification": {},
+          "raw_artifacts": {},
+          "product": {
+            "type": "object",
+            "required": ["executable_sha256"],
+            "properties": { "executable_sha256": {} }
+          },
+          "execution": {
+            "type": "object",
+            "required": [
+              "stage",
+              "plan_id",
+              "schedule_key",
+              "randomized_position",
+              "attempt",
+              "duration_seconds"
+            ],
+            "properties": {
+              "stage": {},
+              "plan_id": {},
+              "schedule_key": {},
+              "randomized_position": {},
+              "attempt": {},
+              "duration_seconds": {}
+            }
+          },
+          "metrics": {
+            "type": "object",
+            "required": [
+              "completed_requests",
+              "context_switches_per_second",
+              "network_bytes_per_second",
+              "gateway_rss_start_bytes",
+              "gateway_rss_end_bytes",
+              "upstream_cpu_percent",
+              "upstream_capacity_percent",
+              "load_generator_cpu_percent",
+              "load_generator_capacity_percent"
+            ],
+            "properties": {
+              "completed_requests": { "type": "integer", "minimum": 1 },
+              "context_switches_per_second": {},
+              "network_bytes_per_second": {},
+              "gateway_rss_start_bytes": {},
+              "gateway_rss_end_bytes": {},
+              "upstream_cpu_percent": {},
+              "upstream_capacity_percent": {},
+              "load_generator_cpu_percent": {},
+              "load_generator_capacity_percent": {}
+            }
+          },
+          "resilience": {},
+          "raw_artifacts": {
+            "type": "array",
+            "minItems": 5,
+            "uniqueItems": true
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

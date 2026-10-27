@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://routesphere.local/schemas/dedicated-preflight.schema.json",
+  "title": "BonVoyage DQ-INFRA-001 preflight decision",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "preflight_id",
+    "generated_at",
+    "mode",
+    "campaign_id",
+    "status",
+    "allocation_authorized",
+    "source",
+    "auditor_host",
+    "bindings",
+    "evidence",
+    "checks",
+    "blockers",
+    "warnings",
+    "claim_boundary"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "preflight_id": { "type": "string", "pattern": "^dq-infra-001-[a-f0-9]{16}$" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "mode": { "enum": ["candidate", "rehearsal", "strict"] },
+    "campaign_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "status": { "enum": ["ready", "blocked"] },
+    "allocation_authorized": { "type": "boolean" },
+    "source": { "$ref": "#/$defs/source" },
+    "auditor_host": { "$ref": "#/$defs/auditorHost" },
+    "bindings": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "$ref": "#/$defs/binding" }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 4,
+      "items": { "$ref": "#/$defs/evidence" }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/check" }
+    },
+    "blockers": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
+    },
+    "warnings": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
+    },
+    "claim_boundary": {
+      "const": "Pre-allocation engineering evidence only; no dedicated-host performance, production-readiness, competitive, capacity, or marketing claim is authorized."
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": { "mode": { "enum": ["candidate", "rehearsal"] } },
+        "required": ["mode"]
+      },
+      "then": {
+        "properties": { "allocation_authorized": { "const": false } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "ready" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "blockers": { "type": "array", "maxItems": 0 },
+          "checks": {
+            "type": "array",
+            "not": {
+              "contains": {
+                "type": "object",
+                "properties": { "status": { "const": "block" } },
+                "required": ["status"]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "blocked" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "allocation_authorized": { "const": false },
+          "blockers": { "type": "array", "minItems": 1 },
+          "checks": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "properties": { "status": { "const": "block" } },
+              "required": ["status"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "allocation_authorized": { "const": true } },
+        "required": ["allocation_authorized"]
+      },
+      "then": {
+        "properties": {
+          "mode": { "const": "strict" },
+          "status": { "const": "ready" },
+          "blockers": { "type": "array", "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": { "const": "strict" },
+          "status": { "const": "ready" }
+        },
+        "required": ["mode", "status"]
+      },
+      "then": {
+        "properties": {
+          "allocation_authorized": { "const": true },
+          "checks": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "properties": {
+                "id": { "const": "campaign-frozen" },
+                "status": { "const": "pass" }
+              },
+              "required": ["id", "status"]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "gitCommit": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "binding": {
+      "type": "object",
+      "required": ["id", "path", "sha256"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._:-]*$" },
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "commit",
+        "remote_ref",
+        "clean",
+        "pushed",
+        "hardening_commit",
+        "runtime_changes_since_hardening"
+      ],
+      "properties": {
+        "commit": { "$ref": "#/$defs/gitCommit" },
+        "remote_ref": { "type": "string", "minLength": 1 },
+        "clean": { "type": "boolean" },
+        "pushed": { "type": "boolean" },
+        "hardening_commit": { "$ref": "#/$defs/gitCommit" },
+        "runtime_changes_since_hardening": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "auditorHost": {
+      "type": "object",
+      "required": ["operating_system", "architecture", "target_compatible"],
+      "properties": {
+        "operating_system": { "type": "string", "minLength": 1 },
+        "architecture": { "type": "string", "minLength": 1 },
+        "target_compatible": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["id", "status", "required_for_strict", "message"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "status": {
+          "enum": ["accepted", "reusable-nonpublication", "missing", "stale", "invalid"]
+        },
+        "required_for_strict": { "type": "boolean" },
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/digest" },
+        "message": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "check": {
+      "type": "object",
+      "required": ["id", "status", "message"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "status": { "enum": ["pass", "warn", "block"] },
+        "message": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

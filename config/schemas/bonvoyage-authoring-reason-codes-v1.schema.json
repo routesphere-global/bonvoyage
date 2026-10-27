@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.routesphere.global/schemas/bonvoyage-authoring-reason-codes-v1.schema.json",
+  "title": "RouteSphere BonVoyage configuration reason-code catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "classification",
+    "reason_code_version",
+    "contract_version",
+    "compiler_version",
+    "authority",
+    "security_boundary",
+    "sources",
+    "entry_count",
+    "entries"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "../../../schemas/bonvoyage-authoring-reason-codes-v1.schema.json"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "classification": {
+      "const": "routesphere-bonvoyage-configuration-reason-code-catalog"
+    },
+    "reason_code_version": {
+      "const": "bonvoyage.configuration-reason-codes.v1"
+    },
+    "contract_version": {
+      "const": "bonvoyage.configuration-authoring.v1"
+    },
+    "compiler_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registry",
+        "runtime_diagnostics",
+        "semantic_validation",
+        "presentation_scope",
+        "runtime_message_is_stable_contract",
+        "network_access",
+        "live_mutation"
+      ],
+      "properties": {
+        "registry": {
+          "const": "authoring-contract"
+        },
+        "runtime_diagnostics": {
+          "const": "bonvoyage-config"
+        },
+        "semantic_validation": {
+          "const": "snapshot.Compile"
+        },
+        "presentation_scope": {
+          "const": "static-remediation-guidance-only"
+        },
+        "runtime_message_is_stable_contract": {
+          "const": false
+        },
+        "network_access": {
+          "const": false
+        },
+        "live_mutation": {
+          "const": false
+        }
+      }
+    },
+    "security_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "offline",
+        "document_values_included",
+        "secret_values_included",
+        "environment_secret_reads",
+        "private_material_included"
+      ],
+      "properties": {
+        "offline": {
+          "const": true
+        },
+        "document_values_included": {
+          "const": false
+        },
+        "secret_values_included": {
+          "const": false
+        },
+        "environment_secret_reads": {
+          "const": false
+        },
+        "private_material_included": {
+          "const": false
+        }
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authoring_contract", "reviewed_guidance"],
+      "properties": {
+        "authoring_contract": {
+          "$ref": "#/$defs/sourceFile"
+        },
+        "reviewed_guidance": {
+          "$ref": "#/$defs/sourceFile"
+        }
+      }
+    },
+    "entry_count": {
+      "const": 31
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 31,
+      "maxItems": 31,
+      "items": {
+        "$ref": "#/$defs/entry"
+      }
+    }
+  },
+  "$defs": {
+    "sourceFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "class",
+        "default_severity",
+        "retryable",
+        "anchor",
+        "title",
+        "summary",
+        "operator_action"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^BV_CFG_[A-Z0-9_]+$",
+          "maxLength": 96
+        },
+        "class": {
+          "enum": [
+            "compatibility",
+            "input",
+            "internal",
+            "operation",
+            "schema",
+            "security",
+            "semantic",
+            "syntax"
+          ]
+        },
+        "default_severity": {
+          "enum": ["error", "warning", "info"]
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "anchor": {
+          "type": "string",
+          "pattern": "^bv-cfg-[a-z0-9-]+$",
+          "maxLength": 96
+        },
+        "title": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 80,
+          "pattern": "^[^\\r\\n]+$"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 240,
+          "pattern": "^[^\\r\\n]+$"
+        },
+        "operator_action": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 240,
+          "pattern": "^[^\\r\\n]+$"
+        }
+      }
+    }
+  }
+}

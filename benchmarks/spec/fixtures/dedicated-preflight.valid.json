@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "preflight_id": "dq-infra-001-aaaaaaaaaaaaaaaa",
+  "generated_at": "2026-09-05T01:00:00Z",
+  "mode": "strict",
+  "campaign_id": "phase1-phase3-dedicated-qualification-v1",
+  "status": "ready",
+  "allocation_authorized": true,
+  "source": {
+    "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "remote_ref": "origin/main",
+    "clean": true,
+    "pushed": true,
+    "hardening_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "runtime_changes_since_hardening": []
+  },
+  "auditor_host": {
+    "operating_system": "Ubuntu 24.04 LTS",
+    "architecture": "x86_64",
+    "target_compatible": true
+  },
+  "bindings": [
+    { "id": "campaign-plan", "path": "benchmarks/plans/dedicated-qualification-v1.yaml", "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    { "id": "product-lock", "path": "benchmarks/products/lock.json", "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
+    { "id": "host-tuning-policy", "path": "deploy/tuning/policies/throughput-balanced.yaml", "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" }
+  ],
+  "evidence": [
+    {
+      "id": "local-hardening",
+      "status": "reusable-nonpublication",
+      "required_for_strict": true,
+      "path": "evidence/qualification-summary.json",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "message": "Runtime-equivalent local stability evidence accepted inside its nonpublication boundary."
+    },
+    {
+      "id": "comparator-identity",
+      "status": "accepted",
+      "required_for_strict": true,
+      "path": "evidence/comparator-qualification.json",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "message": "Exact AMD64 comparator identities match the product lock."
+    },
+    {
+      "id": "artifact-lock",
+      "status": "accepted",
+      "required_for_strict": true,
+      "path": "evidence/artifact-lock.json",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "message": "Exact release artifacts and input bindings are locked."
+    },
+    {
+      "id": "validation-receipt",
+      "status": "accepted",
+      "required_for_strict": true,
+      "path": "evidence/validation-receipt.json",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "message": "All required exact-release checks passed with retained evidence."
+    }
+  ],
+  "checks": [
+    { "id": "campaign-contract", "status": "pass", "message": "The DQ-INFRA-001 campaign contract is valid." },
+    { "id": "campaign-frozen", "status": "pass", "message": "The campaign is frozen." },
+    { "id": "source-clean", "status": "pass", "message": "The selected source tree is clean." },
+    { "id": "source-pushed", "status": "pass", "message": "The selected source commit is present on origin/main." },
+    { "id": "runtime-equivalence", "status": "pass", "message": "No runtime-critical file changed after local hardening." },
+    { "id": "binding-integrity", "status": "pass", "message": "Every campaign input has a retained digest." },
+    { "id": "hardening-evidence", "status": "pass", "message": "The accepted 24-hour local evidence remains runtime-equivalent." },
+    { "id": "comparator-identity", "status": "pass", "message": "The AMD64 comparator identities match the product lock." },
+    { "id": "artifact-lock", "status": "pass", "message": "The exact Linux AMD64 artifact lock matches this source and campaign." },
+    { "id": "validation-receipt", "status": "pass", "message": "The exact artifact validation receipt contains every required check." }
+  ],
+  "blockers": [],
+  "warnings": [],
+  "claim_boundary": "Pre-allocation engineering evidence only; no dedicated-host performance, production-readiness, competitive, capacity, or marketing claim is authorized."
+}

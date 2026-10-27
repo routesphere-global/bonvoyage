@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "checkpoint": "PERF-05",
+  "evidence_class": "engineering-only",
+  "publication_authorized": false,
+  "measurement_environments": {
+    "local_preflight_core_count": 1,
+    "native_core_counts": [8, 24],
+    "native_roles": ["load_generator", "gateway", "controlled_upstream"]
+  },
+  "protocol_contract": {
+    "tls_version": "1.3",
+    "tls_cipher_family": "AES",
+    "certificate_validation": "ca-and-hostname",
+    "http2_alpn": "h2",
+    "http2_engine": "nghttp2",
+    "grpc_scope": "unary-only",
+    "streaming_grpc_qualified": false,
+    "sse_media_type": "text/event-stream",
+    "sse_success_requires_terminal_event": true
+  },
+  "profiles": [
+    {
+      "id": "P5-T01",
+      "question": "tls-response-boundary-cost",
+      "downstream_protocols": ["https-http1"],
+      "upstream_protocols": ["none", "http1"],
+      "payload_bytes": [15360, 16384, 17408, 65536],
+      "scenarios": ["fixed-response", "proxied-response"]
+    },
+    {
+      "id": "P5-H01",
+      "question": "downstream-http2-framing-hpack-flow-control",
+      "downstream_protocols": ["https-http2"],
+      "upstream_protocols": ["http1"],
+      "payload_bytes": [256, 8192, 65536],
+      "scenarios": ["stable-headers", "bounded-rotating-headers", "flow-control-window", "mixed-short-long-streams"]
+    },
+    {
+      "id": "P5-H02",
+      "question": "end-to-end-http2-cost-and-lifecycle",
+      "downstream_protocols": ["https-http2"],
+      "upstream_protocols": ["http2"],
+      "payload_bytes": [256, 8192, 65536],
+      "scenarios": ["healthy", "peer-cancel", "deadline", "connection-reuse"]
+    },
+    {
+      "id": "P5-G01",
+      "question": "grpc-unary-cost-and-lifecycle",
+      "downstream_protocols": ["grpc-h2"],
+      "upstream_protocols": ["grpc-h2"],
+      "payload_bytes": [256, 8192],
+      "scenarios": ["healthy", "deadline", "peer-cancel", "malformed-message", "invalid-trailers"]
+    },
+    {
+      "id": "P5-S01",
+      "question": "incremental-sse-delivery-and-lifecycle",
+      "downstream_protocols": ["https-http1", "https-http2"],
+      "upstream_protocols": ["http1-chunked"],
+      "payload_bytes": [128],
+      "scenarios": ["healthy-cadence", "slow-consumer", "peer-cancel", "upstream-stall", "terminal-error", "missing-terminal-event"]
+    }
+  ],
+  "required_metrics": [
+    "successful_rps",
+    "application_cpu_percent",
+    "host_cpu_percent",
+    "irq_cpu_percent",
+    "cycles_per_success",
+    "instructions_per_success",
+    "ipc",
+    "allocations_per_success",
+    "syscalls_per_success",
+    "writes_per_success",
+    "bytes_per_write",
+    "p50_ms",
+    "p95_ms",
+    "p99_ms",
+    "p999_reference_ms",
+    "ttfb_ms",
+    "first_semantic_event_ms",
+    "maximum_event_gap_ms",
+    "delivery_bytes_per_second",
+    "rss_bytes",
+    "file_descriptors",
+    "memory_per_active_stream_bytes",
+    "active_streams",
+    "cancellation_cleanup_ms",
+    "queue_waits",
+    "per_shard_work"
+  ],
+  "fixed_correctness_gates": {
+    "unexpected_error_count": 0,
+    "process_restart_count": 0,
+    "transport_failure_count": 0,
+    "payload_and_event_order_exact": true,
+    "tls_peer_and_hostname_verified": true,
+    "alpn_exact": true,
+    "maximum_cleanup_ms": 2000,
+    "maximum_retained_rss_growth_bytes": 16777216,
+    "maximum_retained_fd_growth": 4,
+    "final_active_streams": 0,
+    "same_process_recovery_required": true,
+    "support_role_capacity_limit_percent": 80
+  },
+  "calibration_rule": {
+    "required_before_native_measurement": true,
+    "freeze_before_measured_traffic": [
+      "offered_rate",
+      "duration_seconds",
+      "concurrency",
+      "connections",
+      "stream_count",
+      "event_count",
+      "event_interval_ms",
+      "slow_consumer_read_rate_bytes_per_second",
+      "request_and_idle_deadlines_ms",
+      "ttfb_ceiling_ms",
+      "event_gap_ceiling_ms",
+      "p95_ceiling_ms",
+      "p99_ceiling_ms"
+    ],
+    "primary_latency_percentiles": ["p50", "p95", "p99"],
+    "diagnostic_latency_percentiles": ["p99.9"]
+  },
+  "excluded_claims": [
+    "The contract does not qualify streaming gRPC or gRPC-Web.",
+    "Incremental byte forwarding does not by itself qualify SSE completion semantics.",
+    "Local or shared-VM evidence cannot authorize publication-grade performance claims.",
+    "HTTP 200 alone is not a successful SSE inference outcome.",
+    "The contract does not justify replacing nghttp2, GnuTLS, or Seastar.",
+    "The contract does not claim per-token latency or provider billing certainty."
+  ]
+}

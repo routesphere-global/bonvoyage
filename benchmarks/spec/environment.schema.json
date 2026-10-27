@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://routesphere.local/schemas/benchmark-environment.schema.json",
+  "title": "BonVoyage benchmark environment manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "captured_at",
+    "git",
+    "host",
+    "network",
+    "runtime",
+    "cpu_allocation"
+  ],
+  "properties": {
+    "schema_version": { "enum": [1, 2] },
+    "captured_at": { "type": "string", "format": "date-time" },
+    "git": {
+      "type": "object",
+      "required": ["commit", "dirty"],
+      "properties": {
+        "commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "dirty": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "host": {
+      "type": "object",
+      "required": ["os", "kernel", "architecture", "cpu_model", "logical_cpus", "memory_bytes"],
+      "properties": {
+        "os": { "type": "string", "minLength": 1 },
+        "kernel": { "type": "string", "minLength": 1 },
+        "architecture": { "enum": ["x86_64", "aarch64"] },
+        "cpu_model": { "type": "string", "minLength": 1 },
+        "logical_cpus": { "type": "integer", "minimum": 1 },
+        "memory_bytes": { "type": "integer", "minimum": 1 },
+        "physical_cores": { "type": "integer", "minimum": 1 },
+        "smt_enabled": { "type": "boolean" },
+        "governor": { "type": "string", "minLength": 1 },
+        "frequency_driver": { "type": "string", "minLength": 1 },
+        "turbo_policy": { "type": "string", "minLength": 1 },
+        "numa_nodes": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "network": {
+      "type": "object",
+      "required": ["mode", "nic", "link_speed_mbps"],
+      "properties": {
+        "mode": { "enum": ["loopback", "single-host-namespaces", "multi-host"] },
+        "nic": { "type": "string", "minLength": 1 },
+        "link_speed_mbps": { "type": "integer", "minimum": 1 },
+        "mtu": { "type": "integer", "minimum": 576 }
+      },
+      "additionalProperties": false
+    },
+    "runtime": {
+      "type": "object",
+      "required": ["container_engine", "engine_version"],
+      "properties": {
+        "container_engine": { "enum": ["docker", "podman", "none"] },
+        "engine_version": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "cpu_allocation": {
+      "type": "object",
+      "required": ["load_generator", "gateway", "upstream", "irq"],
+      "properties": {
+        "load_generator": { "type": "string", "minLength": 1 },
+        "gateway": { "type": "string", "minLength": 1 },
+        "upstream": { "type": "string", "minLength": 1 },
+        "irq": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "qualification": {
+      "type": "object",
+      "required": [
+        "evidence_class",
+        "fairness_contract_attested",
+        "physical_core_isolation",
+        "irq_isolation",
+        "thermal_stability",
+        "publication_authorized",
+        "notes"
+      ],
+      "properties": {
+        "evidence_class": { "enum": ["local-functional", "native-qualification"] },
+        "fairness_contract_attested": { "type": "boolean" },
+        "physical_core_isolation": { "type": "boolean" },
+        "irq_isolation": { "type": "boolean" },
+        "thermal_stability": { "type": "boolean" },
+        "publication_authorized": { "type": "boolean" },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "schema_version": { "const": 2 } },
+        "required": ["schema_version"]
+      },
+      "then": {
+        "type": "object",
+        "required": ["qualification"],
+        "properties": {
+          "qualification": {},
+          "host": {
+            "type": "object",
+            "required": [
+              "physical_cores",
+              "smt_enabled",
+              "governor",
+              "frequency_driver",
+              "turbo_policy",
+              "numa_nodes"
+            ],
+            "properties": {
+              "physical_cores": {},
+              "smt_enabled": {},
+              "governor": {},
+              "frequency_driver": {},
+              "turbo_policy": {},
+              "numa_nodes": {}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

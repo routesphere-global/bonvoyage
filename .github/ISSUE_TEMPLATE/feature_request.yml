@@ -1,0 +1,40 @@
+name: Feature request
+description: Propose a focused capability or operator improvement.
+title: "feature: "
+labels:
+  - enhancement
+body:
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched existing issues and documentation for this request.
+          required: true
+        - label: I can describe the user or operator outcome, not only an implementation.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and affected user
+      description: Explain the concrete workflow, failure mode, or operational cost.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe observable behavior and how success could be verified.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Current workaround or alternatives
+  - type: textarea
+    id: impact
+    attributes:
+      label: Correctness, security, and performance impact
+      description: Note expected request-path cost, compatibility risk, new dependencies, or control-plane implications.
+    validations:
+      required: true

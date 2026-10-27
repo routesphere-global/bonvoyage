@@ -1,0 +1,105 @@
+server:
+  node_id: source-ip-policy-node
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-source-ip-policy
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: untrusted-http1
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [api]
+  - name: trusted-http1
+    address: 0.0.0.0
+    port: 8081
+    protocol: http1
+    virtual_hosts: [api]
+    trusted_proxy:
+      trusted_cidrs: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+  - name: trusted-http2
+    address: 0.0.0.0
+    port: 8443
+    protocol: http2
+    virtual_hosts: [api]
+    downstream_tls:
+      certificate_chain_secret: server-chain.pem
+      private_key_secret: server-key.pem
+    trusted_proxy:
+      trusted_cidrs: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+
+virtual_hosts:
+  - name: api
+    domains: [api.example.test]
+    routes:
+      - name: protected-upstream
+        match:
+          path_exact: /api-key-observation
+        source_ip_policy:
+          allow_cidrs: [198.51.100.0/24]
+          deny_cidrs: [198.51.100.128/25]
+        api_key_auth:
+          credentials_secret: phase3-source-api-keys.txt
+        cluster: upstream
+      - name: protected-fixed
+        match:
+          path_exact: /fixed
+        source_ip_policy:
+          allow_cidrs: [198.51.100.0/24]
+          deny_cidrs: [198.51.100.128/25]
+        fixed_response:
+          status_code: 200
+          body: "source allowed\n"
+          content_type: text/plain
+      - name: deny-only
+        match:
+          path_exact: /deny-only
+        source_ip_policy:
+          deny_cidrs: [203.0.113.0/24]
+        fixed_response:
+          status_code: 200
+          body: "deny-only allowed\n"
+          content_type: text/plain
+      - name: ipv6
+        match:
+          path_exact: /ipv6
+        source_ip_policy:
+          allow_cidrs: [2001:db8:1::/48]
+          deny_cidrs: [2001:db8:1:dead::/64]
+        fixed_response:
+          status_code: 200
+          body: "ipv6 allowed\n"
+          content_type: text/plain
+      - name: public
+        match:
+          path_exact: /public
+        fixed_response:
+          status_code: 200
+          body: "public ready\n"
+          content_type: text/plain
+
+clusters:
+  - name: upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 1000
+    max_connections_per_shard: 16
+    max_pending_requests_per_shard: 16
+    endpoints:
+      - name: upstream-1
+        address: upstream
+        port: 8081
+        weight: 1
+
+runtime_limits:
+  max_downstream_connections_per_shard: 256
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 5000
+  downstream_idle_timeout_ms: 5000

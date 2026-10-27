@@ -1,0 +1,1877 @@
+openapi: 3.1.0
+info:
+  title: RouteSphere BonVoyage Standalone Admin API
+  version: 1.0.0
+  description: >-
+    Server-authoritative validation, preview, safe rollout, cancellation,
+    status, bounded diagnostics, integrity-bound audit export, and
+    exact-artifact rollback for one standalone
+    BonVoyage control plane. The API
+    is a machine boundary protected by TLS 1.3 mutual TLS and a positive
+    certificate authorization snapshot. It is not a browser or session API.
+servers:
+  - url: https://admin.bonvoyage.example:9443/api/v1
+security:
+  - adminMutualTLS: []
+tags:
+  - name: Configuration
+  - name: Rollouts
+  - name: Nodes
+paths:
+  /configurations/current/routes:
+    get:
+      operationId: listCurrentRoutes
+      tags: [Configuration]
+      summary: Read one bounded route page from the selected immutable artifact
+      description: >-
+        The required artifact digest binds the page to configuration identity
+        already observed by the caller. A changed selection fails the request
+        instead of mixing rows and metadata from different snapshots.
+      parameters:
+        - $ref: '#/components/parameters/RouteArtifactSHA256'
+        - $ref: '#/components/parameters/RouteOffset'
+        - $ref: '#/components/parameters/RouteLimit'
+        - $ref: '#/components/parameters/RouteQuery'
+      responses:
+        '200':
+          description: Bounded, secret-free route catalog page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteCatalogPage'
+        default:
+          $ref: '#/components/responses/Problem'
+  /configurations/validate:
+    post:
+      operationId: validateConfiguration
+      tags: [Configuration]
+      summary: Validate and deterministically compile desired state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigurationRequest'
+      responses:
+        '200':
+          description: The desired state is valid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResult'
+        '422':
+          description: The desired state was rejected with bounded, redacted diagnostics.
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationValidationProblem'
+        default:
+          $ref: '#/components/responses/Problem'
+  /configurations/preview:
+    post:
+      operationId: previewConfiguration
+      tags: [Configuration]
+      summary: Compare desired state with an immutable baseline rollout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreviewRequest'
+      responses:
+        '200':
+          description: Deterministic semantic diff and plan fingerprint.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreviewResult'
+        default:
+          $ref: '#/components/responses/Problem'
+  /rollouts:
+    post:
+      operationId: applyConfiguration
+      tags: [Rollouts]
+      summary: Persist, start, and select one previewed rollout
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyRequest'
+      responses:
+        '202':
+          description: The rollout is durably started and selected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResult'
+        default:
+          $ref: '#/components/responses/Problem'
+  /rollbacks/preview:
+    post:
+      operationId: previewRollback
+      tags: [Rollouts]
+      summary: Preview restoration of an exact retained artifact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RollbackPreviewRequest'
+      responses:
+        '200':
+          description: Deterministic rollback diff and plan fingerprint.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreviewResult'
+        default:
+          $ref: '#/components/responses/Problem'
+  /rollbacks:
+    post:
+      operationId: rollbackConfiguration
+      tags: [Rollouts]
+      summary: Select an exact retained artifact under a new rollout sequence
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RollbackRequest'
+      responses:
+        '202':
+          description: The rollback is durably started and selected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResult'
+        default:
+          $ref: '#/components/responses/Problem'
+  /rollouts/current:
+    get:
+      operationId: getCurrentRollout
+      tags: [Rollouts]
+      summary: Read the explicitly selected runtime authority
+      responses:
+        '200':
+          description: Current rollout status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RolloutStatus'
+        default:
+          $ref: '#/components/responses/Problem'
+  /rollouts/{sequence}:
+    get:
+      operationId: getRollout
+      tags: [Rollouts]
+      summary: Read one historical or selected rollout
+      parameters:
+        - $ref: '#/components/parameters/RolloutSequence'
+      responses:
+        '200':
+          description: Rollout status reconstructed from durable state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RolloutStatus'
+        default:
+          $ref: '#/components/responses/Problem'
+  /rollouts/{sequence}/cancel:
+    post:
+      operationId: cancelRollout
+      tags: [Rollouts]
+      summary: Cancel a selected rollout before activation begins
+      description: >-
+        Cancellation is accepted only before any ACTIVATE command is emitted.
+        After activation begins, an exact rollback under a new sequence is
+        required.
+      parameters:
+        - $ref: '#/components/parameters/RolloutSequence'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelRequest'
+      responses:
+        '202':
+          description: The cancellation decision is durably journaled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResult'
+        default:
+          $ref: '#/components/responses/Problem'
+  /rollouts/{sequence}/diagnostics:
+    get:
+      operationId: getRolloutDiagnostics
+      tags: [Rollouts]
+      summary: Read bounded structured rollout diagnostics
+      parameters:
+        - $ref: '#/components/parameters/RolloutSequence'
+      responses:
+        '200':
+          description: Ordered diagnostics reconstructed from the verified journal.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticsResult'
+        default:
+          $ref: '#/components/responses/Problem'
+  /rollouts/{sequence}/desired-state:
+    get:
+      operationId: getRolloutDesiredState
+      tags: [Rollouts]
+      summary: Read the immutable desired-state source retained for one rollout
+      description: >-
+        Returns the exact YAML source that produced the rollout artifact. Secret
+        references remain unresolved and no credential material is returned.
+      parameters:
+        - $ref: '#/components/parameters/RolloutSequence'
+      responses:
+        '200':
+          description: Desired-state source bound to rollout and artifact identity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DesiredStateResult'
+        default:
+          $ref: '#/components/responses/Problem'
+  /rollouts/{sequence}/audit:
+    get:
+      operationId: getRolloutAudit
+      tags: [Rollouts]
+      summary: Export a paged integrity-bound rollout audit record
+      description: >-
+        Returns immutable operator and artifact lineage plus a bounded page of
+        replay-verified journal events. The manifest digest binds the complete
+        journal at export time, including events outside the returned page.
+      parameters:
+        - $ref: '#/components/parameters/RolloutSequence'
+        - $ref: '#/components/parameters/AuditAfterIndex'
+        - $ref: '#/components/parameters/AuditLimit'
+      responses:
+        '200':
+          description: Paged audit evidence reconstructed from durable authority.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditResult'
+        default:
+          $ref: '#/components/responses/Problem'
+  /nodes:
+    get:
+      operationId: listNodes
+      tags: [Nodes]
+      summary: List durable node identities with separate runtime observations
+      responses:
+        '200':
+          description: Stable node identities, lifecycle, credentials, and current runtime observations.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeListResult'
+        default:
+          $ref: '#/components/responses/Problem'
+    post:
+      operationId: createNode
+      tags: [Nodes]
+      summary: Create a stable node identity and one-time enrollment plan
+      description: >-
+        Administrator-only. The raw enrollment token is returned exactly once
+        for a fresh mutation and is never returned by an idempotent replay.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNodeRequest'
+      responses:
+        '201':
+          description: Durable node identity and, for a fresh mutation, its one-time enrollment plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeEnrollmentResult'
+        default:
+          $ref: '#/components/responses/Problem'
+  /nodes/{node_id}:
+    parameters:
+      - $ref: '#/components/parameters/NodeIDPath'
+    get:
+      operationId: getNode
+      tags: [Nodes]
+      summary: Read one durable node identity and its runtime projection
+      responses:
+        '200':
+          description: Current node lifecycle and runtime state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedNode'
+        default:
+          $ref: '#/components/responses/Problem'
+    patch:
+      operationId: updateNode
+      tags: [Nodes]
+      summary: Update mutable node display and placement metadata
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNodeRequest'
+      responses:
+        '200':
+          description: Metadata update result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeMutationResult'
+        default:
+          $ref: '#/components/responses/Problem'
+  /nodes/{node_id}/events:
+    parameters:
+      - $ref: '#/components/parameters/NodeIDPath'
+    get:
+      operationId: listNodeEvents
+      tags: [Nodes]
+      summary: Read append-only lifecycle history for one node
+      parameters:
+        - $ref: '#/components/parameters/AuditAfterIndex'
+        - $ref: '#/components/parameters/AuditLimit'
+      responses:
+        '200':
+          description: Secret-free node lifecycle history in durable order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeEventsResult'
+        default:
+          $ref: '#/components/responses/Problem'
+  /nodes/{node_id}/enrollment-token:
+    parameters:
+      - $ref: '#/components/parameters/NodeIDPath'
+    post:
+      operationId: reissueNodeEnrollment
+      tags: [Nodes]
+      summary: Invalidate prior bootstrap credentials and issue one replacement
+      description: Administrator-only and valid only while the node is ENROLLING.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReissueNodeRequest'
+      responses:
+        '201':
+          description: Reissued one-time enrollment plan, omitted on replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeEnrollmentResult'
+        default:
+          $ref: '#/components/responses/Problem'
+  /nodes/{node_id}/replacements:
+    parameters:
+      - $ref: '#/components/parameters/NodeIDPath'
+    post:
+      operationId: replaceNode
+      tags: [Nodes]
+      summary: Create a linked replacement identity without removing its predecessor
+      description: >-
+        Administrator-only. X-BonVoyage-Node-Confirm must equal
+        replace:<node_id>. The predecessor remains operational until separately
+        drained and retired.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/NodeConfirmation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceNodeRequest'
+      responses:
+        '201':
+          description: Linked replacement and its one-time enrollment plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeEnrollmentResult'
+        default:
+          $ref: '#/components/responses/Problem'
+  /nodes/{node_id}/drain:
+    parameters:
+      - $ref: '#/components/parameters/NodeIDPath'
+    post:
+      operationId: drainNode
+      tags: [Nodes]
+      summary: Make a node ineligible for future rollouts
+      description: >-
+        Records operator drain intent. This does not claim that active traffic
+        or the running dataplane process has already stopped.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NodeTransitionRequest'
+      responses:
+        '202':
+          description: Drain intent is durable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeMutationResult'
+        default:
+          $ref: '#/components/responses/Problem'
+  /nodes/{node_id}/retire:
+    parameters:
+      - $ref: '#/components/parameters/NodeIDPath'
+    post:
+      operationId: retireNode
+      tags: [Nodes]
+      summary: Retire a drained, disconnected, de-targeted identity
+      description: >-
+        Administrator-only. X-BonVoyage-Node-Confirm must equal
+        retire:<node_id>. Retirement preserves the identity and history.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/NodeConfirmation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NodeTransitionRequest'
+      responses:
+        '200':
+          description: Durable retirement result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeMutationResult'
+        default:
+          $ref: '#/components/responses/Problem'
+  /nodes/{node_id}/revoke:
+    parameters:
+      - $ref: '#/components/parameters/NodeIDPath'
+    post:
+      operationId: revokeNode
+      tags: [Nodes]
+      summary: Revoke an enrolled node management identity
+      description: >-
+        Administrator-only. X-BonVoyage-Node-Confirm must equal
+        revoke:<node_id>. New discovery authentication and periodic credential
+        reauthorization fail closed after the durable decision.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/NodeConfirmation'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NodeTransitionRequest'
+      responses:
+        '200':
+          description: Durable identity revocation result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeMutationResult'
+        default:
+          $ref: '#/components/responses/Problem'
+components:
+  securitySchemes:
+    adminMutualTLS:
+      type: mutualTLS
+      description: >-
+        Dedicated Admin client trust. The verified leaf must also match one
+        fresh, fingerprint-pinned SPIFFE authorization entry.
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: >-
+        Caller-generated 16-128 byte printable key. It is scoped by the
+        authenticated actor, method, and path; changing the operation intent
+        under the same key is rejected.
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+        pattern: '^[!-~]+$'
+    NodeIDPath:
+      name: node_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/NodeID'
+    NodeConfirmation:
+      name: X-BonVoyage-Node-Confirm
+      in: header
+      required: true
+      description: Exact action and path node binding, for example retire:edge-sin-01.
+      schema:
+        type: string
+        minLength: 3
+        maxLength: 160
+    RolloutSequence:
+      name: sequence
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Sequence'
+    AuditAfterIndex:
+      name: after_index
+      in: query
+      required: false
+      description: Return events whose immutable index is greater than this value.
+      schema:
+        type: integer
+        format: uint64
+        minimum: 0
+        default: 0
+    AuditLimit:
+      name: limit
+      in: query
+      required: false
+      description: Maximum journal events returned in this bounded page.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 250
+        default: 100
+    RouteArtifactSHA256:
+      name: artifact_sha256
+      in: query
+      required: true
+      description: Exact selected artifact identity already observed by the caller.
+      schema:
+        $ref: '#/components/schemas/Digest'
+    RouteOffset:
+      name: offset
+      in: query
+      required: false
+      description: Zero-based offset within the filtered immutable route catalog.
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 1000000
+        default: 0
+    RouteLimit:
+      name: limit
+      in: query
+      required: false
+      description: Maximum route summaries returned in one bounded response.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 500
+        default: 200
+    RouteQuery:
+      name: query
+      in: query
+      required: false
+      description: Case-insensitive bounded search over route identity, match, destination, and policy presence.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+  responses:
+    Problem:
+      description: A bounded, sanitized RFC 9457-style problem response.
+      headers:
+        X-Request-ID:
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    Sequence:
+      type: integer
+      format: uint64
+      minimum: 1
+    Digest:
+      type: string
+      pattern: '^[0-9a-f]{64}$'
+    NodeID:
+      type: string
+      minLength: 1
+      maxLength: 128
+      pattern: '^[A-Za-z0-9_][A-Za-z0-9._:-]{0,127}$'
+    TargetNodeIDs:
+      type: array
+      minItems: 1
+      maxItems: 10000
+      uniqueItems: true
+      items:
+        $ref: '#/components/schemas/NodeID'
+    NodeLifecycle:
+      type: string
+      enum: [ENROLLING, READY, DRAINING, RETIRED, REVOKED]
+    NodeMetadata:
+      type: object
+      additionalProperties: false
+      required: [display_name, group]
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        group:
+          allOf:
+            - $ref: '#/components/schemas/NodeID'
+          maxLength: 128
+        labels:
+          type: object
+          maxProperties: 32
+          propertyNames:
+            minLength: 1
+            maxLength: 64
+            pattern: '^[A-Za-z0-9_][A-Za-z0-9._:-]{0,63}$'
+          additionalProperties:
+            type: string
+            maxLength: 128
+    CreateNodeRequest:
+      type: object
+      additionalProperties: false
+      required: [node_id, metadata, reason]
+      properties:
+        node_id:
+          $ref: '#/components/schemas/NodeID'
+        metadata:
+          $ref: '#/components/schemas/NodeMetadata'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1024
+        ttl_seconds:
+          type: integer
+          minimum: 1
+          maximum: 3600
+          default: 600
+    UpdateNodeRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_version, metadata, reason]
+      properties:
+        expected_version:
+          type: integer
+          format: uint64
+          minimum: 1
+        metadata:
+          $ref: '#/components/schemas/NodeMetadata'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1024
+    ReissueNodeRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_version, reason]
+      properties:
+        expected_version:
+          type: integer
+          format: uint64
+          minimum: 1
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1024
+        ttl_seconds:
+          type: integer
+          minimum: 1
+          maximum: 3600
+          default: 600
+    ReplaceNodeRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_version, replacement_node_id, metadata, reason]
+      properties:
+        expected_version:
+          type: integer
+          format: uint64
+          minimum: 1
+        replacement_node_id:
+          $ref: '#/components/schemas/NodeID'
+        metadata:
+          $ref: '#/components/schemas/NodeMetadata'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1024
+        ttl_seconds:
+          type: integer
+          minimum: 1
+          maximum: 3600
+          default: 600
+    NodeTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_version, reason]
+      properties:
+        expected_version:
+          type: integer
+          format: uint64
+          minimum: 1
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1024
+    NodeRuntime:
+      type: object
+      additionalProperties: false
+      required: [connected, reconciled, pending_commands]
+      properties:
+        connected:
+          type: boolean
+        process_instance:
+          type: string
+        last_seen:
+          type: string
+          format: date-time
+        credential_not_after:
+          type: string
+          format: date-time
+        reconciled:
+          type: boolean
+        rollout_phase:
+          type: string
+          enum: [PENDING, PREPARING, PREPARED, ACTIVATING, ACTIVE, CANCEL_PENDING, CANCELLED, FAILED, PRIOR_ACTIVE]
+        active_snapshot_id:
+          type: string
+        prepared_sequence:
+          type: integer
+          format: uint64
+          minimum: 0
+        pending_commands:
+          type: integer
+          minimum: 0
+    ManagedNode:
+      type: object
+      additionalProperties: false
+      required:
+        - node_id
+        - metadata
+        - lifecycle
+        - version
+        - created_at
+        - updated_at
+        - enrolled
+        - runtime
+        - eligible_for_rollout
+      properties:
+        node_id:
+          $ref: '#/components/schemas/NodeID'
+        metadata:
+          $ref: '#/components/schemas/NodeMetadata'
+        lifecycle:
+          $ref: '#/components/schemas/NodeLifecycle'
+        version:
+          type: integer
+          format: uint64
+          minimum: 1
+        replacement_for:
+          $ref: '#/components/schemas/NodeID'
+        replaced_by:
+          $ref: '#/components/schemas/NodeID'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        drain_requested_at:
+          type: string
+          format: date-time
+        retired_at:
+          type: string
+          format: date-time
+        revoked_at:
+          type: string
+          format: date-time
+        enrolled:
+          type: boolean
+        credential_generation:
+          type: string
+        certificate_not_after:
+          type: string
+          format: date-time
+        renew_after:
+          type: string
+          format: date-time
+        runtime:
+          $ref: '#/components/schemas/NodeRuntime'
+        eligible_for_rollout:
+          type: boolean
+    NodeListResult:
+      type: object
+      additionalProperties: false
+      required: [api_version, nodes]
+      properties:
+        api_version:
+          const: v1
+        nodes:
+          type: array
+          maxItems: 10000
+          items:
+            $ref: '#/components/schemas/ManagedNode'
+    NodeMutationResult:
+      type: object
+      additionalProperties: false
+      required: [api_version, replayed, node]
+      properties:
+        api_version:
+          const: v1
+        replayed:
+          type: boolean
+        node:
+          $ref: '#/components/schemas/ManagedNode'
+    NodeEnrollmentBootstrap:
+      type: object
+      additionalProperties: false
+      required:
+        - token
+        - expires_at
+        - enrollment_address
+        - server_name
+        - audience
+        - trust_domain
+        - node_path_prefix
+      properties:
+        token:
+          type: string
+          writeOnly: true
+          description: One-time bearer credential returned only by a fresh mutation.
+        expires_at:
+          type: string
+          format: date-time
+        enrollment_address:
+          type: string
+        server_name:
+          type: string
+        audience:
+          type: string
+        trust_domain:
+          type: string
+        node_path_prefix:
+          type: string
+    NodeEnrollmentResult:
+      type: object
+      additionalProperties: false
+      required: [api_version, replayed, node]
+      properties:
+        api_version:
+          const: v1
+        replayed:
+          type: boolean
+        node:
+          $ref: '#/components/schemas/ManagedNode'
+        enrollment:
+          $ref: '#/components/schemas/NodeEnrollmentBootstrap'
+    NodeEvent:
+      type: object
+      additionalProperties: false
+      required: [index, event_id, node_id, kind, actor, reason, node_version, created_at]
+      properties:
+        index:
+          type: integer
+          format: uint64
+          minimum: 1
+        event_id:
+          type: string
+        request_sha256:
+          $ref: '#/components/schemas/Digest'
+        node_id:
+          $ref: '#/components/schemas/NodeID'
+        kind:
+          type: string
+          enum:
+            - ENROLLMENT_CREATED
+            - ENROLLMENT_REISSUED
+            - ENROLLED
+            - IMPORTED
+            - METADATA_UPDATED
+            - DRAIN_REQUESTED
+            - RETIRED
+            - REVOKED
+            - REPLACEMENT_CREATED
+        actor:
+          type: string
+        reason:
+          type: string
+        node_version:
+          type: integer
+          format: uint64
+          minimum: 1
+        related_node_id:
+          $ref: '#/components/schemas/NodeID'
+        created_at:
+          type: string
+          format: date-time
+    NodeEventsResult:
+      type: object
+      additionalProperties: false
+      required:
+        - api_version
+        - node_id
+        - after_index
+        - next_after_index
+        - limit
+        - total_events
+        - has_more
+        - events
+      properties:
+        api_version:
+          const: v1
+        node_id:
+          $ref: '#/components/schemas/NodeID'
+        after_index:
+          type: integer
+          format: uint64
+          minimum: 0
+        next_after_index:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Cursor to supply as after_index for the next page.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 250
+        total_events:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        has_more:
+          type: boolean
+        events:
+          type: array
+          maxItems: 250
+          items:
+            $ref: '#/components/schemas/NodeEvent'
+    RolloutPolicy:
+      type: object
+      additionalProperties: false
+      required:
+        - strategy
+        - prepare_timeout_seconds
+        - activation_timeout_seconds
+        - automatic_rollback
+      properties:
+        enabled:
+          type: boolean
+          const: true
+          readOnly: true
+          description: Present as true in responses; request presence enables the policy.
+        strategy:
+          type: string
+          enum: [IMMEDIATE, CANARY]
+        canary_node_ids:
+          type: array
+          minItems: 1
+          maxItems: 128
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/NodeID'
+          description: Required for CANARY and forbidden for IMMEDIATE.
+        minimum_healthy_canary_percent:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Required for CANARY and forbidden for IMMEDIATE.
+        canary_observation_seconds:
+          type: integer
+          minimum: 1
+          maximum: 86400
+          description: Required for CANARY and forbidden for IMMEDIATE.
+        prepare_timeout_seconds:
+          type: integer
+          minimum: 1
+          maximum: 7200
+        activation_timeout_seconds:
+          type: integer
+          minimum: 1
+          maximum: 7200
+        heartbeat_stale_after_seconds:
+          type: integer
+          minimum: 1
+          maximum: 86400
+          description: >-
+            Required for CANARY, forbidden for IMMEDIATE, and no greater than
+            canary_observation_seconds.
+        automatic_rollback:
+          type: boolean
+          description: >-
+            Creates a new exact rollback sequence after every target node has
+            reconciled an artifact within the failed/baseline lineage.
+    ConfigurationRequest:
+      type: object
+      additionalProperties: false
+      required: [document]
+      properties:
+        document:
+          type: string
+          minLength: 1
+          maxLength: 4194304
+          description: Strict BonVoyage desired-state YAML.
+    PreviewRequest:
+      type: object
+      additionalProperties: false
+      required: [document, baseline_rollout_sequence, target_node_ids]
+      properties:
+        document:
+          type: string
+          minLength: 1
+          maxLength: 4194304
+        baseline_rollout_sequence:
+          $ref: '#/components/schemas/Sequence'
+        target_node_ids:
+          $ref: '#/components/schemas/TargetNodeIDs'
+        policy:
+          $ref: '#/components/schemas/RolloutPolicy'
+    ApplyRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - document
+        - source_revision
+        - reason
+        - target_node_ids
+        - expected_selected_rollout_sequence
+        - expected_active_artifact_sha256
+        - preview_fingerprint_sha256
+      properties:
+        document:
+          type: string
+          minLength: 1
+          maxLength: 4194304
+        source_revision:
+          type: string
+          maxLength: 256
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1024
+        target_node_ids:
+          $ref: '#/components/schemas/TargetNodeIDs'
+        expected_selected_rollout_sequence:
+          $ref: '#/components/schemas/Sequence'
+        expected_active_artifact_sha256:
+          $ref: '#/components/schemas/Digest'
+        preview_fingerprint_sha256:
+          $ref: '#/components/schemas/Digest'
+        policy:
+          $ref: '#/components/schemas/RolloutPolicy'
+    CancelRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1024
+    RollbackPreviewRequest:
+      type: object
+      additionalProperties: false
+      required: [current_rollout_sequence, target_rollout_sequence, target_node_ids]
+      properties:
+        current_rollout_sequence:
+          $ref: '#/components/schemas/Sequence'
+        target_rollout_sequence:
+          $ref: '#/components/schemas/Sequence'
+        target_node_ids:
+          $ref: '#/components/schemas/TargetNodeIDs'
+    RollbackRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - reason
+        - target_node_ids
+        - expected_selected_rollout_sequence
+        - expected_active_artifact_sha256
+        - rollback_target_sequence
+        - preview_fingerprint_sha256
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1024
+        target_node_ids:
+          $ref: '#/components/schemas/TargetNodeIDs'
+        expected_selected_rollout_sequence:
+          $ref: '#/components/schemas/Sequence'
+        expected_active_artifact_sha256:
+          $ref: '#/components/schemas/Digest'
+        rollback_target_sequence:
+          $ref: '#/components/schemas/Sequence'
+        preview_fingerprint_sha256:
+          $ref: '#/components/schemas/Digest'
+    ValidationResult:
+      type: object
+      additionalProperties: false
+      required:
+        - api_version
+        - valid
+        - snapshot_id
+        - artifact_sha256
+        - schema_version
+        - minimum_dataplane_version
+        - artifact_bytes
+      properties:
+        api_version:
+          const: v1
+        valid:
+          const: true
+        snapshot_id:
+          type: string
+        artifact_sha256:
+          $ref: '#/components/schemas/Digest'
+        schema_version:
+          type: integer
+          minimum: 1
+        minimum_dataplane_version:
+          type: string
+        artifact_bytes:
+          type: integer
+          minimum: 1
+    ConfigurationPosition:
+      type: object
+      additionalProperties: false
+      required: [line, column, byte_offset]
+      properties:
+        line:
+          type: integer
+          minimum: 1
+        column:
+          type: integer
+          minimum: 1
+        byte_offset:
+          type: integer
+          minimum: 0
+    ConfigurationSourceRange:
+      type: object
+      additionalProperties: false
+      required: [start, end]
+      properties:
+        start:
+          $ref: '#/components/schemas/ConfigurationPosition'
+        end:
+          $ref: '#/components/schemas/ConfigurationPosition'
+    ConfigurationDiagnostic:
+      type: object
+      additionalProperties: false
+      required: [code, severity, message, redacted]
+      properties:
+        code:
+          type: string
+          maxLength: 128
+          pattern: '^BV_CFG_[A-Z0-9_]+$'
+        severity:
+          type: string
+          enum: [error, warning, info]
+        message:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        path:
+          type: string
+          maxLength: 4096
+          pattern: '^(?:|(?:/(?:[^~/]|~[01])*)+)$'
+        source:
+          $ref: '#/components/schemas/ConfigurationSourceRange'
+        redacted:
+          type: boolean
+    ConfigurationValidationProblem:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - title
+        - status
+        - code
+        - detail
+        - request_id
+        - diagnostics
+        - diagnostics_truncated
+      properties:
+        type:
+          const: urn:routesphere:bonvoyage:problem:invalid_configuration
+        title:
+          type: string
+          maxLength: 128
+        status:
+          const: 422
+        code:
+          const: INVALID_CONFIGURATION
+        detail:
+          type: string
+          maxLength: 512
+        request_id:
+          type: string
+          maxLength: 128
+        diagnostics:
+          type: array
+          minItems: 1
+          maxItems: 256
+          items:
+            $ref: '#/components/schemas/ConfigurationDiagnostic'
+        diagnostics_truncated:
+          type: boolean
+    SnapshotSummary:
+      type: object
+      additionalProperties: false
+      required: [snapshot_id, artifact_sha256, schema_version, minimum_dataplane_version, artifact_bytes]
+      properties:
+        snapshot_id:
+          type: string
+        artifact_sha256:
+          $ref: '#/components/schemas/Digest'
+        schema_version:
+          type: integer
+          minimum: 1
+        minimum_dataplane_version:
+          type: string
+        artifact_bytes:
+          type: integer
+          minimum: 1
+    ResourceCounts:
+      type: object
+      additionalProperties: false
+      required: [listeners, virtual_hosts, routes, clusters]
+      properties:
+        listeners: {type: integer, minimum: 0}
+        virtual_hosts: {type: integer, minimum: 0}
+        routes: {type: integer, minimum: 0}
+        clusters: {type: integer, minimum: 0}
+    ResourceChange:
+      type: object
+      additionalProperties: false
+      required: [resource_type, resource_name, change]
+      properties:
+        resource_type:
+          type: string
+        resource_name:
+          type: string
+        change:
+          type: string
+          enum: [ADDED, MODIFIED, REMOVED]
+    PreviewResult:
+      type: object
+      additionalProperties: false
+      required:
+        - api_version
+        - baseline_rollout_sequence
+        - baseline
+        - proposed
+        - proposed_counts
+        - target_node_ids
+        - changes
+        - no_change
+        - plan_fingerprint_sha256
+      properties:
+        api_version:
+          const: v1
+        baseline_rollout_sequence:
+          $ref: '#/components/schemas/Sequence'
+        baseline:
+          $ref: '#/components/schemas/SnapshotSummary'
+        proposed:
+          $ref: '#/components/schemas/SnapshotSummary'
+        proposed_counts:
+          $ref: '#/components/schemas/ResourceCounts'
+        target_node_ids:
+          $ref: '#/components/schemas/TargetNodeIDs'
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceChange'
+        no_change:
+          type: boolean
+        plan_fingerprint_sha256:
+          $ref: '#/components/schemas/Digest'
+        rollback_target_sequence:
+          $ref: '#/components/schemas/Sequence'
+        policy:
+          $ref: '#/components/schemas/RolloutPolicy'
+    MutationResult:
+      type: object
+      additionalProperties: false
+      required: [api_version, replayed, status]
+      properties:
+        api_version:
+          const: v1
+        replayed:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/RolloutStatus'
+    RolloutStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - api_version
+        - rollout_id
+        - request_id
+        - sequence
+        - kind
+        - phase
+        - artifact
+        - desired_revision_id
+        - compiler_version
+        - target_node_ids
+        - source_channel
+        - actor
+        - reason
+        - created_at
+        - selected
+        - nodes
+      properties:
+        api_version:
+          const: v1
+        rollout_id:
+          type: string
+        request_id:
+          type: string
+        sequence:
+          $ref: '#/components/schemas/Sequence'
+        kind:
+          type: string
+          enum: [APPLY, ROLLBACK]
+        rollback_target_sequence:
+          $ref: '#/components/schemas/Sequence'
+        phase:
+          type: string
+          enum: [PENDING, PREPARING, ACTIVATING, OBSERVING, ACTIVE, CANCELLED, REQUIRES_ROLLBACK]
+        artifact:
+          $ref: '#/components/schemas/SnapshotSummary'
+        previous_artifact_sha256:
+          $ref: '#/components/schemas/Digest'
+        baseline_rollout_sequence:
+          $ref: '#/components/schemas/Sequence'
+        desired_revision_id:
+          type: string
+        compiler_version:
+          type: string
+        target_node_ids:
+          $ref: '#/components/schemas/TargetNodeIDs'
+        source_channel:
+          type: string
+          enum: [api, cli, console, gitops, file, system]
+        actor:
+          type: string
+        reason:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        selected:
+          type: boolean
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/NodeStatus'
+        connections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConnectionObservation'
+        policy:
+          $ref: '#/components/schemas/RolloutPolicy'
+    DesiredStateResult:
+      type: object
+      additionalProperties: false
+      required:
+        - api_version
+        - rollout_sequence
+        - desired_revision_id
+        - document
+        - source_channel
+        - actor
+        - created_at
+        - snapshot_id
+        - artifact_sha256
+      properties:
+        api_version:
+          const: v1
+        rollout_sequence:
+          $ref: '#/components/schemas/Sequence'
+        desired_revision_id:
+          type: string
+        document:
+          type: string
+          minLength: 1
+          maxLength: 4194304
+        source_channel:
+          type: string
+          enum: [api, cli, console, gitops, file, system]
+        source_revision:
+          type: string
+          maxLength: 256
+        actor:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        snapshot_id:
+          type: string
+        artifact_sha256:
+          $ref: '#/components/schemas/Digest'
+    NodeStatus:
+      type: object
+      additionalProperties: false
+      required: [node_id, phase, connected]
+      properties:
+        node_id:
+          $ref: '#/components/schemas/NodeID'
+        phase:
+          type: string
+          enum: [PENDING, PREPARING, PREPARED, ACTIVATING, ACTIVE, CANCEL_PENDING, CANCELLED, FAILED, PRIOR_ACTIVE]
+        connected:
+          type: boolean
+        process_instance:
+          type: string
+    ConnectionObservation:
+      type: object
+      additionalProperties: false
+      required:
+        - node_id
+        - process_instance
+        - credential_not_after
+        - connected_at
+        - last_seen
+        - last_rollout_sequence
+        - pending_commands
+        - reconciled
+      properties:
+        node_id:
+          $ref: '#/components/schemas/NodeID'
+        process_instance:
+          type: string
+        credential_not_after:
+          type: string
+          format: date-time
+        connected_at:
+          type: string
+          format: date-time
+        last_seen:
+          type: string
+          format: date-time
+        last_rollout_sequence:
+          type: integer
+          format: uint64
+          minimum: 0
+        active_snapshot_id:
+          type: string
+        prepared_sequence:
+          type: integer
+          format: uint64
+          minimum: 0
+        pending_commands:
+          type: integer
+          minimum: 0
+        reconciled:
+          type: boolean
+    RouteCatalogPage:
+      type: object
+      additionalProperties: false
+      required:
+        - api_version
+        - rollout_sequence
+        - snapshot_id
+        - artifact_sha256
+        - total_routes
+        - matching_routes
+        - offset
+        - limit
+        - routes
+      properties:
+        api_version:
+          const: v1
+        rollout_sequence:
+          $ref: '#/components/schemas/Sequence'
+        snapshot_id:
+          type: string
+        artifact_sha256:
+          $ref: '#/components/schemas/Digest'
+        total_routes:
+          type: integer
+          minimum: 0
+        matching_routes:
+          type: integer
+          minimum: 0
+        offset:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 500
+        routes:
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/RouteCatalogEntry'
+    RouteCatalogEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - index
+        - virtual_host
+        - route
+        - domains
+        - match_type
+        - match_value
+        - methods
+        - destination_type
+        - destination
+        - policies
+      properties:
+        index:
+          type: integer
+          minimum: 0
+        virtual_host:
+          type: string
+        route:
+          type: string
+        domains:
+          type: array
+          items: {type: string}
+        match_type:
+          type: string
+          enum: [ANY, EXACT, PREFIX, SAFE_REGEX]
+        match_value:
+          type: string
+        methods:
+          type: array
+          minItems: 1
+          items: {type: string}
+        destination_type:
+          type: string
+          enum: [CLUSTER, WEIGHTED_CLUSTERS, FIXED_RESPONSE, REDIRECT, UNRESOLVED]
+        destination:
+          type: string
+        policies:
+          type: array
+          items:
+            type: string
+            enum:
+              - ADMISSION
+              - RATE_LIMIT
+              - API_KEY
+              - JWT
+              - SOURCE_IP
+              - CORS
+              - REQUEST_CONTENT
+              - HEADER_TRANSFORM
+              - REWRITE
+              - WEBSOCKET
+    DiagnosticsResult:
+      type: object
+      additionalProperties: false
+      required: [api_version, sequence, total_events, truncated, events]
+      properties:
+        api_version:
+          const: v1
+        sequence:
+          $ref: '#/components/schemas/Sequence'
+        total_events:
+          type: integer
+          format: uint64
+          minimum: 0
+        first_index:
+          type: integer
+          format: uint64
+          minimum: 1
+        last_index:
+          type: integer
+          format: uint64
+          minimum: 1
+        truncated:
+          type: boolean
+          description: True when only the newest 500 events are returned.
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiagnosticEvent'
+    DiagnosticEvent:
+      type: object
+      additionalProperties: false
+      required: [index, event_id, kind, event_sha256, phase, created_at]
+      properties:
+        index:
+          type: integer
+          format: uint64
+          minimum: 1
+        event_id:
+          type: string
+        kind:
+          type: string
+        event_sha256:
+          $ref: '#/components/schemas/Digest'
+        phase:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        error:
+          $ref: '#/components/schemas/DiagnosticError'
+        report:
+          $ref: '#/components/schemas/DiagnosticReport'
+        policy:
+          $ref: '#/components/schemas/DiagnosticPolicy'
+        cancellation:
+          $ref: '#/components/schemas/DiagnosticCancellation'
+    DiagnosticError:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code: {type: string}
+        message: {type: string}
+    DiagnosticReport:
+      type: object
+      additionalProperties: false
+      required: [node_id, process_instance, sequence, operation, result, shard_count, completed_shards]
+      properties:
+        node_id:
+          $ref: '#/components/schemas/NodeID'
+        process_instance: {type: string}
+        sequence:
+          $ref: '#/components/schemas/Sequence'
+        operation:
+          type: string
+          enum: [PREPARE, ACTIVATE, CANCEL]
+        result:
+          type: string
+          enum: [ACK, NACK]
+        shard_count: {type: integer, minimum: 0}
+        completed_shards: {type: integer, minimum: 0}
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiagnosticIssue'
+    DiagnosticIssue:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code: {type: string}
+        field_path: {type: string}
+        message: {type: string}
+    DiagnosticCancellation:
+      description: >-
+        Authenticated attribution for an explicit cancellation. Version-1 journal
+        records expose LEGACY_UNAVAILABLE and omit actor and source_channel rather
+        than reconstructing historical identity.
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [reason, actor, source_channel, attribution_status]
+          properties:
+            reason:
+              type: string
+            actor:
+              type: string
+            source_channel:
+              type: string
+              enum: [api, cli, console, gitops]
+            attribution_status:
+              type: string
+              enum: [RECORDED]
+        - type: object
+          additionalProperties: false
+          required: [reason, attribution_status]
+          properties:
+            reason:
+              type: string
+            attribution_status:
+              type: string
+              enum: [LEGACY_UNAVAILABLE]
+    DiagnosticPolicy:
+      type: object
+      additionalProperties: false
+      required: [observed_at, decision, reason]
+      properties:
+        observed_at:
+          type: string
+          format: date-time
+        decision:
+          type: string
+          enum: [CANCEL, PROMOTE, REQUIRE_ROLLBACK]
+        reason:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiagnosticNodeHealth'
+    DiagnosticNodeHealth:
+      type: object
+      additionalProperties: false
+      required: [node_id, connected, reconciled]
+      properties:
+        node_id:
+          $ref: '#/components/schemas/NodeID'
+        connected:
+          type: boolean
+        reconciled:
+          type: boolean
+        last_seen:
+          type: string
+          format: date-time
+        active_snapshot_id:
+          type: string
+    AuditResult:
+      type: object
+      additionalProperties: false
+      required:
+        - api_version
+        - manifest_version
+        - manifest_sha256
+        - rollout
+        - journal
+      properties:
+        api_version:
+          const: v1
+        manifest_version:
+          const: bonvoyage.rollout.audit.v1
+        manifest_sha256:
+          $ref: '#/components/schemas/Digest'
+        rollout:
+          $ref: '#/components/schemas/AuditRollout'
+        journal:
+          $ref: '#/components/schemas/AuditJournal'
+    AuditRollout:
+      type: object
+      additionalProperties: false
+      required:
+        - rollout_id
+        - request_id
+        - sequence
+        - kind
+        - snapshot_id
+        - artifact_sha256
+        - desired_revision_id
+        - compiler_version
+        - target_node_ids
+        - source_channel
+        - actor
+        - reason
+        - created_at
+      properties:
+        rollout_id: {type: string}
+        request_id: {type: string}
+        request_sha256:
+          $ref: '#/components/schemas/Digest'
+        sequence:
+          $ref: '#/components/schemas/Sequence'
+        kind:
+          type: string
+          enum: [APPLY, ROLLBACK]
+        rollback_target_sequence:
+          $ref: '#/components/schemas/Sequence'
+        snapshot_id: {type: string}
+        artifact_sha256:
+          $ref: '#/components/schemas/Digest'
+        previous_artifact_sha256:
+          $ref: '#/components/schemas/Digest'
+        baseline_rollout_sequence:
+          $ref: '#/components/schemas/Sequence'
+        desired_revision_id: {type: string}
+        compiler_version: {type: string}
+        target_node_ids:
+          $ref: '#/components/schemas/TargetNodeIDs'
+        expected_active_by_node:
+          type: array
+          maxItems: 10000
+          items:
+            $ref: '#/components/schemas/AuditNodeArtifact'
+        policy:
+          $ref: '#/components/schemas/RolloutPolicy'
+        source_channel:
+          type: string
+          enum: [api, cli, console, gitops, file, system]
+        actor: {type: string}
+        reason: {type: string}
+        created_at:
+          type: string
+          format: date-time
+    AuditNodeArtifact:
+      type: object
+      additionalProperties: false
+      required: [node_id, artifact_sha256]
+      properties:
+        node_id:
+          $ref: '#/components/schemas/NodeID'
+        artifact_sha256:
+          $ref: '#/components/schemas/Digest'
+    AuditJournal:
+      type: object
+      additionalProperties: false
+      required: [total_events, after_index, limit, events]
+      properties:
+        total_events:
+          type: integer
+          format: uint64
+          minimum: 0
+        after_index:
+          type: integer
+          format: uint64
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 250
+        first_index:
+          type: integer
+          format: uint64
+          minimum: 1
+        last_index:
+          type: integer
+          format: uint64
+          minimum: 1
+        next_after_index:
+          type: integer
+          format: uint64
+          minimum: 1
+        events:
+          type: array
+          maxItems: 250
+          items:
+            $ref: '#/components/schemas/DiagnosticEvent'
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, detail, request_id]
+      properties:
+        type:
+          type: string
+          pattern: '^urn:routesphere:bonvoyage:problem:[a-z_]+$'
+        title: {type: string}
+        status: {type: integer, minimum: 400, maximum: 599}
+        code: {type: string}
+        detail: {type: string}
+        request_id: {type: string}

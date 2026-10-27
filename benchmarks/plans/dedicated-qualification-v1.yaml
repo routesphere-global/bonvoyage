@@ -1,0 +1,581 @@
+schema_version: 1
+id: phase1-phase3-dedicated-qualification-v1
+status: pre-execution
+evidence_class: native-qualification-candidate
+
+platform:
+  architecture: x86_64
+  operating_system: Ubuntu 24.04 LTS
+  target_tenancy: dedicated-host
+  minimum_roles:
+    - load-generator
+    - gateway-target
+    - controlled-upstream
+
+products:
+  - bonvoyage
+  - nginx
+  - envoy
+  - haproxy
+
+thresholds:
+  maximum_error_rate: 0.001
+  maximum_repeat_deviation_percent: 5
+  baseline_p999_ceiling_ms: 4.0
+  maximum_support_capacity_percent: 80
+  minimum_upstream_headroom_ratio: 1.2
+  minimum_phase1_two_core_multiplier: 1.8
+  minimum_two_core_scaling_efficiency: 0.85
+  phase2_advantage_pass_percent: 20
+  phase2_optimization_floor_percent: 5
+
+load_profiles:
+  - id: network-capacity
+    purpose: Prove the private network path, load generator, and upstream cannot limit a gateway result.
+    protocols: [network, http1]
+    load_model: open-loop
+    gateway_cores: [0]
+    warmup_seconds: 30
+    measurement_seconds: 60
+    repetitions: 5
+    dimensions:
+      directions: [load-generator-to-target, target-to-upstream, load-generator-to-upstream]
+      tcp_streams: [1, 8, 32]
+      response_body_bytes: [256]
+
+  - id: baseline-http1-keepalive
+    purpose: Canonical Phase 1 and Phase 2 single-route HTTP/1.1 comparison.
+    protocols: [http1]
+    load_model: open-loop
+    gateway_cores: [1, 2]
+    warmup_seconds: 30
+    measurement_seconds: 30
+    repetitions: 5
+    dimensions:
+      request_body_bytes: [0]
+      response_body_bytes: [256]
+      connections: [64, 128]
+      utilization_targets: [0.5, 0.7, 0.8, 0.9, 0.95]
+      route_count: [1]
+      endpoint_count: [1]
+
+  - id: extended-core-scaling
+    purpose: Measure scaling beyond the mandatory one-core and two-core gate.
+    protocols: [http1]
+    load_model: open-loop
+    gateway_cores: [1, 2, 4, 8, 16]
+    warmup_seconds: 30
+    measurement_seconds: 60
+    repetitions: 5
+    dimensions:
+      request_body_bytes: [0]
+      response_body_bytes: [256]
+      connections: [64, 128, 256, 512, 1024]
+      utilization_targets: [0.7, 0.9]
+
+  - id: tls-transport-cost
+    purpose: Isolate downstream TLS, upstream TLS, and mutual TLS costs with equivalent transport policy.
+    protocols: [http1-tls, http2]
+    load_model: open-loop
+    gateway_cores: [2, 8]
+    warmup_seconds: 30
+    measurement_seconds: 60
+    repetitions: 5
+    dimensions:
+      transport_profiles: [downstream-tls, upstream-tls, upstream-mtls, end-to-end-tls]
+      tls_versions: [TLSv1.3]
+      session_modes: [new-session, resumed-session]
+      response_body_bytes: [256, 1024]
+      utilization_targets: [0.7, 0.9]
+
+  - id: http2-multiplexing
+    purpose: Measure HTTP/2 stream scaling, connection reuse, flow control, and tail latency.
+    protocols: [http2]
+    load_model: open-loop
+    gateway_cores: [2, 8]
+    warmup_seconds: 30
+    measurement_seconds: 60
+    repetitions: 5
+    dimensions:
+      connections: [1, 16, 64, 256]
+      concurrent_streams_per_connection: [1, 16, 64, 100]
+      response_body_bytes: [256, 1024, 10240]
+      utilization_targets: [0.5, 0.7, 0.9]
+
+  - id: grpc-unary
+    purpose: Measure unary gRPC multiplexing, metadata, deadline, cancellation, and status preservation.
+    protocols: [grpc-unary]
+    load_model: open-loop
+    gateway_cores: [2, 8]
+    warmup_seconds: 30
+    measurement_seconds: 60
+    repetitions: 5
+    dimensions:
+      concurrent_streams: [1, 16, 64]
+      request_message_bytes: [64, 1024]
+      response_message_bytes: [64, 1024]
+      utilization_targets: [0.5, 0.7, 0.9]
+
+  - id: websocket-density
+    purpose: Measure upgrade cost, held-tunnel density, echo progress, idle timeout, and graceful drain.
+    protocols: [websocket]
+    load_model: held-connections
+    gateway_cores: [2, 8]
+    warmup_seconds: 60
+    measurement_seconds: 300
+    repetitions: 3
+    dimensions:
+      held_connections: [1000, 10000, 50000]
+      active_connection_percent: [1, 10]
+      message_bytes: [64, 1024]
+      transports: [cleartext, TLSv1.3]
+
+  - id: payload-sweep
+    purpose: Establish throughput, network, copy, and latency behavior as payload size grows.
+    protocols: [http1, http1-tls, http2]
+    load_model: open-loop
+    gateway_cores: [8]
+    warmup_seconds: 30
+    measurement_seconds: 60
+    repetitions: 5
+    dimensions:
+      response_body_bytes: [256, 1024, 10240, 102400, 1048576]
+      request_body_bytes: [0, 1024, 10240, 102400]
+      utilization_targets: [0.7, 0.9]
+
+  - id: route-and-policy-scale
+    purpose: Establish lookup and policy cost from one route through 100000 routes.
+    protocols: [http1, http2]
+    load_model: open-loop
+    gateway_cores: [8]
+    warmup_seconds: 30
+    measurement_seconds: 60
+    repetitions: 5
+    dimensions:
+      route_counts: [1, 1000, 10000, 100000]
+      lookup_positions: [first, middle, last, miss]
+      policy_profiles: [minimal, predicates, security, transformations, composite]
+      utilization_targets: [0.7, 0.9]
+
+  - id: endpoint-and-balancer-scale
+    purpose: Measure selector cost, fairness, failure handling, and recovery as endpoint count grows.
+    protocols: [http1, http2]
+    load_model: open-loop
+    gateway_cores: [8]
+    warmup_seconds: 30
+    measurement_seconds: 60
+    repetitions: 5
+    dimensions:
+      endpoint_counts: [1, 2, 8, 16]
+      algorithms: [weighted-round-robin, random, least-request]
+      states: [healthy, one-failed, half-open, recovered]
+      utilization_targets: [0.7, 0.9, 1.2]
+
+  - id: connection-density
+    purpose: Find a defensible connection and stream capacity envelope while active traffic continues.
+    protocols: [http1, http1-tls, http2, websocket]
+    load_model: held-connections
+    gateway_cores: [8, 16]
+    warmup_seconds: 60
+    measurement_seconds: 300
+    repetitions: 3
+    dimensions:
+      held_connections: [10000, 50000, 100000]
+      active_connection_percent: [0.1, 1, 10]
+      http2_streams_per_connection: [1, 16, 64]
+      slow_peer_modes: [none, slow-header, slow-body, slow-reader]
+
+  - id: feature-cost
+    purpose: Measure configured-off and configured-on fast-path cost one feature family at a time.
+    protocols: [http1, http1-tls, http2]
+    load_model: open-loop
+    gateway_cores: [8]
+    warmup_seconds: 30
+    measurement_seconds: 60
+    repetitions: 5
+    dimensions:
+      feature_families: [routing, retries, health, admission, api-key, jwt, source-ip, cors, content-policy, transformations, weighted-traffic, access-log, tracing]
+      states: [disabled, configured]
+      utilization_targets: [0.7, 0.9]
+
+  - id: overload-and-recovery
+    purpose: Cross saturation deliberately, classify shedding, and prove same-process recovery.
+    protocols: [http1, http2, grpc-unary, mixed]
+    load_model: open-loop
+    gateway_cores: [2, 8, 16]
+    warmup_seconds: 30
+    measurement_seconds: 120
+    repetitions: 3
+    dimensions:
+      utilization_targets: [0.7, 1.0, 1.2]
+      failure_modes: [none, endpoint-loss, slow-upstream, telemetry-loss, connection-churn]
+      recovery_target: [0.7]
+
+  - id: controlled-security-abuse
+    purpose: Exercise parser, identity, policy, TLS, resource, upstream, and telemetry abuse cases in the authorized test VPC.
+    protocols: [http1, http1-tls, http2, grpc-unary, websocket]
+    load_model: controlled-abuse
+    gateway_cores: [8]
+    warmup_seconds: 30
+    measurement_seconds: 300
+    repetitions: 3
+    dimensions:
+      lanes: [white-box, gray-box, black-box]
+      classes: [parser, tls, identity, authorization, resource-exhaustion, malicious-upstream, privacy]
+
+  - id: dedicated-soak
+    purpose: Prove bounded resource trends and recovery under a sustained representative mixed-protocol load.
+    protocols: [mixed]
+    load_model: open-loop
+    gateway_cores: [8, 16]
+    warmup_seconds: 300
+    measurement_seconds: 28800
+    repetitions: 1
+    dimensions:
+      duration_hours: [8, 24]
+      utilization_targets: [0.7]
+      controlled_failure_interval_minutes: [5]
+      protocols: [http1, http2, grpc-unary, websocket]
+
+test_groups:
+  - id: DQ-INFRA-001
+    category: infrastructure
+    title: Source, artifact, dependency, and comparator identity freeze
+    required: true
+    execution_order: 1
+    load_profiles: []
+    systems: [source-repository, bonvoyage-image, comparator-images, controlled-upstream]
+    harness_status: existing
+    pass_criteria:
+      - The selected source commit is pushed and clean.
+      - Every image, configuration, executable, dependency, and workload has a retained digest.
+      - Required tests, sanitizers, fuzzers, SBOM generation, and vulnerability policy pass before allocation.
+    decisions:
+      - Authorize or block paid infrastructure allocation.
+
+  - id: DQ-INFRA-002
+    category: infrastructure
+    title: Host tenancy, topology, operating system, CPU, IRQ, and network characterization
+    required: true
+    execution_order: 2
+    load_profiles: [network-capacity]
+    systems: [load-generator, gateway-target, controlled-upstream]
+    harness_status: distributed-adapter-required
+    pass_criteria:
+      - Three roles use distinct instances and private addresses in one Availability Zone.
+      - The gateway target is bound to the recorded Dedicated Host ID.
+      - CPU, NUMA, frequency, IRQ, kernel, ENA, MTU, route, clock, and tenancy records are complete.
+      - No unrelated process, scheduled event, throttling, packet loss, or host migration affects an accepted run.
+    decisions:
+      - Accept the environment or release it before measurements begin.
+
+  - id: DQ-INFRA-003
+    category: infrastructure
+    title: Network, generator, and controlled-upstream capacity proof
+    required: true
+    execution_order: 3
+    load_profiles: [network-capacity]
+    systems: [load-generator, gateway-target, controlled-upstream]
+    harness_status: distributed-adapter-required
+    pass_criteria:
+      - Private-path packet loss is zero during accepted capacity samples.
+      - Load-generator and upstream utilization remain below 80 percent.
+      - Direct-upstream successful capacity is at least 1.2 times the fastest gateway point.
+    decisions:
+      - Establish the usable measurement ceiling or invalidate the topology.
+
+  - id: DQ-P1-001
+    category: phase1
+    title: Standalone dataplane and complete request-path proof
+    required: true
+    execution_order: 4
+    load_profiles: [baseline-http1-keepalive]
+    systems: [bonvoyage, controlled-upstream]
+    harness_status: distributed-adapter-required
+    pass_criteria:
+      - A request traverses listener, router, shard-local pool, controlled upstream, and response path.
+      - The active snapshot is served with no control-plane process.
+      - Status, length, and response digest match the controlled payload.
+    decisions:
+      - Confirm that the dedicated artifact represents the Phase 1 architecture.
+
+  - id: DQ-P1-002
+    category: phase1
+    title: Native one-core and two-core scaling gate
+    required: true
+    execution_order: 5
+    load_profiles: [baseline-http1-keepalive]
+    systems: [bonvoyage, controlled-upstream, load-generator]
+    harness_status: distributed-adapter-required
+    pass_criteria:
+      - Five valid repetitions capture successful RPS, CPU, process RSS, p99, and p99.9.
+      - Two-core throughput is at least 1.8 times one-core throughput at matched latency.
+      - Error rate is at most 0.1 percent and support roles remain outside saturation.
+    decisions:
+      - Close Phase 1 native publication evidence or stop the campaign for correction.
+
+  - id: DQ-P2-001
+    category: phase2
+    title: Canonical one-core and two-core competitive capacity and operating curves
+    required: true
+    execution_order: 6
+    load_profiles: [baseline-http1-keepalive]
+    systems: [bonvoyage, nginx, envoy, haproxy, controlled-upstream, load-generator]
+    harness_status: distributed-adapter-required
+    pass_criteria:
+      - Product order is seeded, randomized, and position-balanced.
+      - Five valid repetitions at capacity and at 50, 70, 80, 90, and 95 percent stay within 5 percent of their median.
+      - Error rate is at most 0.1 percent and p99.9 is at most 4 ms before intentional overload.
+      - The strongest-comparator comparison uses equivalent behavior and successful RPS per physical core.
+    decisions:
+      - Classify the Phase 2 result as pass, optimization cycle, architecture review, or incomplete.
+
+  - id: DQ-P2-002
+    category: phase2
+    title: Competitive overload, same-process recovery, and connection churn
+    required: true
+    execution_order: 7
+    load_profiles: [overload-and-recovery]
+    systems: [bonvoyage, nginx, envoy, haproxy, controlled-upstream, load-generator]
+    harness_status: distributed-adapter-required
+    pass_criteria:
+      - Three repetitions demonstrably cross sustainable capacity at 120 percent offered load.
+      - Every product recovers at 70 percent without a process or container restart.
+      - Churn has bounded process RSS and file-descriptor trends with no lost capacity after recovery.
+    decisions:
+      - Determine overload behavior, recovery quality, and whether any headline throughput is operationally misleading.
+
+  - id: DQ-P2-003
+    category: phase2
+    title: Extended one-core through sixteen-core scaling curve
+    required: true
+    execution_order: 8
+    load_profiles: [extended-core-scaling]
+    systems: [bonvoyage, nginx, envoy, haproxy, controlled-upstream, load-generator]
+    harness_status: new-harness-required
+    pass_criteria:
+      - Five valid repetitions exist for 1, 2, 4, 8, and 16 physical cores.
+      - Per-step efficiency, CPU, p99.9, and support-role headroom are reported without extrapolation.
+    decisions:
+      - Identify the scaling knee and the core count appropriate for commercial capacity guidance.
+
+  - id: DQ-P3-001
+    category: phase3
+    title: TLS and mutual-TLS feature-cost qualification
+    required: true
+    execution_order: 9
+    load_profiles: [tls-transport-cost]
+    systems: [bonvoyage, nginx, envoy, controlled-upstream, load-generator]
+    harness_status: new-harness-required
+    pass_criteria:
+      - Equivalent TLS 1.3 identity, cipher, session, and verification behavior is proven before comparison.
+      - Successful RPS per core, CPU, handshake rate, RSS, p99.9, and session reuse are reported.
+      - Invalid identity, trust, SNI, and client-certificate cases fail closed and healthy traffic recovers.
+    decisions:
+      - Establish the cost and safe operating envelope of downstream TLS, upstream TLS, and mTLS.
+
+  - id: DQ-P3-002
+    category: phase3
+    title: HTTP/2, unary gRPC, and WebSocket protocol qualification
+    required: true
+    execution_order: 10
+    load_profiles: [http2-multiplexing, grpc-unary, websocket-density]
+    systems: [bonvoyage, nginx, envoy, controlled-upstream, load-generator]
+    harness_status: new-harness-required
+    pass_criteria:
+      - Protocol correctness, multiplexing, deadlines, cancellation, trailers, drain, and recovery pass.
+      - Tail latency and memory per connection or stream remain bounded as concurrency rises.
+      - Product comparisons disclose unsupported or behaviorally different features instead of scoring them as equivalent.
+    decisions:
+      - Establish protocol-specific capacity and determine which comparisons are publishable.
+
+  - id: DQ-P3-003
+    category: phase3
+    title: Payload-size, route-scale, and connection-density envelope
+    required: true
+    execution_order: 11
+    load_profiles: [payload-sweep, route-and-policy-scale, connection-density]
+    systems: [bonvoyage, controlled-upstream, load-generator]
+    harness_status: new-harness-required
+    pass_criteria:
+      - Every accepted response has the expected status, byte count, and digest.
+      - Route first, middle, last, and miss decisions remain correct through 100000 routes.
+      - Held connections fully release, active traffic progresses, and RSS plus descriptors remain bounded.
+    decisions:
+      - Publish supported payload, route, connection, and stream envelopes for the tested hardware only.
+
+  - id: DQ-P3-004
+    category: phase3
+    title: Load-balancing, endpoint scale, retry, health, and circuit behavior under load
+    required: true
+    execution_order: 12
+    load_profiles: [endpoint-and-balancer-scale, overload-and-recovery]
+    systems: [bonvoyage, controlled-upstream, load-generator]
+    harness_status: new-harness-required
+    pass_criteria:
+      - Distribution stays within its predeclared statistical tolerance and sends zero traffic to ineligible endpoints.
+      - Retry budgets do not amplify overload or retry unsafe/body-committed operations.
+      - Ejection, half-open probing, re-entry, and no-healthy behavior are bounded and recover without restart.
+    decisions:
+      - Accept, optimize, or defer each selector and resilience feature for OSS 1.0.
+
+  - id: DQ-P3-005
+    category: phase3
+    title: Routing, security-policy, and transformation feature cost
+    required: true
+    execution_order: 13
+    load_profiles: [feature-cost, route-and-policy-scale]
+    systems: [bonvoyage, controlled-upstream, load-generator]
+    harness_status: new-harness-required
+    pass_criteria:
+      - Default-off features add no more than 1 percent throughput cost relative to the matching minimal profile.
+      - Each configured profile preserves its exact policy decision and remains within its predeclared p99.9 ceiling.
+      - Any unexpected throughput loss over 5 percent receives a profile before acceptance.
+    decisions:
+      - Set per-feature cost budgets and identify required optimization work.
+
+  - id: DQ-P3-006
+    category: phase3
+    title: Metrics, access-log, and tracing cost plus consumer-failure isolation
+    required: true
+    execution_order: 14
+    load_profiles: [feature-cost, overload-and-recovery]
+    systems: [bonvoyage, telemetry-consumers, controlled-upstream, load-generator]
+    harness_status: new-harness-required
+    pass_criteria:
+      - Disabled, configured, sampled, saturated, and unavailable-consumer states are measured separately.
+      - Request service continues without restart while queues, drops, retries, disk use, and recovery remain bounded.
+      - Telemetry contains no synthetic secret or prohibited field.
+    decisions:
+      - Set safe OSS defaults and quantify the cost of each observability mode.
+
+  - id: DQ-P3-007
+    category: phase3
+    title: Representative minimal, secure API, SaaS canary, and mixed-protocol profiles
+    required: true
+    execution_order: 15
+    load_profiles: [feature-cost, overload-and-recovery]
+    systems: [bonvoyage, controlled-upstream, telemetry-consumers, load-generator]
+    harness_status: new-harness-required
+    pass_criteria:
+      - Composite profiles preserve tenant, credential, route, cluster, and telemetry isolation.
+      - Capacity, p99.9, CPU, RSS, errors, and recovery are reported for each profile.
+    decisions:
+      - Produce realistic sizing guidance without presenting synthetic profiles as customer production measurements.
+
+  - id: DQ-SEC-001
+    category: security
+    title: Supply-chain, build-hardening, sanitizer, static-analysis, and fuzzer gate
+    required: true
+    execution_order: 16
+    load_profiles: []
+    systems: [source-repository, bonvoyage-image, build-pipeline]
+    harness_status: existing
+    pass_criteria:
+      - Required sanitizers, static analysis, fuzz targets, dependency qualification, SBOM generation, and vulnerability policy pass.
+      - Findings and database identity are retained; a scanner result is never described as proof of vulnerability absence.
+    decisions:
+      - Authorize the exact artifact for active security testing or reopen the release candidate.
+
+  - id: DQ-SEC-002
+    category: security
+    title: Network exposure, container privilege, filesystem, and secret-mount review
+    required: true
+    execution_order: 17
+    load_profiles: [controlled-security-abuse]
+    systems: [gateway-target, bonvoyage, test-vpc]
+    harness_status: new-harness-required
+    pass_criteria:
+      - Only approved listener and management paths are reachable from their intended sources.
+      - The runtime is non-root, capability-minimized, read-only where designed, and denied unauthorized secret paths.
+    decisions:
+      - Approve or reject the documented deployment-hardening baseline.
+
+  - id: DQ-SEC-003
+    category: security
+    title: TLS, SNI, mTLS, API-key, JWT, forwarded-identity, source-policy, and CORS bypass assessment
+    required: true
+    execution_order: 18
+    load_profiles: [controlled-security-abuse]
+    systems: [bonvoyage, controlled-upstream, security-client]
+    harness_status: new-harness-required
+    pass_criteria:
+      - Valid identities succeed and malformed, missing, expired, untrusted, repeated, confused, or unauthorized identities fail closed.
+      - Rejected requests produce no protected upstream action and no credential reaches logs, traces, metrics, errors, or upstream headers.
+    decisions:
+      - Determine whether authentication, authorization, and client-attribution claims are release-ready.
+
+  - id: DQ-SEC-004
+    category: security
+    title: HTTP parser ambiguity, HTTP/2 malformed input, request smuggling, and malicious-upstream assessment
+    required: true
+    execution_order: 19
+    load_profiles: [controlled-security-abuse]
+    systems: [bonvoyage, controlled-upstream, security-client]
+    harness_status: new-harness-required
+    pass_criteria:
+      - Ambiguous framing, duplicate critical fields, invalid pseudo-headers, malformed frames, and oversized metadata reject deterministically.
+      - Rejection cannot desynchronize the next request, reach an unintended route, or poison the reusable upstream pool.
+      - Malformed upstream responses retire only the affected connection and healthy traffic recovers.
+    decisions:
+      - Close parser differential risks or block the release candidate.
+
+  - id: DQ-SEC-005
+    category: security
+    title: Bounded resource-exhaustion and denial-of-service resilience assessment
+    required: true
+    execution_order: 20
+    load_profiles: [controlled-security-abuse, connection-density, overload-and-recovery]
+    systems: [bonvoyage, controlled-upstream, security-client, load-generator]
+    harness_status: new-harness-required
+    pass_criteria:
+      - Slow handshakes, slow headers, slow bodies, slow readers, stream pressure, oversized input, quota pressure, and connection floods remain bounded.
+      - Rejections are classified, healthy traffic receives its reserved capacity, and recovery needs no restart.
+      - The test never exceeds the authorized VPC scope or AWS acceptable-use limits.
+    decisions:
+      - Establish safe defaults and identify whether XDP or upstream network controls are required for traffic outside the gateway envelope.
+
+  - id: DQ-SEC-006
+    category: security
+    title: White-box, gray-box, and black-box independent review and finding adjudication
+    required: true
+    execution_order: 21
+    load_profiles: [controlled-security-abuse]
+    systems: [bonvoyage, security-client, evidence-review]
+    harness_status: manual-reviewed
+    pass_criteria:
+      - Every finding includes reproduction evidence, affected artifact identity, severity, impact, and remediation status.
+      - No unresolved Critical or High finding remains; accepted lower-severity risk has an owner and deadline.
+      - Retesting proves each claimed fix and an independent reviewer signs the final disposition.
+    decisions:
+      - Rate the security checkpoint excellent only when scope coverage and evidence are complete, not because no tool reported a finding.
+
+  - id: DQ-REL-001
+    category: reliability
+    title: Sustained mixed-protocol dedicated soak with periodic controlled failures
+    required: true
+    execution_order: 22
+    load_profiles: [dedicated-soak]
+    systems: [bonvoyage, controlled-upstream, telemetry-consumers, load-generator]
+    harness_status: distributed-adapter-required
+    pass_criteria:
+      - The minimum campaign completes eight hours at 70 percent of confirmed capacity; the preferred campaign completes 24 hours.
+      - Process identity is unchanged, restart count is zero, strict recovery probes pass, and final gauges drain to zero.
+      - RSS, descriptors, queues, connections, streams, and error trends remain within predeclared bounds.
+    decisions:
+      - Confirm dedicated high-load durability or reopen the relevant subsystem.
+
+  - id: DQ-REPORT-001
+    category: reporting
+    title: Evidence verification, decision report, publication review, and durable archive
+    required: true
+    execution_order: 23
+    load_profiles: []
+    systems: [evidence-store, docusaurus, decision-review]
+    harness_status: new-harness-required
+    pass_criteria:
+      - Raw evidence, manifests, reports, checksums, source identity, image identity, and invalidation reasons verify independently.
+      - Phase 1, Phase 2, Phase 3, security, reliability, and marketing decisions state their exact evidence boundaries.
+      - Two durable copies verify before any instance is terminated or Dedicated Host is released.
+    decisions:
+      - Publish scoped claims, schedule optimization, trigger architecture review, or classify the campaign incomplete.

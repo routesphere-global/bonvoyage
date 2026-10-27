@@ -1,0 +1,146 @@
+diff --git a/include/seastar/http/client.hh b/include/seastar/http/client.hh
+index 9e840c4a..b69a0aeb 100644
+--- a/include/seastar/http/client.hh
++++ b/include/seastar/http/client.hh
+@@ -24,6 +24,10 @@
+ #ifndef SEASTAR_MODULE
+ #include <boost/intrusive/list.hpp>
+ #endif
++#include <chrono>
++#include <functional>
++#include <optional>
++
+ #include <seastar/net/api.hh>
+ #include <seastar/http/connection_factory.hh>
+ #include <seastar/http/reply.hh>
+@@ -155,6 +159,8 @@ private:
+ class client {
+ public:
+     using reply_handler = noncopyable_function<future<>(const reply&, input_stream<char>&& body)>;
++    using pool_wait_observer =
++            std::function<void(std::chrono::nanoseconds)>;
+     using retry_requests = bool_class<struct retry_requests_tag>;
+ 
+ private:
+@@ -175,11 +181,16 @@ private:
+     const retry_requests _retry;
+     condition_variable _wait_con;
+     connections_list_t _pool;
++    pool_wait_observer _pool_wait_observer;
++    bool _reuse_connections;
+ 
+     using connection_ptr = seastar::shared_ptr<connection>;
+ 
+-    future<connection_ptr> get_connection(abort_source* as);
++    future<connection_ptr> get_connection(abort_source* as,
++            std::optional<std::chrono::steady_clock::time_point>
++                    wait_started_at = std::nullopt);
+     future<connection_ptr> make_connection(abort_source* as);
++    void observe_pool_wait(std::chrono::steady_clock::time_point started_at) noexcept;
+     future<> put_connection(connection_ptr con);
+     future<> shrink_connections();
+ 
+@@ -258,8 +269,17 @@ public:
+      * max_response_header_bytes limits the response start line and fields.
+      * max_chunk_metadata_bytes limits cumulative chunk-size lines, extensions,
+      * delimiters, and trailers in one response.
++     * pool_wait_observer receives the time spent waiting for existing pool
++     * capacity. It is not called for immediate reuse or connection creation.
+      */
+-    explicit client(std::unique_ptr<connection_factory> f, unsigned max_connections = default_max_connections, retry_requests retry = retry_requests::no, size_t max_bytes_to_drain = default_max_bytes_to_drain, size_t max_response_header_bytes = default_max_response_header_bytes, size_t max_chunk_metadata_bytes = default_max_chunk_metadata_bytes);
++    explicit client(std::unique_ptr<connection_factory> f,
++            unsigned max_connections = default_max_connections,
++            retry_requests retry = retry_requests::no,
++            size_t max_bytes_to_drain = default_max_bytes_to_drain,
++            size_t max_response_header_bytes = default_max_response_header_bytes,
++            size_t max_chunk_metadata_bytes = default_max_chunk_metadata_bytes,
++            pool_wait_observer wait_observer = {},
++            bool reuse_connections = true);
+ 
+     /**
+      * \brief Send the request and handle the response
+diff --git a/src/http/client.cc b/src/http/client.cc
+index ac8b4f36..c844cf3b 100644
+--- a/src/http/client.cc
++++ b/src/http/client.cc
+@@ -228,20 +228,43 @@ client::client(socket_address addr, shared_ptr<tls::certificate_credentials> cre
+ {
+ }
+ 
+-client::client(std::unique_ptr<connection_factory> f, unsigned max_connections, retry_requests retry, size_t max_bytes_to_drain, size_t max_response_header_bytes, size_t max_chunk_metadata_bytes)
++client::client(std::unique_ptr<connection_factory> f, unsigned max_connections,
++        retry_requests retry, size_t max_bytes_to_drain,
++        size_t max_response_header_bytes, size_t max_chunk_metadata_bytes,
++        pool_wait_observer wait_observer, bool reuse_connections)
+         : _new_connections(std::move(f))
+         , _max_connections(max_connections)
+         , _max_bytes_to_drain(max_bytes_to_drain)
+         , _max_response_header_bytes(max_response_header_bytes)
+         , _max_chunk_metadata_bytes(max_chunk_metadata_bytes)
+         , _retry(retry)
++        , _pool_wait_observer(std::move(wait_observer))
++        , _reuse_connections(reuse_connections)
+ {
+ }
+ 
+-future<client::connection_ptr> client::get_connection(abort_source* as) {
++void client::observe_pool_wait(
++        std::chrono::steady_clock::time_point started_at) noexcept {
++    if (!_pool_wait_observer) {
++        return;
++    }
++    const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
++            std::chrono::steady_clock::now() - started_at);
++    try {
++        _pool_wait_observer(elapsed);
++    } catch (...) {
++        // Observability must not alter HTTP request behavior.
++    }
++}
++
++future<client::connection_ptr> client::get_connection(abort_source* as,
++        std::optional<std::chrono::steady_clock::time_point> wait_started_at) {
+     if (!_pool.empty()) {
+         connection_ptr con = _pool.front().shared_from_this();
+         _pool.pop_front();
++        if (wait_started_at) {
++            observe_pool_wait(*wait_started_at);
++        }
+         if (http_log.is_enabled(log_level::trace)) {
+             http_log.trace("pop http connection {} from pool", con->_fd.local_address());
+         }
+@@ -249,15 +271,23 @@ future<client::connection_ptr> client::get_connection(abort_source* as) {
+     }
+ 
+     if (_nr_connections >= _max_connections) {
++        if (!wait_started_at) {
++            wait_started_at = std::chrono::steady_clock::now();
++        }
+         auto sub = as ? as->subscribe([this] () noexcept { _wait_con.broadcast(); }) : std::nullopt;
+-        return _wait_con.wait().then([this, as, sub = std::move(sub)] {
++        return _wait_con.wait().then([this, as, sub = std::move(sub),
++                wait_started_at] {
+             if (as != nullptr && as->abort_requested()) {
++                observe_pool_wait(*wait_started_at);
+                 return make_exception_future<client::connection_ptr>(as->abort_requested_exception_ptr());
+             }
+-            return get_connection(as);
++            return get_connection(as, wait_started_at);
+         });
+     }
+ 
++    if (wait_started_at) {
++        observe_pool_wait(*wait_started_at);
++    }
+     return make_connection(as);
+ }
+ 
+@@ -265,4 +295,8 @@ future<client::connection_ptr> client::make_connection(abort_source* as) {
+ future<> client::put_connection(connection_ptr con) {
++    if (!_reuse_connections) {
++        con->_persistent = false;
++    }
++
+     if (con->_read_buf.buffered_bytes() != 0) {
+         con->_persistent = false;
+     }

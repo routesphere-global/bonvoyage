@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-reviewed-claude-code-wrapper-policy",
+  "wrapper_version": "bonvoyage.claude-code-skill.v1",
+  "assistant": "claude",
+  "package_path": "skills/claude/bonvoyage-config-authoring",
+  "skill_name": "bonvoyage-config-authoring",
+  "description": "Author, explain, minimally modify, diagnose, migrate, and verify RouteSphere BonVoyage configuration with the release-matched local command. Use for BonVoyage YAML and structured configuration diagnostics; do not use for live apply, runtime-state inspection, or secret retrieval.",
+  "interface": {
+    "surface": "claude-code",
+    "command_name": "/bonvoyage-config-authoring",
+    "automatic_invocation": true,
+    "user_invocable": true,
+    "portable_frontmatter": [
+      "name",
+      "description"
+    ],
+    "personal_install_path": "~/.claude/skills/bonvoyage-config-authoring",
+    "project_install_path": ".claude/skills/bonvoyage-config-authoring"
+  },
+  "command": {
+    "executable": "bonvoyage-config",
+    "automatic_install": false,
+    "network_lookup": false,
+    "unwritten_document_transport": "stdin",
+    "machine_output": "json",
+    "missing_command": "block",
+    "malformed_output": "block"
+  },
+  "reference_sources": [
+    {
+      "id": "authoring-contract",
+      "source": "config/authoring/bonvoyage-authoring-v1.json",
+      "target": "references/authoring-contract.json",
+      "purpose": "Read when operation behavior, exit codes, diagnostics, or redaction rules are needed."
+    },
+    {
+      "id": "completion",
+      "source": "config/authoring/completion/v1/metadata.json",
+      "target": "references/completion.json",
+      "purpose": "Read only for supported fields, constraints, and completion choices."
+    },
+    {
+      "id": "configuration-schema",
+      "source": "config/schemas/bonvoyage-config.schema.json",
+      "target": "references/configuration-schema.json",
+      "purpose": "Use for structural assistance only; it never replaces the Go compiler."
+    },
+    {
+      "id": "corpus",
+      "source": "config/authoring/corpus/v1/manifest.json",
+      "target": "references/corpus.json",
+      "purpose": "Read for compiler-backed accepted and rejected example identities."
+    },
+    {
+      "id": "evaluation-manifest",
+      "source": "config/authoring/skills/v1/evaluations/manifest.json",
+      "target": "references/evaluations.json",
+      "purpose": "Read only while running the shared adversarial wrapper evaluation."
+    },
+    {
+      "id": "evaluation-result-schema",
+      "source": "config/schemas/bonvoyage-authoring-skill-evaluation-result-v1.schema.json",
+      "target": "references/evaluation-result-schema.json",
+      "purpose": "Read only while producing portable wrapper-evaluation evidence."
+    },
+    {
+      "id": "reason-codes",
+      "source": "config/authoring/reason-codes/v1/catalog.json",
+      "target": "references/reason-codes.json",
+      "purpose": "Read when diagnosing an authoritative structured reason code."
+    },
+    {
+      "id": "result-schema",
+      "source": "config/schemas/bonvoyage-authoring-result-v1.schema.json",
+      "target": "references/result-schema.json",
+      "purpose": "Use to interpret command JSON without trusting free-form messages."
+    },
+    {
+      "id": "shared-contract",
+      "source": "config/authoring/skills/v1/contract.json",
+      "target": "references/contract.json",
+      "purpose": "Read first for exact release identity, capabilities, authority, consent, and claim boundaries."
+    },
+    {
+      "id": "snippets",
+      "source": "config/authoring/snippets/v1/catalog.json",
+      "target": "references/snippets.json",
+      "purpose": "Read only when generating or minimally modifying a document."
+    }
+  ]
+}

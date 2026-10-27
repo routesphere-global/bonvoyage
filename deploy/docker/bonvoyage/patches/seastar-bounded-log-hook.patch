@@ -1,0 +1,181 @@
+diff --git a/include/seastar/util/log-impl.hh b/include/seastar/util/log-impl.hh
+index 3baa807..0b15304 100644
+--- a/include/seastar/util/log-impl.hh
++++ b/include/seastar/util/log-impl.hh
+@@ -45,6 +45,8 @@ class log_buf {
+     char* _current;
+     bool _own_buf;
+     bool _alloc_failure = false;
++    bool _bounded = false;
++    bool _overflow = false;
+ private:
+     void free_buffer() noexcept;
+     void realloc_buffer_and_append(char c) noexcept;
+@@ -100,11 +102,16 @@ public:
+     /// Use the external buffer until its full, then switch to internally
+     /// allocated buffer. log_buf doesn't take ownership of the buffer.
+     log_buf(char* external_buf, size_t size) noexcept;
++    /// Bounded external mode never grows; excess bytes are discarded and flagged.
++    /// This bounds buffer storage, not arbitrary formatter work or allocations.
++    log_buf(char* external_buf, size_t size, bool bounded) noexcept;
++    /// True if bounded output exceeded the supplied storage.
++    bool overflowed() const noexcept { return _overflow; }
+     ~log_buf();
+     /// Clear the buffer, setting its position back to the start, but does not
+     /// free any buffers (after this called, size is zero, capacity is unchanged).
+     /// Any existing iterators are invalidated.
+-    void clear() { _current = _begin; }
++    void clear() { _current = _begin; _overflow = false; }
+     /// Create an output iterator which allows writing into the buffer.
+     inserter_iterator back_insert_begin() noexcept { return inserter_iterator(*this); }
+     /// The amount of data written so far.
+diff --git a/include/seastar/util/log.hh b/include/seastar/util/log.hh
+index 53e5ec6..458c23d 100644
+--- a/include/seastar/util/log.hh
++++ b/include/seastar/util/log.hh
+@@ -59,6 +59,19 @@ enum class log_level {
+     trace,
+ };
+ 
++/// Outcome of synchronous bounded formatting for an exclusive custom sink.
++enum class log_record_status { complete, overflow, format_error };
++
++/// Immutable process-lifetime sink, installed once before worker startup.
++/// consume must copy the borrowed message before returning; it must not throw,
++/// wait, retain the view or recursively log. Incomplete records have empty views.
++/// No legacy sink fallback occurs, including when the consumer drops a record.
++struct custom_log_sink {
++    void (*consume)(void*, log_level, std::string_view, log_record_status) noexcept;
++    void* context;
++    size_t max_message_bytes; // 1..8192, including shard/logger context.
++};
++
+ std::ostream& operator<<(std::ostream& out, log_level level);
+ std::istream& operator>>(std::istream& in, log_level& level);
+ 
+@@ -93,6 +106,7 @@ class logger {
+     static std::ostream* _out;
+     static std::atomic<bool> _ostream;
+     static std::atomic<bool> _syslog;
++    static std::atomic<const custom_log_sink*> _custom_sink;
+     static unsigned _shard_field_width;
+ #ifdef SEASTAR_BUILD_SHARED_LIBS
+     static thread_local bool silent;
+@@ -457,6 +471,11 @@ public:
+     ///       before syslogd can clear it) but can happen.
+     static void set_syslog_enabled(bool enabled) noexcept;
+ 
++    /// Install an immutable process-lifetime exclusive sink; cannot reset it.
++    /// Invalid inputs or a different subsequent sink fail without changing state.
++    /// The same pointer is idempotent. Install before workers; never mutate/free it.
++    static bool install_custom_sink(const custom_log_sink* sink) noexcept;
++
+     /// Set the width of shard id field in log messages
+     ///
+     /// \c this_shard_id() is printed as a part of the prefix in logging
+diff --git a/src/util/log.cc b/src/util/log.cc
+index 6341c05..aa795d9 100644
+--- a/src/util/log.cc
++++ b/src/util/log.cc
+@@ -31,6 +31,7 @@ module;
+ #include <string_view>
+ #include <system_error>
+ #include <chrono>
++#include <cerrno>
+ #include <algorithm>
+ 
+ #include <fmt/core.h>
+@@ -135,6 +136,10 @@ void log_buf::free_buffer() noexcept {
+ }
+ 
+ void log_buf::realloc_buffer_and_append(char c) noexcept {
++  if (_bounded) {
++    _overflow = true;
++    return;
++  }
+   if (_alloc_failure) {
+     // Already failed to reallocate once, don't try again
+     return;
+@@ -170,10 +175,16 @@ log_buf::log_buf()
+ }
+ 
+ log_buf::log_buf(char* external_buf, size_t size) noexcept
++    : log_buf(external_buf, size, false)
++{
++}
++
++log_buf::log_buf(char* external_buf, size_t size, bool bounded) noexcept
+     : _begin(external_buf)
+     , _end(_begin + size)
+     , _current(_begin)
+     , _own_buf(false)
++    , _bounded(bounded)
+ {
+ }
+ 
+@@ -297,6 +308,7 @@ std::istream& operator>>(std::istream& in, log_level& level) {
+ std::ostream* logger::_out = &std::cerr;
+ std::atomic<bool> logger::_ostream = { true };
+ std::atomic<bool> logger::_syslog = { false };
++std::atomic<const custom_log_sink*> logger::_custom_sink = { nullptr };
+ unsigned logger::_shard_field_width = 1;
+ #ifdef SEASTAR_BUILD_SHARED_LIBS
+ thread_local bool logger::silent = false;
+@@ -332,9 +344,10 @@ logger::rate_limit::rate_limit(std::chrono::milliseconds interval)
+ 
+ void
+ logger::do_log(log_level level, log_writer& writer) {
++    const auto* custom = _custom_sink.load(std::memory_order_acquire);
+     bool is_ostream_enabled = _ostream.load(std::memory_order_relaxed);
+     bool is_syslog_enabled = _syslog.load(std::memory_order_relaxed);
+-    if(!is_ostream_enabled && !is_syslog_enabled) {
++    if(!custom && !is_ostream_enabled && !is_syslog_enabled) {
+       return;
+     }
+     auto print_once = [&] (internal::log_buf::inserter_iterator it) {
+@@ -349,6 +362,28 @@ logger::do_log(log_level level, log_writer& writer) {
+     // oversized allocation warnings and failed allocation errors
+     silencer be_silent;
+ 
++    if (custom) {
++        // Keep error-reporting errno intact, and never retry via a blocking sink.
++        struct preserve_errno {
++            int saved = errno;
++            ~preserve_errno() { errno = saved; }
++        } preserved;
++        internal::log_buf buf(static_log_buf.data(), custom->max_message_bytes, true);
++        auto status = log_record_status::complete;
++        try {
++            print_once(buf.back_insert_begin());
++            if (buf.overflowed()) {
++                status = log_record_status::overflow;
++            }
++        } catch (...) {
++            ++logging_failures;
++            status = log_record_status::format_error;
++        }
++        custom->consume(custom->context, level,
++                        status == log_record_status::complete ? buf.view() : std::string_view{}, status);
++        return;
++    }
++
+     if (is_ostream_enabled) {
+         internal::log_buf buf(static_log_buf.data(), static_log_buf.size());
+         auto it = buf.back_insert_begin();
+@@ -414,6 +449,16 @@ logger::set_syslog_enabled(bool enabled) noexcept {
+     _syslog.store(enabled, std::memory_order_relaxed);
+ }
+ 
++bool logger::install_custom_sink(const custom_log_sink* sink) noexcept {
++    if (!sink || !sink->consume || sink->max_message_bytes == 0 ||
++            sink->max_message_bytes > static_log_buf.size()) {
++        return false;
++    }
++    const custom_log_sink* expected = nullptr;
++    return _custom_sink.compare_exchange_strong(expected, sink, std::memory_order_acq_rel,
++                                               std::memory_order_acquire) || expected == sink;
++}
++
+ void
+ logger::set_shard_field_width(unsigned width) noexcept {
+     _shard_field_width = width;

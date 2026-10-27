@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.routesphere.global/bonvoyage/windows-large-input-evidence-v1.schema.json",
+  "title": "RouteSphere BonVoyage Windows large-input evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "classification",
+    "gate_version",
+    "accepted",
+    "source",
+    "platform",
+    "binary",
+    "fixture",
+    "executions",
+    "agreement_sha256",
+    "authority"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://schemas.routesphere.global/bonvoyage/windows-large-input-evidence-v1.schema.json"
+    },
+    "schema_version": {"const": 1},
+    "classification": {
+      "const": "routesphere-bonvoyage-windows-config-large-input-evidence"
+    },
+    "gate_version": {
+      "const": "bonvoyage.configuration-windows-large-input.v1"
+    },
+    "accepted": {"const": true},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "tag", "run_id", "run_attempt"],
+      "properties": {
+        "repository": {"const": "routesphere-global/bonvoyage"},
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "tag": {
+          "type": "string",
+          "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
+        },
+        "run_id": {"type": "string", "pattern": "^[1-9][0-9]*$"},
+        "run_attempt": {"type": "integer", "minimum": 1}
+      }
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "architecture", "runner", "go_version", "node_version"],
+      "properties": {
+        "os": {"const": "windows"},
+        "architecture": {"const": "amd64"},
+        "runner": {"const": "windows-2025"},
+        "go_version": {"const": "go1.23.0"},
+        "node_version": {"const": "v22.12.0"}
+      }
+    },
+    "binary": {"$ref": "#/$defs/identity"},
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bytes", "observed_bytes", "sha256", "observed_sha256", "retained"],
+      "properties": {
+        "bytes": {"const": 1048577},
+        "observed_bytes": {"const": 1048576},
+        "sha256": {
+          "const": "acb75257f4038985ef6c29072293dbf4a5a7e361b6c9e16a858c464761c0c326"
+        },
+        "observed_sha256": {
+          "const": "de584597a26f0ab33dbd868f01ae1a85c9a1642de9537255b9b4d7c1431d742a"
+        },
+        "retained": {"const": false}
+      }
+    },
+    "executions": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "object",
+          "$ref": "#/$defs/execution",
+          "properties": {"mode": {"const": "file"}}
+        },
+        {
+          "type": "object",
+          "$ref": "#/$defs/execution",
+          "properties": {"mode": {"const": "stdin"}}
+        }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "agreement_sha256": {
+      "const": "e15b1d8e8c7b46abef0fbc802847280b42f47e4887f0128e546aea124213c4cf"
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "release_admitted",
+        "publishable",
+        "github_release_created",
+        "artifact_uploaded_to_release",
+        "live_configuration_applied"
+      ],
+      "properties": {
+        "release_admitted": {"const": false},
+        "publishable": {"const": false},
+        "github_release_created": {"const": false},
+        "artifact_uploaded_to_release": {"const": false},
+        "live_configuration_applied": {"const": false}
+      }
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bytes", "sha256"],
+      "properties": {
+        "bytes": {"type": "integer", "minimum": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "exit_code",
+        "status",
+        "failure_kind",
+        "diagnostic_code",
+        "observed_bytes",
+        "observed_sha256",
+        "projection_sha256",
+        "stdout_bytes",
+        "stderr_bytes"
+      ],
+      "properties": {
+        "mode": {"enum": ["file", "stdin"]},
+        "exit_code": {"const": 2},
+        "status": {"const": "rejected"},
+        "failure_kind": {"const": "validation"},
+        "diagnostic_code": {"const": "BV_CFG_INPUT_TOO_LARGE"},
+        "observed_bytes": {"const": 1048576},
+        "observed_sha256": {
+          "const": "de584597a26f0ab33dbd868f01ae1a85c9a1642de9537255b9b4d7c1431d742a"
+        },
+        "projection_sha256": {
+          "const": "e15b1d8e8c7b46abef0fbc802847280b42f47e4887f0128e546aea124213c4cf"
+        },
+        "stdout_bytes": {"type": "integer", "minimum": 1, "maximum": 4194304},
+        "stderr_bytes": {"const": 0}
+      }
+    }
+  }
+}

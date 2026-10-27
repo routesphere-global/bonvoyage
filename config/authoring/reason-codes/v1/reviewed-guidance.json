@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-reviewed-configuration-reason-code-guidance",
+  "guidance_version": "bonvoyage.configuration-reason-code-guidance.v1",
+  "entries": [
+    {
+      "code": "BV_CFG_DIAGNOSTICS_TRUNCATED",
+      "title": "Additional diagnostics omitted",
+      "summary": "The diagnostic limit was reached, so the retained entries are valid but the list is incomplete.",
+      "operator_action": "Fix the reported errors first, then rerun the operation to reveal any remaining diagnostics."
+    },
+    {
+      "code": "BV_CFG_DIFF_INPUT_INVALID",
+      "title": "Diff input was rejected",
+      "summary": "At least one document supplied to the semantic diff operation did not pass its required checks.",
+      "operator_action": "Validate the baseline and proposed documents separately, then correct the rejected input."
+    },
+    {
+      "code": "BV_CFG_EXPLAIN_PATH_UNKNOWN",
+      "title": "Field path is unknown",
+      "summary": "The requested field path is not present in the release-matched explanation catalog.",
+      "operator_action": "Select a canonical path from the matching completion metadata and verify the installed release version."
+    },
+    {
+      "code": "BV_CFG_FILE_TYPE_UNSUPPORTED",
+      "title": "Unsupported configuration file type",
+      "summary": "Automatic input detection does not recognize the selected file as BonVoyage configuration.",
+      "operator_action": "Use a .yaml or .yml regular file, or explicitly select standard input."
+    },
+    {
+      "code": "BV_CFG_FORMAT_UNSAFE",
+      "title": "Formatting cannot preserve invariants",
+      "summary": "The formatter cannot prove that the requested output preserves the accepted source presentation and meaning.",
+      "operator_action": "Keep the original unchanged, correct the reported source or presentation issue, and rerun the operation."
+    },
+    {
+      "code": "BV_CFG_INPUT_ENCODING",
+      "title": "Input is not valid UTF-8",
+      "summary": "The selected configuration is not valid UTF-8 input under the authoring contract.",
+      "operator_action": "Save the document as valid UTF-8 without replacing or exposing sensitive values."
+    },
+    {
+      "code": "BV_CFG_INPUT_NOT_REGULAR",
+      "title": "Input is not a regular file",
+      "summary": "The selected input kind is outside the bounded regular-file and explicit-standard-input contract.",
+      "operator_action": "Select a regular file or use the explicit standard-input mode."
+    },
+    {
+      "code": "BV_CFG_INPUT_SYMLINK",
+      "title": "In-place symlink replacement refused",
+      "summary": "The operation refused to replace a symbolic link because its target ownership is not an accepted in-place boundary.",
+      "operator_action": "Edit the intended regular file directly, or write the result to a separate output file."
+    },
+    {
+      "code": "BV_CFG_INPUT_TOO_LARGE",
+      "title": "Configuration exceeds the size limit",
+      "summary": "The input is larger than the maximum document size supported by this release.",
+      "operator_action": "Reduce the document below the release limit and validate the complete result; do not bypass the limit."
+    },
+    {
+      "code": "BV_CFG_INPUT_UNREADABLE",
+      "title": "Input could not be read",
+      "summary": "The selected source could not be opened or read within the bounded input contract.",
+      "operator_action": "Check the path, permissions and file availability, then retry the operation."
+    },
+    {
+      "code": "BV_CFG_INTERNAL",
+      "title": "Internal authoring failure",
+      "summary": "The authoring command encountered an internal condition that has no safe user-level interpretation.",
+      "operator_action": "Preserve the redacted output and version identities, report a reproducible defect, and do not assume retry success."
+    },
+    {
+      "code": "BV_CFG_MIGRATION_UNSUPPORTED",
+      "title": "Migration path is unavailable",
+      "summary": "This release does not ship the requested source-to-target configuration migration.",
+      "operator_action": "Use a shipped source and target pair, or follow the documented manual upgrade path."
+    },
+    {
+      "code": "BV_CFG_OPERATION_UNSUPPORTED",
+      "title": "Operation is unavailable",
+      "summary": "The selected authoring operation is not supported by the installed command contract.",
+      "operator_action": "Use a supported operation or install the BonVoyage release that provides the required operation."
+    },
+    {
+      "code": "BV_CFG_OUTPUT_LIMIT_EXCEEDED",
+      "title": "Operation output exceeds its limit",
+      "summary": "The bounded result would exceed the maximum output size or item count for this operation.",
+      "operator_action": "Reduce the selected input or change set and rerun; treat the refused result as absent, not partial."
+    },
+    {
+      "code": "BV_CFG_PREVIEW_INPUT_INVALID",
+      "title": "Preview input was rejected",
+      "summary": "The proposal or optional local baseline did not pass the checks required for immutable-artifact preview.",
+      "operator_action": "Validate the proposal and optional baseline separately, then correct the rejected input."
+    },
+    {
+      "code": "BV_CFG_REFERENCE_DUPLICATE",
+      "title": "Configuration reference is duplicated",
+      "summary": "A resource or binding name is repeated where the compiled configuration requires a unique identity.",
+      "operator_action": "Remove or rename the duplicate resource or binding, then revalidate all references."
+    },
+    {
+      "code": "BV_CFG_REFERENCE_MISSING",
+      "title": "Configuration reference is unresolved",
+      "summary": "A listener, route or policy refers to a resource that is not present in the compiled configuration.",
+      "operator_action": "Declare the referenced resource or correct the reference name, then validate the complete document."
+    },
+    {
+      "code": "BV_CFG_SCHEMA_CONSTRAINT",
+      "title": "Field violates a configuration constraint",
+      "summary": "A field value is outside a structural, literal, length or numeric constraint for this release.",
+      "operator_action": "Use the reported path and release-matched field metadata to choose a bounded supported value."
+    },
+    {
+      "code": "BV_CFG_SCHEMA_REQUIRED_FIELD",
+      "title": "Required configuration is missing",
+      "summary": "A required field, collection or exclusive route action is absent from the document.",
+      "operator_action": "Add the required field, collection or exclusive action, then revalidate the complete document."
+    },
+    {
+      "code": "BV_CFG_SCHEMA_TYPE",
+      "title": "Field has the wrong value type",
+      "summary": "A configuration value does not have the object, array, string, number or boolean type required by this release.",
+      "operator_action": "Use release-matched completion metadata to supply the expected value type."
+    },
+    {
+      "code": "BV_CFG_SCHEMA_UNKNOWN_FIELD",
+      "title": "Field is not supported",
+      "summary": "The document contains a field that the installed configuration schema does not recognize.",
+      "operator_action": "Correct the field name or use a release that supports the intended capability."
+    },
+    {
+      "code": "BV_CFG_SCHEMA_VERSION_REQUIRED",
+      "title": "Configuration schema version is required",
+      "summary": "The document does not declare the configuration schema version needed for release matching.",
+      "operator_action": "Set snapshot.schema_version to a version supported by the installed release."
+    },
+    {
+      "code": "BV_CFG_SCHEMA_VERSION_UNSUPPORTED",
+      "title": "Configuration schema version is unsupported",
+      "summary": "The document declares a configuration schema version that this release cannot compile.",
+      "operator_action": "Use a matching BonVoyage release or a shipped migration path."
+    },
+    {
+      "code": "BV_CFG_SECRET_LITERAL_FORBIDDEN",
+      "title": "Secret content is forbidden in configuration",
+      "summary": "The document appears to contain secret material where only a deployment-secret reference is allowed.",
+      "operator_action": "Store the secret at the deployment boundary and reference only its bounded filename."
+    },
+    {
+      "code": "BV_CFG_SEMANTIC_INVALID",
+      "title": "Configuration is not semantically valid",
+      "summary": "The document is structurally readable but its resources or settings cannot form an accepted snapshot.",
+      "operator_action": "Review the reported path and message, then correct incompatible settings or resource relationships."
+    },
+    {
+      "code": "BV_CFG_VERSION_MISMATCH",
+      "title": "Installed release identity does not match",
+      "summary": "A caller-required product, compiler or configuration version differs from the installed authority.",
+      "operator_action": "Use matching product, compiler and schema versions; do not override the mismatch."
+    },
+    {
+      "code": "BV_CFG_YAML_ALIAS_UNSUPPORTED",
+      "title": "YAML aliases are unsupported",
+      "summary": "The document uses an anchor, alias or merge key outside the bounded YAML input contract.",
+      "operator_action": "Replace anchors, aliases and merge keys with explicit configuration fields."
+    },
+    {
+      "code": "BV_CFG_YAML_EMPTY",
+      "title": "YAML document is empty",
+      "summary": "The selected source does not contain one complete BonVoyage desired-state document.",
+      "operator_action": "Provide one complete desired-state document and rerun the operation."
+    },
+    {
+      "code": "BV_CFG_YAML_LIMIT_EXCEEDED",
+      "title": "YAML structural limit exceeded",
+      "summary": "The parsed document exceeds a bounded depth, node-count or related YAML safety limit.",
+      "operator_action": "Reduce nesting or node count while preserving one complete desired state."
+    },
+    {
+      "code": "BV_CFG_YAML_MULTIPLE_DOCUMENTS",
+      "title": "Multiple YAML documents are unsupported",
+      "summary": "The selected input contains more than one YAML document under the authoring contract.",
+      "operator_action": "Keep exactly one BonVoyage desired-state document in the selected input."
+    },
+    {
+      "code": "BV_CFG_YAML_SYNTAX",
+      "title": "YAML syntax is invalid",
+      "summary": "The parser could not read the document as bounded YAML configuration.",
+      "operator_action": "Correct the syntax at the reported source location, then rerun the operation."
+    }
+  ]
+}

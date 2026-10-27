@@ -1,0 +1,69 @@
+schema_version: 1
+id: throughput-balanced-v1
+
+# Allocate up to 80% of eligible physical cores to Seastar after topology and
+# reservation constraints are satisfied. This is an OSS production default,
+# not the fixed CPU layout used for comparative benchmark points.
+gateway_cpu_target_percent: 80
+
+discovery:
+  require_linux: true
+  require_sysfs: true
+  collect_lscpu: true
+  collect_lspci: true
+  collect_kernel_messages: true
+  kernel_message_access: record-evidence-gap-when-restricted
+  collect_network_driver_state: true
+  collect_systemd_and_cgroup: true
+
+cpu:
+  minimum_reserved_physical_cores: 2
+  minimum_reserved_percent: 20
+  keep_smt_siblings_together: true
+  require_online_cpu_verification: true
+
+# Seastar receives a bounded per-shard allocator budget. MemoryHigh and
+# MemoryMax are service guardrails, not permission to consume all host RAM.
+memory:
+  allocation_mode: bounded-per-shard
+  seastar_mib_per_shard: 512
+  seastar_minimum_mib: 1024
+  seastar_maximum_host_percent: 70
+  minimum_host_reserve_mib: 4096
+  systemd_memory_high_percent: 80
+  systemd_memory_max_percent: 85
+  benchmark_mode: fixed-explicit
+  require_cgroup_v2_verification: true
+  require_swap_state_recording: true
+
+numa:
+  prefer_single_node: true
+  prefer_nic_locality: true
+  reject_asymmetric_partial_core_sets: true
+  record_distance_matrix: true
+
+irq:
+  strategy: reserved-same-numa
+  keep_irqbalance_enabled: true
+  exclude_gateway_cpus: true
+  minimum_reserved_physical_cores: 2
+  maximum_reserved_physical_cores: 8
+  queues_per_reserved_core: 4
+  require_queue_irq_inventory: true
+  require_effective_affinity_verification: true
+
+network:
+  discover_pci_numa_locality: true
+  discover_rx_tx_queues: true
+  rps_policy: only-when-hardware-rss-is-insufficient
+  xps_policy: topology-aware-when-measured
+  offload_policy: preserve-unless-ab-qualified
+  coalescing_policy: preserve-unless-ab-qualified
+  require_before_after_counters: true
+
+safety:
+  default_mode: plan-only
+  require_explicit_apply: true
+  require_rollback_plan: true
+  reject_unverified_changes: true
+  allow_kernel_boot_changes: false

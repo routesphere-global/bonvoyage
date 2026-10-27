@@ -1,0 +1,29 @@
+BonVoyage API Gateway native packaging
+==================================
+
+This package contains the gateway executable and its hardened systemd unit.
+It supplies neither a snapshot, secrets, control-plane process nor tuning.
+Install a reviewed snapshot at /etc/bonvoyage/snapshot.pb (root:bonvoyage 0640).
+After verifying configuration and dependencies, explicitly enable/start
+bonvoyage.service. Admin and metrics endpoints remain bound to loopback.
+
+Runtime logger severity is sent through the local syslog socket to journald.
+Raw stdout/stderr are retained at info priority without interpreting <N>
+prefixes. Ensure /dev/log and journald are available before starting; no
+fallback delivery, remote delivery or unlimited retention is guaranteed.
+The package never changes host-wide journald, rsyslog or wall policy.
+
+Upgrades stop the service and do not start it again automatically. Perform
+upgrades in a reviewed maintenance window, verify the package and snapshot,
+then explicitly start the service. Keep the prior package for rollback.
+
+Removal/purge retains service identity, snapshots, secrets, state and logs.
+No installer recursively removes operator data or changes CPU/NIC/IRQ policy.
+The source-install unit in /etc/systemd/system must be reconciled before
+installation; this package never silently replaces that administrator unit.
+
+The current experimental tuning adapter supports only the separately accepted
+/usr/local source-install contract, not this package's /usr/bin unit. Package
+installation does not grant tuning or benchmark qualification.
+
+Private rehearsal builds are not signed public releases or OSS license grants.

@@ -1,0 +1,260 @@
+diff --git a/include/seastar/net/tls.hh b/include/seastar/net/tls.hh
+index a2262b86..f6151e78 100644
+--- a/include/seastar/net/tls.hh
++++ b/include/seastar/net/tls.hh
+@@ -26,6 +26,7 @@
+ #include <map>
+ #include <any>
+ #include <fmt/format.h>
++#include <vector>
+ #endif
+ 
+ #include <seastar/core/future.hh>
+@@ -365,6 +366,14 @@ namespace tls {
+         /// \brief Optional session resume data. Must be retrieved via
+         /// get_session_resume_data below.
+         session_data session_resume_data;
++
++        /// ALPN protocols advertised by this client or server session.
++        std::vector<sstring> alpn_protocols;
++
++        /// Fail the handshake when no peer ALPN protocol matches.
++        /// Leave false for HTTP/1.1 compatibility with clients that omit
++        /// the ALPN extension.
++        bool alpn_mandatory = false;
+     };
+ 
+     /**
+@@ -435,6 +444,7 @@ namespace tls {
+     [[deprecated("Use overload with tls_options parameter")]]
+     future<connected_socket> wrap_client(shared_ptr<certificate_credentials>, connected_socket&&, sstring name);
+     future<connected_socket> wrap_server(shared_ptr<server_credentials>, connected_socket&&);
++    future<connected_socket> wrap_server(shared_ptr<server_credentials>, connected_socket&&, tls_options options);
+     /// @}
+ 
+     /**
+@@ -454,8 +464,10 @@ namespace tls {
+      */
+     /// @{
+     server_socket listen(shared_ptr<server_credentials>, socket_address sa, listen_options opts = listen_options());
++    server_socket listen(shared_ptr<server_credentials>, socket_address sa, listen_options opts, tls_options options);
+     // Wraps an existing server socket in SSL
+     server_socket listen(shared_ptr<server_credentials>, server_socket);
++    server_socket listen(shared_ptr<server_credentials>, server_socket, tls_options options);
+     /// @}
+ 
+     /**
+@@ -537,6 +549,25 @@ namespace tls {
+     */
+     future<session_data> get_session_resume_data(connected_socket&);
+ 
++    /**
++     * Returns the DNS SNI name supplied by the client, when present.
++     * Calling this function forces the TLS handshake.
++     */
++    future<std::optional<sstring>> get_server_name(connected_socket&);
++
++    /**
++     * Returns the negotiated ALPN protocol, when one was selected.
++     * Calling this function forces the TLS handshake.
++     */
++    future<std::optional<sstring>> get_negotiated_alpn(connected_socket&);
++
++    /**
++     * Immediately aborts the transport underlying a TLS socket.
++     * Use this for bounded handshake cancellation; normal shutdown should
++     * continue to use the connected socket or stream close operations.
++     */
++    void abort(connected_socket&);
++
+     std::ostream& operator<<(std::ostream&, const subject_alt_name::value_type&);
+     std::ostream& operator<<(std::ostream&, const subject_alt_name&);
+ 
+diff --git a/src/net/tls.cc b/src/net/tls.cc
+index e5d40b83..296aa7c7 100644
+--- a/src/net/tls.cc
++++ b/src/net/tls.cc
+@@ -396,8 +396,12 @@ public:
+     void set_x509_trust(const blob& b, x509_crt_format fmt) {
+         blob_wrapper w(b);
+-        gtls_chk(
+-                gnutls_certificate_set_x509_trust_mem(_creds, &w,
+-                        gnutls_x509_crt_fmt_t(fmt)));
++        const auto loaded = gnutls_certificate_set_x509_trust_mem(
++                _creds, &w, gnutls_x509_crt_fmt_t(fmt));
++        gtls_chk(loaded);
++        if (loaded == 0) {
++            throw std::invalid_argument(
++                    "TLS trust bundle contains no X.509 certificates");
++        }
+     }
+     void set_x509_crl(const blob& b, x509_crt_format fmt) {
+         blob_wrapper w(b);
+@@ -1127,6 +1127,20 @@ class session : public enable_lw_shared_from_this<session> {
+         gtls_chk(
+                 gnutls_credentials_set(*this, GNUTLS_CRD_CERTIFICATE,
+                         *_creds));
++        if (!_options.alpn_protocols.empty()) {
++            std::vector<gnutls_datum_t> protocols;
++            protocols.reserve(_options.alpn_protocols.size());
++            for (auto& protocol : _options.alpn_protocols) {
++                protocols.push_back(gnutls_datum_t{
++                    reinterpret_cast<unsigned char*>(protocol.data()),
++                    static_cast<unsigned int>(protocol.size())});
++            }
++            const auto flags = _options.alpn_mandatory
++                    ? static_cast<unsigned int>(GNUTLS_ALPN_MANDATORY)
++                    : 0U;
++            gtls_chk(gnutls_alpn_set_protocols(*this, protocols.data(),
++                    static_cast<unsigned int>(protocols.size()), flags));
++        }
+         if (_type == type::SERVER) {
+             switch (_creds->get_client_auth()) {
+                 case client_auth::NONE:
+@@ -1829,6 +1843,51 @@ class session : public enable_lw_shared_from_this<session> {
+             return res;
+         });
+     }
++    future<std::optional<sstring>> get_server_name() {
++        return state_checked_access([this] {
++            size_t size = 0;
++            unsigned int type = 0;
++            auto result = gnutls_server_name_get(*this, nullptr, &size, &type, 0);
++            if (result == GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE) {
++                return std::optional<sstring>{};
++            }
++            if (result != GNUTLS_E_SHORT_MEMORY_BUFFER) {
++                gtls_chk(result);
++            }
++            sstring name;
++            name.resize(size);
++            gtls_chk(gnutls_server_name_get(*this, name.data(), &size, &type, 0));
++            if (type != GNUTLS_NAME_DNS) {
++                throw std::invalid_argument("Unsupported TLS server-name type");
++            }
++            name.resize(size);
++            return std::optional<sstring>{std::move(name)};
++        });
++    }
++    future<std::optional<sstring>> get_negotiated_alpn() {
++        return state_checked_access([this] {
++            gnutls_datum_t protocol{};
++            const auto result = gnutls_alpn_get_selected_protocol(*this, &protocol);
++            if (result == GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE) {
++                return std::optional<sstring>{};
++            }
++            gtls_chk(result);
++            return std::optional<sstring>{sstring(
++                    reinterpret_cast<const char*>(protocol.data), protocol.size)};
++        });
++    }
++    void abort() noexcept {
++        _shutdown = true;
++        _eof = true;
++        try {
++            _sock->shutdown_input();
++        } catch (...) {
++        }
++        try {
++            _sock->shutdown_output();
++        } catch (...) {
++        }
++    }
+ 
+     struct session_ref;
+ private:
+@@ -1974,6 +2033,15 @@ class tls_connected_socket_impl : public net::connected_socket_impl, public sess
+     future<session_data> get_session_resume_data() {
+         return _session->get_session_resume_data();
+     }
++    future<std::optional<sstring>> get_server_name() {
++        return _session->get_server_name();
++    }
++    future<std::optional<sstring>> get_negotiated_alpn() {
++        return _session->get_negotiated_alpn();
++    }
++    void abort() noexcept {
++        _session->abort();
++    }
+ };
+ 
+ 
+@@ -2017,15 +2070,15 @@ class tls_connected_socket_impl::sink_impl: public data_sink_impl, public sessio
+ 
+ class server_session : public net::server_socket_impl {
+ public:
+-    server_session(shared_ptr<server_credentials> creds, server_socket sock)
+-            : _creds(std::move(creds)), _sock(std::move(sock)) {
++    server_session(shared_ptr<server_credentials> creds, server_socket sock, tls_options options)
++            : _creds(std::move(creds)), _sock(std::move(sock)), _options(std::move(options)) {
+     }
+     future<accept_result> accept() override {
+         // We're not actually doing anything very SSL until we get
+         // an actual connection. Then we create a "server" session
+         // and wrap it up after handshaking.
+         return _sock.accept().then([this](accept_result ar) {
+-            return wrap_server(_creds, std::move(ar.connection)).then([addr = std::move(ar.remote_address)](connected_socket s) {
++            return wrap_server(_creds, std::move(ar.connection), _options).then([addr = std::move(ar.remote_address)](connected_socket s) {
+                 return make_ready_future<accept_result>(accept_result{std::move(s), addr});
+             });
+         });
+@@ -2040,6 +2093,7 @@ class server_session : public net::server_socket_impl {
+ 
+     shared_ptr<server_credentials> _creds;
+     server_socket _sock;
++    tls_options _options;
+ };
+ 
+ class tls_socket_impl : public net::socket_impl {
+@@ -2120,17 +2174,29 @@ future<connected_socket> tls::wrap_client(shared_ptr<certificate_credentials> cr
+ }
+ 
+ future<connected_socket> tls::wrap_server(shared_ptr<server_credentials> cred, connected_socket&& s) {
+-    session::session_ref sess(make_lw_shared<session>(session::type::SERVER, std::move(cred), std::move(s)));
++    return wrap_server(std::move(cred), std::move(s), {});
++}
++
++future<connected_socket> tls::wrap_server(shared_ptr<server_credentials> cred, connected_socket&& s, tls_options options) {
++    session::session_ref sess(make_lw_shared<session>(session::type::SERVER, std::move(cred), std::move(s), std::move(options)));
+     connected_socket sock(std::make_unique<tls_connected_socket_impl>(std::move(sess)));
+     return make_ready_future<connected_socket>(std::move(sock));
+ }
+ 
+ server_socket tls::listen(shared_ptr<server_credentials> creds, socket_address sa, listen_options opts) {
+-    return listen(std::move(creds), seastar::listen(sa, opts));
++    return listen(std::move(creds), std::move(sa), std::move(opts), {});
++}
++
++server_socket tls::listen(shared_ptr<server_credentials> creds, socket_address sa, listen_options opts, tls_options options) {
++    return listen(std::move(creds), seastar::listen(sa, opts), std::move(options));
+ }
+ 
+ server_socket tls::listen(shared_ptr<server_credentials> creds, server_socket ss) {
+-    server_socket ssls(std::make_unique<server_session>(creds, std::move(ss)));
++    return listen(std::move(creds), std::move(ss), {});
++}
++
++server_socket tls::listen(shared_ptr<server_credentials> creds, server_socket ss, tls_options options) {
++    server_socket ssls(std::make_unique<server_session>(creds, std::move(ss), std::move(options)));
+     return server_socket(std::move(ssls));
+ }
+ 
+@@ -2168,6 +2249,18 @@ future<tls::session_data> tls::get_session_resume_data(connected_socket& socket)
+     return get_tls_socket(socket)->get_session_resume_data();
+ }
+ 
++future<std::optional<sstring>> tls::get_server_name(connected_socket& socket) {
++    return get_tls_socket(socket)->get_server_name();
++}
++
++future<std::optional<sstring>> tls::get_negotiated_alpn(connected_socket& socket) {
++    return get_tls_socket(socket)->get_negotiated_alpn();
++}
++
++void tls::abort(connected_socket& socket) {
++    get_tls_socket(socket)->abort();
++}
++
+ std::string_view tls::format_as(subject_alt_name_type type) {
+     switch (type) {
+         case subject_alt_name_type::dnsname:

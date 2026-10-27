@@ -1,0 +1,77 @@
+name: Configuration Authoring Windows Large Input
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: config-authoring-windows-large-input-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CONTRACT_PATH: packaging/release/windows/config-authoring-large-input-contract.json
+  WORKFLOW_TEMPLATE: packaging/release/windows/config-authoring-large-input.workflow.yml
+
+jobs:
+  windows-large-input:
+    name: Windows AMD64 large-input acceptance
+    runs-on: windows-2025
+    timeout-minutes: 15
+    environment: release
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: 1.23.0
+          cache: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.12.0
+          cache: npm
+      - name: Install locked verifier dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Verify protected source and Windows acceptance activation
+        shell: pwsh
+        run: >-
+          node scripts/run-config-authoring-windows-large-input.mjs verify-contract
+          --contract "$env:CONTRACT_PATH"
+          --workflow "$env:WORKFLOW_TEMPLATE"
+          --repository-root "$env:GITHUB_WORKSPACE"
+          --require-activatable
+      - name: Build the Windows AMD64 configuration command
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP\bonvoyage-config-bin" | Out-Null
+          Push-Location control-plane
+          go build -trimpath -ldflags="-s -w" -o "$env:RUNNER_TEMP\bonvoyage-config-bin\bonvoyage-config.exe" ./cmd/bonvoyage-config
+          Pop-Location
+      - name: Execute bounded file and standard-input acceptance
+        shell: pwsh
+        run: >-
+          node scripts/run-config-authoring-windows-large-input.mjs run
+          --contract "$env:CONTRACT_PATH"
+          --workflow "$env:WORKFLOW_TEMPLATE"
+          --repository-root "$env:GITHUB_WORKSPACE"
+          --binary "$env:RUNNER_TEMP\bonvoyage-config-bin\bonvoyage-config.exe"
+          --output "$env:RUNNER_TEMP\bonvoyage-config-windows-evidence"
+          --require-activatable
+      - name: Upload bounded non-publishing Windows evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: config-authoring-windows-large-input
+          path: ${{ runner.temp }}/bonvoyage-config-windows-evidence
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 3

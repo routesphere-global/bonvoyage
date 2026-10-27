@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "name": "c-ares",
+  "component": "libcares",
+  "version": "1.34.8",
+  "scope": "asynchronous DNS parsing and resolution through the pinned Seastar socket adapter; statically linked into the gateway",
+  "source": {
+    "release_url": "https://github.com/c-ares/c-ares/releases/tag/v1.34.8",
+    "repository_url": "https://github.com/c-ares/c-ares.git",
+    "archive_url": "https://github.com/c-ares/c-ares/releases/download/v1.34.8/c-ares-1.34.8.tar.gz",
+    "tag": "v1.34.8",
+    "tag_object": "63a4c4c71b86e448bcc1c55287c35aa4aa0f4246",
+    "commit": "c7a3138dcfe3bb0eaaf10c0c24c36dc66dc790ab",
+    "archive_sha256": "c222b6d681096f9444d2c4863d2c1174019e27cacca0a4a5c114d36dd7d7bf78"
+  },
+  "license": {
+    "spdx": "MIT",
+    "source_file": "LICENSE.md",
+    "installed_file": "/opt/c-ares/share/licenses/c-ares/LICENSE.md"
+  },
+  "build": {
+    "linkage": "static",
+    "library_only": true,
+    "thread_safety": true,
+    "event_thread": false,
+    "query_cache": false,
+    "excluded_components": ["shared_library", "tools"]
+  },
+  "matching": {
+    "cpe": "cpe:2.3:a:c-ares_project:c-ares:1.34.8:*:*:*:*:*:*:*"
+  },
+  "review": {
+    "date": "2026-09-15",
+    "decision": "maintained upstream correction selected; runtime and release acceptance require recorded verification",
+    "security_sources": [
+      "https://github.com/c-ares/c-ares/security/advisories/GHSA-jv8r-gqr9-68wj",
+      "https://github.com/c-ares/c-ares/security/advisories/GHSA-pjmc-gx33-gc76"
+    ]
+  },
+  "acceptance": {
+    "adr": "docs/architecture/decisions/0013-centralized-active-health-dns-refresh.md",
+    "status": "proposed",
+    "remaining_gates": ["clean-source native acceptance", "fresh dual-format scans and reviewed applicability", "dedicated performance qualification"]
+  }
+}

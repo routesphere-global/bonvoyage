@@ -1,0 +1,53 @@
+diff --git a/include/seastar/util/string_utils.hh b/include/seastar/util/string_utils.hh
+--- a/include/seastar/util/string_utils.hh
++++ b/include/seastar/util/string_utils.hh
+@@ -47,17 +47,44 @@ SEASTAR_MODULE_EXPORT_BEGIN
+ // Collection of utilities for working with strings .
+ //
+ 
++constexpr unsigned char ascii_lower(unsigned char value) noexcept {
++    return value >= 'A' && value <= 'Z'
++            ? static_cast<unsigned char>(value + ('a' - 'A'))
++            : value;
++}
++
+ struct case_insensitive_cmp {
+-    bool operator()(const sstring& s1, const sstring& s2) const {
++    bool operator()(const sstring& s1, const sstring& s2) const noexcept {
++        if (s1.size() != s2.size()) {
++            return false;
++        }
+         return std::equal(s1.begin(), s1.end(), s2.begin(), s2.end(),
+-                [](char a, char b) { return ::tolower(a) == ::tolower(b); });
++                [](char a, char b) {
++                    return ascii_lower(static_cast<unsigned char>(a)) ==
++                            ascii_lower(static_cast<unsigned char>(b));
++                });
+     }
+ };
+ 
+ struct case_insensitive_hash {
+-    size_t operator()(sstring s) const {
+-        std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+-        return std::hash<sstring>()(s);
++    size_t operator()(const sstring& s) const noexcept {
++        // HTTP field names are ASCII tokens. Hash their folded bytes directly
++        // so a lookup does not copy and mutate an owning sstring first.
++        constexpr auto offset_basis_64 = 14695981039346656037ULL;
++        constexpr auto offset_basis_32 = 2166136261U;
++        constexpr auto prime_64 = 1099511628211ULL;
++        constexpr auto prime_32 = 16777619U;
++        size_t result = sizeof(size_t) == 8
++                ? static_cast<size_t>(offset_basis_64)
++                : static_cast<size_t>(offset_basis_32);
++        const size_t prime = sizeof(size_t) == 8
++                ? static_cast<size_t>(prime_64)
++                : static_cast<size_t>(prime_32);
++        for (const auto value : s) {
++            result ^= ascii_lower(static_cast<unsigned char>(value));
++            result *= prime;
++        }
++        return result;
+     }
+ };
+ 

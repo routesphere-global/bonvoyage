@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.routesphere.global/bonvoyage/authoring-cross-surface-v1.schema.json",
+  "title": "RouteSphere BonVoyage configuration cross-surface contract v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "classification",
+    "gate_version",
+    "product_version",
+    "contract_version",
+    "compiler_version",
+    "configuration_schema_versions",
+    "authority",
+    "sources",
+    "corpus",
+    "agreement",
+    "surfaces",
+    "lifecycle_requirements",
+    "deferred_surfaces",
+    "release_gate"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "../../../schemas/bonvoyage-authoring-cross-surface-v1.schema.json"
+    },
+    "schema_version": {"const": 1},
+    "classification": {
+      "const": "routesphere-bonvoyage-configuration-cross-surface-contract"
+    },
+    "gate_version": {"const": "bonvoyage.configuration-cross-surface.v1"},
+    "product_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "contract_version": {"type": "string", "minLength": 1, "maxLength": 128},
+    "compiler_version": {"type": "string", "minLength": 1, "maxLength": 128},
+    "configuration_schema_versions": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "integer", "minimum": 1}
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semantic_validation",
+        "deterministic_serialization",
+        "structured_presentation",
+        "network_access",
+        "live_mutation"
+      ],
+      "properties": {
+        "semantic_validation": {"const": "snapshot.Compile"},
+        "deterministic_serialization": {"const": "snapshot.MarshalDeterministic"},
+        "structured_presentation": {"const": "configauthoring.ValidateReader"},
+        "network_access": {"const": false},
+        "live_mutation": {"const": false}
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authoring_contract",
+        "corpus_manifest",
+        "result_schema",
+        "skill_contract",
+        "openai_codex_wrapper",
+        "claude_wrapper",
+        "admin_openapi"
+      ],
+      "properties": {
+        "authoring_contract": {"$ref": "#/$defs/source"},
+        "corpus_manifest": {"$ref": "#/$defs/source"},
+        "result_schema": {"$ref": "#/$defs/source"},
+        "skill_contract": {"$ref": "#/$defs/source"},
+        "openai_codex_wrapper": {"$ref": "#/$defs/source"},
+        "claude_wrapper": {"$ref": "#/$defs/source"},
+        "admin_openapi": {"$ref": "#/$defs/source"}
+      }
+    },
+    "corpus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_count", "accepted_count", "rejected_count"],
+      "properties": {
+        "case_count": {"type": "integer", "minimum": 1},
+        "accepted_count": {"type": "integer", "minimum": 1},
+        "rejected_count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "agreement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accepted_projection", "rejected_projection", "transport_normalization"],
+      "properties": {
+        "accepted_projection": {"$ref": "#/$defs/projection"},
+        "rejected_projection": {"$ref": "#/$defs/projection"},
+        "transport_normalization": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "ignore-source-id",
+              "ignore-human-message-text",
+              "map-process-and-http-status-to-decision"
+            ]
+          }
+        }
+      }
+    },
+    "surfaces": {
+      "type": "array",
+      "minItems": 6,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/surface"}
+    },
+    "lifecycle_requirements": {
+      "type": "array",
+      "minItems": 8,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/lifecycle"}
+    },
+    "deferred_surfaces": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "release_boundary", "gate_behavior"],
+        "properties": {
+          "id": {"const": "notepad-plus-plus"},
+          "release_boundary": {"const": "oss-1.1-or-ga-beta"},
+          "gate_behavior": {"const": "joins-this-gate-when-shipped"}
+        }
+      }
+    },
+    "release_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "blocking_surfaces", "blocking_lifecycle_requirements"],
+      "properties": {
+        "status": {"enum": ["open", "passed"]},
+        "blocking_surfaces": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 64}
+        },
+        "blocking_lifecycle_requirements": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 64}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "sha256"],
+      "properties": {
+        "path": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"},
+        "bytes": {"type": "integer", "minimum": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "projection": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "decision",
+          "artifact.sha256",
+          "artifact.bytes",
+          "artifact.snapshot_id",
+          "artifact.schema_version",
+          "artifact.minimum_dataplane_version",
+          "diagnostic.code",
+          "diagnostic.path",
+          "diagnostic.source.start",
+          "diagnostic.source.end",
+          "diagnostic.redacted",
+          "forbidden-output-absence"
+        ]
+      }
+    },
+    "surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "state",
+        "interface",
+        "agreement_profile",
+        "delegates_to",
+        "evidence",
+        "model_qualification",
+        "gap"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "kind": {"enum": ["compiler", "command", "console", "orchestration", "skill-package"]},
+        "state": {"enum": ["ready", "gap-open"]},
+        "interface": {"type": "string", "minLength": 1, "maxLength": 256},
+        "agreement_profile": {"enum": ["compiler", "full-validation", "delegated-command", "orchestration"]},
+        "delegates_to": {
+          "anyOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"}
+        },
+        "model_qualification": {
+          "enum": ["not-applicable", "accepted-separate-evidence", "deferred-separate-evidence"]
+        },
+        "gap": {
+          "anyOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["reason", "missing_projection"],
+              "properties": {
+                "reason": {"type": "string", "minLength": 20, "maxLength": 512},
+                "missing_projection": {"$ref": "#/$defs/projection"}
+              }
+            }
+          ]
+        }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "state", "evidence"],
+      "properties": {
+        "id": {
+          "enum": [
+            "offline-install",
+            "upgrade",
+            "downgrade-rejection",
+            "uninstall",
+            "malformed-output",
+            "missing-compiler",
+            "incompatible-version",
+            "windows-large-file"
+          ]
+        },
+        "state": {"enum": ["covered", "partial", "pending"]},
+        "evidence": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]*$"}
+        }
+      }
+    }
+  }
+}

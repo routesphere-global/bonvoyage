@@ -1,0 +1,88 @@
+{
+  "schema_version": 2,
+  "classification": "routesphere-bonvoyage-oss-release-contract",
+  "product": "BonVoyage API Gateway",
+  "source_repository": "https://github.com/routesphere-global/bonvoyage",
+  "platforms": [
+    "linux/amd64"
+  ],
+  "artifacts": [
+    {
+      "id": "gateway-deb-linux-amd64",
+      "kind": "debian-package",
+      "platform": "linux/amd64"
+    },
+    {
+      "id": "gateway-oci-linux-amd64",
+      "kind": "oci-image",
+      "platform": "linux/amd64"
+    }
+  ],
+  "global_gates": [
+    "legal",
+    "source",
+    "toolchain"
+  ],
+  "artifact_gates": [
+    "functional",
+    "lifecycle",
+    "provenance-verification",
+    "reproducibility",
+    "sbom-validation",
+    "signature-verification",
+    "vulnerability-review"
+  ],
+  "publication_review_roles": [
+    "architecture",
+    "security",
+    "documentation",
+    "release",
+    "legal"
+  ],
+  "publication_authorization": {
+    "status": "pending-identity-activation",
+    "authorization_classification": "routesphere-bonvoyage-oss-publication-authorization",
+    "review_statement_classification": "routesphere-bonvoyage-oss-publication-review-statement",
+    "rights_record_classification": "routesphere-bonvoyage-oss-rights-approval-record",
+    "maximum_review_age_hours": 168,
+    "maximum_authorization_lifetime_hours": 24,
+    "minimum_distinct_reviewers": 3,
+    "legal_role": "legal",
+    "legal_gate_ids": [
+      "rightsholder-identity",
+      "chain-of-title",
+      "product-separation",
+      "license-selection",
+      "legal-review",
+      "third-party-source",
+      "binary-redistribution",
+      "public-documentation",
+      "contribution-policy",
+      "trademark-policy",
+      "destination-consistency",
+      "exact-release-acceptance"
+    ],
+    "role_signers": {
+      "architecture": [],
+      "security": [],
+      "documentation": [],
+      "release": [],
+      "legal": []
+    }
+  },
+  "requirements": {
+    "independent_builds": 2,
+    "slsa_build_level": 2,
+    "sbom_formats": [
+      "cyclonedx-1.6-json",
+      "spdx-2.3-json"
+    ],
+    "signature_mode": "sigstore-keyless",
+    "signature_issuer": "https://token.actions.githubusercontent.com",
+    "signature_subject_prefix": "https://github.com/routesphere-global/bonvoyage/.github/workflows/release.yml@refs/tags/",
+    "maximum_vulnerability_database_age_hours": 48,
+    "maximum_unreviewed_findings": 0,
+    "maximum_unresolved_blocking_findings": 0,
+    "publication_default": false
+  }
+}

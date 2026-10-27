@@ -1,0 +1,163 @@
+{
+  "schema_version": 2,
+  "classification": "routesphere-bonvoyage-oss-kubernetes-fresh-install-contract",
+  "product": "BonVoyage API Gateway",
+  "target": {
+    "orchestrator": "kubernetes",
+    "namespace": "bonvoyage",
+    "deployment": "bonvoyage",
+    "service": "bonvoyage",
+    "metrics_service": "bonvoyage-metrics",
+    "replicas": 2,
+    "context": "kind-bonvoyage-oss-acceptance"
+  },
+  "fixture": {
+    "path": "tests/fixtures/oss-kubernetes-fresh-install",
+    "baseline_config_map": "bonvoyage-config-v1",
+    "upgrade_config_map": "bonvoyage-config-v2",
+    "invalid_config_map": "bonvoyage-config-invalid",
+    "controlled_upstream_deployment": "bonvoyage-acceptance-upstream",
+    "controlled_upstream_service": "upstream"
+  },
+  "phases": [
+    {
+      "id": "preflight",
+      "required_checks": [
+        "dedicated_context_exact",
+        "namespace_absent",
+        "local_images_exact"
+      ]
+    },
+    {
+      "id": "baseline",
+      "required_checks": [
+        "rendered_resources_valid",
+        "gateway_replicas_ready",
+        "compiler_init_completed",
+        "approved_runtime_root_digests_exact",
+        "pod_security_exact",
+        "pod_host_network_disabled",
+        "pod_host_ports_absent",
+        "gateway_service_set_exact",
+        "service_admin_port_absent",
+        "network_policy_set_exact",
+        "diagnostic_ingress_default_deny",
+        "metrics_ingress_scoped",
+        "admin_ingress_scoped",
+        "metrics_service_routable",
+        "fixed_route_exact",
+        "proxied_route_exact",
+        "metrics_accounting_exact",
+        "runtime_error_counters_zero",
+        "pod_identity_stable",
+        "automatic_restarts_zero"
+      ]
+    },
+    {
+      "id": "upgrade",
+      "required_checks": [
+        "revisioned_config_selected",
+        "rolling_update_completed",
+        "upgraded_route_exact",
+        "old_replica_set_scaled_down",
+        "automatic_restarts_zero"
+      ]
+    },
+    {
+      "id": "rejected-candidate",
+      "required_checks": [
+        "invalid_compiler_init_failed",
+        "healthy_replicas_preserved",
+        "service_traffic_preserved",
+        "failed_candidate_not_promoted"
+      ]
+    },
+    {
+      "id": "rollback",
+      "required_checks": [
+        "baseline_config_reselected",
+        "rollback_rollout_completed",
+        "baseline_route_restored",
+        "automatic_restarts_zero"
+      ]
+    },
+    {
+      "id": "teardown",
+      "required_checks": [
+        "namespace_deleted",
+        "acceptance_resources_absent"
+      ]
+    }
+  ],
+  "traffic": {
+    "minimum_requests_per_route": 25,
+    "expected_configured_routes_per_pod": 2,
+    "expected_configured_listeners_per_pod": 1,
+    "expected_configured_clusters_per_pod": 1,
+    "expected_configured_endpoints_per_pod": 1,
+    "zero_counters": [
+      "bonvoyage_bonvoyage_gateway_responses_4xx_total",
+      "bonvoyage_bonvoyage_gateway_responses_5xx_total",
+      "bonvoyage_bonvoyage_gateway_route_misses_total",
+      "bonvoyage_bonvoyage_gateway_request_timeouts_total",
+      "bonvoyage_bonvoyage_gateway_overload_rejections_total",
+      "bonvoyage_bonvoyage_gateway_upstream_failures_total",
+      "bonvoyage_memory_malloc_failed",
+      "bonvoyage_reactor_abandoned_failed_futures",
+      "bonvoyage_stall_detector_reported"
+    ]
+  },
+  "security": {
+    "automount_service_account_token": false,
+    "run_as_non_root": true,
+    "run_as_user": 65532,
+    "run_as_group": 65532,
+    "read_only_root_filesystem": true,
+    "allow_privilege_escalation": false,
+    "drop_capabilities": ["ALL"],
+    "seccomp_profile": "RuntimeDefault",
+    "host_network": false,
+    "host_ports": false,
+    "admin_service_exposed": false,
+    "network_policy": {
+      "default_deny": "bonvoyage-default-deny-ingress",
+      "data": "bonvoyage-data-ingress",
+      "metrics": "bonvoyage-metrics-ingress",
+      "admin": "bonvoyage-admin-ingress",
+      "metrics_access_label": "routesphere.global/metrics-access",
+      "admin_access_label": "routesphere.global/diagnostics-access"
+    }
+  },
+  "rollout": {
+    "strategy": "RollingUpdate",
+    "maximum_unavailable": 0,
+    "maximum_surge": 1,
+    "revisioned_config_maps_required": true
+  },
+  "runner": {
+    "cluster_name": "bonvoyage-oss-acceptance",
+    "confirmation": "delete-kind-bonvoyage-oss-acceptance",
+    "kind_version": "v0.33.0",
+    "kind_node_image": "kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5",
+    "cluster_wait_seconds": 300,
+    "rollout_timeout_seconds": 180,
+    "failed_candidate_timeout_seconds": 45,
+    "images": {
+      "dataplane": "bonvoyage-local-bonvoyage:oss-kubernetes",
+      "snapshot_compiler": "bonvoyage-local-snapshot-compiler:oss-kubernetes",
+      "upstream": "bonvoyage-local-upstream:oss-kubernetes"
+    }
+  },
+  "qualification_authority": "live-run-summary-only",
+  "qualifications": {
+    "verifier_foundation_qualified": true,
+    "runner_foundation_qualified": true,
+    "fresh_install_qualified": false,
+    "upgrade_qualified": false,
+    "rollback_qualified": false,
+    "kubernetes_qualified": false,
+    "benchmark_reproduction_qualified": false,
+    "release_admitted": false,
+    "publishable": false
+  }
+}

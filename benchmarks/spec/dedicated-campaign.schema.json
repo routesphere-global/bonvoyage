@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://routesphere.local/schemas/dedicated-campaign.schema.json",
+  "title": "BonVoyage dedicated qualification campaign",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "status",
+    "evidence_class",
+    "platform",
+    "products",
+    "thresholds",
+    "load_profiles",
+    "test_groups"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "status": { "enum": ["pre-execution", "frozen", "retired"] },
+    "evidence_class": { "const": "native-qualification-candidate" },
+    "platform": {
+      "type": "object",
+      "required": ["architecture", "operating_system", "target_tenancy", "minimum_roles"],
+      "properties": {
+        "architecture": { "const": "x86_64" },
+        "operating_system": { "const": "Ubuntu 24.04 LTS" },
+        "target_tenancy": { "const": "dedicated-host" },
+        "minimum_roles": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true,
+          "items": { "enum": ["load-generator", "gateway-target", "controlled-upstream"] }
+        }
+      },
+      "additionalProperties": false
+    },
+    "products": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": { "enum": ["bonvoyage", "nginx", "envoy", "haproxy"] }
+    },
+    "thresholds": {
+      "type": "object",
+      "required": [
+        "maximum_error_rate",
+        "maximum_repeat_deviation_percent",
+        "baseline_p999_ceiling_ms",
+        "maximum_support_capacity_percent",
+        "minimum_upstream_headroom_ratio",
+        "minimum_phase1_two_core_multiplier",
+        "minimum_two_core_scaling_efficiency",
+        "phase2_advantage_pass_percent",
+        "phase2_optimization_floor_percent"
+      ],
+      "properties": {
+        "maximum_error_rate": { "type": "number", "minimum": 0, "maximum": 0.01 },
+        "maximum_repeat_deviation_percent": { "type": "number", "exclusiveMinimum": 0, "maximum": 10 },
+        "baseline_p999_ceiling_ms": { "type": "number", "exclusiveMinimum": 0 },
+        "maximum_support_capacity_percent": { "type": "number", "exclusiveMinimum": 0, "maximum": 90 },
+        "minimum_upstream_headroom_ratio": { "type": "number", "minimum": 1 },
+        "minimum_phase1_two_core_multiplier": { "type": "number", "minimum": 1, "maximum": 2 },
+        "minimum_two_core_scaling_efficiency": { "type": "number", "minimum": 0, "maximum": 1 },
+        "phase2_advantage_pass_percent": { "type": "number", "minimum": 0 },
+        "phase2_optimization_floor_percent": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "load_profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/loadProfile" }
+    },
+    "test_groups": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/testGroup" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "scalar": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" }
+      ]
+    },
+    "loadProfile": {
+      "type": "object",
+      "required": [
+        "id",
+        "purpose",
+        "protocols",
+        "load_model",
+        "gateway_cores",
+        "warmup_seconds",
+        "measurement_seconds",
+        "repetitions",
+        "dimensions"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "purpose": { "type": "string", "minLength": 1 },
+        "protocols": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["network", "http1", "http1-tls", "http2", "grpc-unary", "websocket", "mixed"]
+          }
+        },
+        "load_model": { "enum": ["none", "open-loop", "closed-loop", "held-connections", "controlled-abuse"] },
+        "gateway_cores": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 0, "maximum": 256 }
+        },
+        "warmup_seconds": { "type": "integer", "minimum": 0 },
+        "measurement_seconds": { "type": "integer", "minimum": 1 },
+        "repetitions": { "type": "integer", "minimum": 1 },
+        "dimensions": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/$defs/scalar" }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "testGroup": {
+      "type": "object",
+      "required": [
+        "id",
+        "category",
+        "title",
+        "required",
+        "execution_order",
+        "load_profiles",
+        "systems",
+        "harness_status",
+        "pass_criteria",
+        "decisions"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^DQ-(INFRA|P1|P2|P3|SEC|REL|REPORT)-[0-9]{3}$" },
+        "category": { "enum": ["infrastructure", "phase1", "phase2", "phase3", "security", "reliability", "reporting"] },
+        "title": { "type": "string", "minLength": 1 },
+        "required": { "type": "boolean" },
+        "execution_order": { "type": "integer", "minimum": 1 },
+        "load_profiles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
+        },
+        "systems": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "harness_status": { "enum": ["existing", "distributed-adapter-required", "new-harness-required", "manual-reviewed"] },
+        "pass_criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "decisions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

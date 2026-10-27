@@ -1,0 +1,12 @@
+# Bootstrap ownership for the public repository. Replace this account with the
+# RouteSphere maintainer team after the organization and team exist.
+* @johnynixons
+
+# Changes to trust, release, and dependency boundaries always require owner review.
+/.github/ @johnynixons
+/SECURITY.md @johnynixons
+/DEPENDENCY_POLICY.md @johnynixons
+/deploy/ @johnynixons
+/packaging/ @johnynixons
+/security/ @johnynixons
+/tools/host-tune/ @johnynixons

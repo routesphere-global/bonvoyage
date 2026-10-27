@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-08-13T00:00:00Z",
+  "git": {
+    "commit": "0000000000000000000000000000000000000000",
+    "dirty": false
+  },
+  "host": {
+    "os": "fixture-linux",
+    "kernel": "fixture-kernel",
+    "architecture": "x86_64",
+    "cpu_model": "fixture-cpu",
+    "logical_cpus": 8,
+    "memory_bytes": 8589934592,
+    "smt_enabled": false,
+    "governor": "performance"
+  },
+  "network": {
+    "mode": "single-host-namespaces",
+    "nic": "fixture-nic",
+    "link_speed_mbps": 10000,
+    "mtu": 1500
+  },
+  "runtime": {
+    "container_engine": "docker",
+    "engine_version": "fixture"
+  },
+  "cpu_allocation": {
+    "load_generator": "0-1",
+    "gateway": "2-3",
+    "upstream": "4-5",
+    "irq": "6-7"
+  }
+}

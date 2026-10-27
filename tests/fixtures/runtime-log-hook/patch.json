@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "classification": "isolated-seastar-runtime-log-candidate",
+  "production_selected": false,
+  "commit": "8df8212e53577e1d8477a5c901457cd61d88afc7",
+  "patch": "deploy/docker/bonvoyage/patches/seastar-bounded-log-hook.patch",
+  "patch_sha256": "7e182385e0613c0ee0801d654fa8a5d96c09751d36489c54e37eae67ee06b9a7",
+  "original": {
+    "include/seastar/util/log.hh": "61da658047f299eb4ae2c006b4f5c217796aa503d5ff40f6da350588f9de307d",
+    "include/seastar/util/log-impl.hh": "9826049c5710c61a8e37ac68a6ce8b05b79632d87a4ceabefce616987d5be5ed",
+    "src/util/log.cc": "225ab42036a6e3093e5bef9c677647906d7cb04d443619b88741b0d744b696cf"
+  },
+  "patched": {
+    "include/seastar/util/log.hh": "333264fe7548150a2817f6707a1817abdcb3a21816ad2a5844a7e0c70085af59",
+    "include/seastar/util/log-impl.hh": "a254f41681198df793757a3a0c774758d09e24f41dbbaf850769b66eb9e7ed37",
+    "src/util/log.cc": "4329649ac047f03656202f9a2a74d2b4cfe05c909fb3735d9c372915830427e9"
+  }
+}

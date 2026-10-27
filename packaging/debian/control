@@ -1,0 +1,14 @@
+Source: bonvoyage-gateway
+Section: net
+Priority: optional
+Maintainer: @MAINTAINER@
+Build-Depends: debhelper-compat (= 13), dpkg-dev
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+
+Package: bonvoyage-gateway
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}, adduser
+Description: RouteSphere BonVoyage standalone API gateway
+ C++/Seastar gateway with immutable configuration snapshots.
+ Configuration, secret material and service startup are operator-managed.

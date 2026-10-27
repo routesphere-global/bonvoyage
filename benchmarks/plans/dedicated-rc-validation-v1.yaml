@@ -1,0 +1,203 @@
+schema_version: 1
+id: dq-validation-plan-phase1-phase3-v1
+campaign_id: phase1-phase3-dedicated-qualification-v1
+
+platform:
+  operating_system: Ubuntu 24.04 LTS
+  architecture: x86_64
+  container_platform: linux/amd64
+
+checks:
+  - id: project-validation
+    purpose: Validate every authored configuration, benchmark, evidence, deployment, and documentation contract.
+    command:
+      argv: [make, config-validate]
+      cwd: repository-root
+    required_environment: []
+    derived_environment: []
+    fixed_environment: {}
+
+  - id: api-contracts
+    purpose: Verify lint, wire compatibility, generated bindings, and generated Go API tests.
+    command:
+      argv: [make, api-test]
+      cwd: repository-root
+    required_environment: []
+    derived_environment: []
+    fixed_environment: {}
+
+  - id: control-plane-tests
+    purpose: Verify snapshot compiler behavior, race safety, and bounded compiler fuzzing.
+    command:
+      argv: [make, control-plane-test, control-plane-race, control-plane-fuzz]
+      cwd: repository-root
+    required_environment: []
+    derived_environment: []
+    fixed_environment: {}
+
+  - id: host-tune-tests
+    purpose: Verify deterministic CPU, NUMA, memory, PCI, and NIC IRQ planning.
+    command:
+      argv: [make, host-tune-test]
+      cwd: repository-root
+    required_environment: []
+    derived_environment: []
+    fixed_environment: {}
+
+  - id: dataplane-release-tests
+    purpose: Verify startup, request traversal, graceful shutdown, and strict Doxygen generation against the locked runtime image.
+    command:
+      argv: [make, dataplane-smoke, dataplane-docs]
+      cwd: repository-root
+    required_environment: []
+    derived_environment: []
+    fixed_environment: {}
+
+  - id: phase3-integration
+    purpose: Re-run the complete Phase 3 protocol, routing, policy, failure, telemetry, interoperability, and bounded-scale matrix against the locked runtime image.
+    command:
+      argv:
+        - make
+        - dataplane-tls-smoke
+        - dataplane-upstream-tls-smoke
+        - dataplane-gnutls-certificate-policy
+        - dataplane-upstream-http2-smoke
+        - dataplane-grpc-unary-smoke
+        - dataplane-http2-smoke
+        - dataplane-http2-conformance
+        - dataplane-http2-reliability
+        - dataplane-http2-deadline
+        - dataplane-http2-cookie
+        - dataplane-accept-recovery
+        - dataplane-routing-smoke
+        - dataplane-load-balancing-smoke
+        - dataplane-active-health-dns-smoke
+        - dataplane-retry-smoke
+        - dataplane-circuit-overload-smoke
+        - dataplane-route-admission-smoke
+        - dataplane-client-identity-smoke
+        - dataplane-api-key-smoke
+        - dataplane-jwt-smoke
+        - dataplane-source-ip-policy-smoke
+        - dataplane-cors-smoke
+        - dataplane-request-content-smoke
+        - dataplane-redirect-smoke
+        - dataplane-header-transformations-smoke
+        - dataplane-route-rewrites-smoke
+        - dataplane-weighted-traffic-smoke
+        - dataplane-websocket-smoke
+        - dataplane-composite-hardening
+        - dataplane-observability-smoke
+        - dataplane-access-log-smoke
+        - dataplane-otlp-tracing-smoke
+        - dataplane-saas-canary-profile
+        - dataplane-protocol-interoperability
+        - dataplane-route-scale-density
+        - dataplane-load-balancing-cost
+        - dataplane-http2-cost
+      cwd: repository-root
+    required_environment: []
+    derived_environment:
+      - BONVOYAGE_ACTIVE_HEALTH_DNS_EVIDENCE_ROOT
+      - BONVOYAGE_ACCEPT_RECOVERY_EVIDENCE_DIR
+      - BONVOYAGE_API_KEY_EVIDENCE_ROOT
+      - BONVOYAGE_CIRCUIT_OVERLOAD_EVIDENCE_ROOT
+      - BONVOYAGE_CLIENT_IDENTITY_EVIDENCE_ROOT
+      - BONVOYAGE_COMPOSITE_EVIDENCE_ROOT
+      - BONVOYAGE_CORS_EVIDENCE_ROOT
+      - BONVOYAGE_GRPC_EVIDENCE_ROOT
+      - BONVOYAGE_HEADER_TRANSFORMATIONS_EVIDENCE_ROOT
+      - BONVOYAGE_HTTP2_CONFORMANCE_EVIDENCE_ROOT
+      - BONVOYAGE_HTTP2_COST_EVIDENCE_DIR
+      - BONVOYAGE_HTTP2_RELIABILITY_EVIDENCE_ROOT
+      - BONVOYAGE_HTTP2_DEADLINE_EVIDENCE_DIR
+      - BONVOYAGE_HTTP2_SMOKE_EVIDENCE_ROOT
+      - BONVOYAGE_JWT_EVIDENCE_ROOT
+      - BONVOYAGE_LOAD_BALANCING_EVIDENCE_ROOT
+      - BONVOYAGE_OBSERVABILITY_EVIDENCE_ROOT
+      - BONVOYAGE_OTLP_EVIDENCE_ROOT
+      - BONVOYAGE_PROTOCOL_INTEROPERABILITY_EVIDENCE_ROOT
+      - BONVOYAGE_REDIRECT_EVIDENCE_ROOT
+      - BONVOYAGE_REQUEST_CONTENT_EVIDENCE_ROOT
+      - BONVOYAGE_RETRY_EVIDENCE_ROOT
+      - BONVOYAGE_ROUTE_ADMISSION_EVIDENCE_ROOT
+      - BONVOYAGE_ROUTE_REWRITES_EVIDENCE_ROOT
+      - BONVOYAGE_ROUTE_SCALE_DENSITY_EVIDENCE_ROOT
+      - BONVOYAGE_ROUTING_EVIDENCE_ROOT
+      - BONVOYAGE_SAAS_PROFILE_EVIDENCE_ROOT
+      - BONVOYAGE_SOURCE_IP_POLICY_EVIDENCE_ROOT
+      - BONVOYAGE_UPSTREAM_HTTP2_EVIDENCE_ROOT
+      - BONVOYAGE_WEBSOCKET_EVIDENCE_ROOT
+      - BONVOYAGE_WEIGHTED_TRAFFIC_EVIDENCE_ROOT
+    fixed_environment:
+      BONVOYAGE_OHA_IMAGE: ghcr.io/hatoo/oha@sha256:9567e87f638dc28e83d99fb0f7498f702ef0a9020569d089aa1ecbd720106674
+      BONVOYAGE_RC_TEST_CLIENT_USER: "65532:65532"
+
+  - id: asan-ubsan
+    purpose: Rebuild and execute the sanitizer suite with AddressSanitizer and UndefinedBehaviorSanitizer enabled.
+    command:
+      argv: [make, dataplane-sanitize]
+      cwd: repository-root
+    required_environment: []
+    derived_environment:
+      - BONVOYAGE_SANITIZER_EVIDENCE_ROOT
+    fixed_environment:
+      BONVOYAGE_SANITIZER_EVIDENCE_ID: sanitizers-dedicated-rc
+
+  - id: static-analysis
+    purpose: Run the focused release static-analysis profile on the exact source commit.
+    command:
+      argv: [make, dataplane-static-analysis]
+      cwd: repository-root
+    required_environment: []
+    derived_environment: []
+    fixed_environment: {}
+
+  - id: upstream-http1-fuzz
+    purpose: Re-run strict upstream HTTP/1 response-head fuzzing under the sanitizer build.
+    command:
+      argv: [make, dataplane-upstream-http1-fuzz]
+      cwd: repository-root
+    required_environment: []
+    derived_environment:
+      - BONVOYAGE_UPSTREAM_HTTP1_FUZZ_EVIDENCE_DIR
+    fixed_environment:
+      BONVOYAGE_UPSTREAM_HTTP1_FUZZ_SECONDS: "30"
+
+  - id: http2-fuzz
+    purpose: Re-run the HTTP/2 session fuzzer under the sanitizer build.
+    command:
+      argv: [make, dataplane-http2-fuzz]
+      cwd: repository-root
+    required_environment: []
+    derived_environment:
+      - BONVOYAGE_HTTP2_FUZZ_EVIDENCE_DIR
+    fixed_environment:
+      BONVOYAGE_HTTP2_FUZZ_SECONDS: "30"
+
+  - id: runtime-sbom-scan
+    purpose: Re-verify the checksum-bound CycloneDX, SPDX, and vulnerability gate used by the artifact lock.
+    command:
+      argv: [node, benchmarks/scripts/dedicated-artifact-lock.mjs, --verify, --scope, runtime-security]
+      cwd: repository-root
+    required_environment: []
+    derived_environment: []
+    fixed_environment: {}
+
+  - id: comparator-qualification
+    purpose: Re-verify comparator image, executable, configuration, and accepted AMD64 qualification identities.
+    command:
+      argv: [node, benchmarks/scripts/dedicated-artifact-lock.mjs, --verify, --scope, comparators]
+      cwd: repository-root
+    required_environment: []
+    derived_environment: []
+    fixed_environment: {}
+
+  - id: retained-evidence
+    purpose: Verify all retained checksum manifests, including the accepted clean-tree 24-hour hardening record.
+    command:
+      argv: [make, evidence-verify]
+      cwd: repository-root
+    required_environment: []
+    derived_environment: []
+    fixed_environment: {}

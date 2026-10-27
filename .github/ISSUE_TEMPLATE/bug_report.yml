@@ -1,0 +1,74 @@
+name: Bug report
+description: Report a reproducible BonVoyage defect without sensitive data.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve BonVoyage. Use a private security advisory for suspected vulnerabilities. Remove credentials, customer data, internal hostnames, and private addresses from every attachment.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched existing issues and documentation for this behavior.
+          required: true
+        - label: This report does not disclose a suspected security vulnerability.
+          required: true
+        - label: I removed secrets, personal data, and private infrastructure details.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: BonVoyage version
+      description: Provide the release version, package version, image digest, or source commit.
+      placeholder: v1.0.0 or sha256:...
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation method
+      options:
+        - Native Linux package
+        - Docker or Docker Compose
+        - Kubernetes or Helm
+        - Source build
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, architecture, deployment shape, protocol, and relevant bounded configuration.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest deterministic sequence that demonstrates the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include status codes, bounded timing, and restart or recovery observations when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence
+      description: Paste concise logs or link to a minimal reproducer. Do not attach secrets or private data.
+      render: text

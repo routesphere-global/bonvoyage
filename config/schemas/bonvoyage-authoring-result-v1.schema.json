@@ -1,0 +1,543 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.routesphere.global/schemas/bonvoyage-authoring-result-v1.schema.json",
+  "title": "BonVoyage configuration authoring result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "operation",
+    "status",
+    "exit_code",
+    "failure_kind",
+    "versions",
+    "inputs",
+    "diagnostics",
+    "diagnostics_truncated",
+    "result"
+  ],
+  "properties": {
+    "contract_version": { "const": "bonvoyage.configuration-authoring.v1" },
+    "operation": {
+      "enum": ["validate", "format", "explain", "diff", "migrate", "preview"]
+    },
+    "status": { "enum": ["accepted", "rejected", "refused", "failed"] },
+    "exit_code": { "enum": [0, 2, 3, 4, 70] },
+    "failure_kind": {
+      "enum": ["none", "validation", "compatibility", "io", "internal"]
+    },
+    "versions": { "$ref": "#/$defs/versions" },
+    "inputs": {
+      "type": "array",
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/input" }
+    },
+    "diagnostics": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/diagnostic" }
+    },
+    "diagnostics_truncated": { "type": "boolean" },
+    "result": {
+      "anyOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/validationResult" },
+        { "$ref": "#/$defs/documentResult" },
+        { "$ref": "#/$defs/explanationResult" },
+        { "$ref": "#/$defs/diffResult" },
+        { "$ref": "#/$defs/migrationResult" },
+        { "$ref": "#/$defs/previewResult" }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "accepted" } }, "required": ["status"] },
+      "then": {
+        "properties": {
+          "exit_code": { "const": 0 },
+          "failure_kind": { "const": "none" },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                { "$ref": "#/$defs/diagnostic" },
+                { "type": "object", "properties": { "severity": { "enum": ["warning", "info"] } } }
+              ]
+            }
+          },
+          "result": { "not": { "type": "null" } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "rejected" } }, "required": ["status"] },
+      "then": {
+        "properties": {
+          "exit_code": { "const": 2 },
+          "failure_kind": { "const": "validation" },
+          "diagnostics": {
+            "type": "array",
+            "minItems": 1,
+            "contains": {
+              "allOf": [
+                { "$ref": "#/$defs/diagnostic" },
+                { "type": "object", "properties": { "severity": { "const": "error" } } }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "refused" } }, "required": ["status"] },
+      "then": {
+        "properties": {
+          "exit_code": { "const": 3 },
+          "failure_kind": { "const": "compatibility" },
+          "diagnostics": {
+            "type": "array",
+            "minItems": 1,
+            "contains": {
+              "allOf": [
+                { "$ref": "#/$defs/diagnostic" },
+                { "type": "object", "properties": { "severity": { "const": "error" } } }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "failed" } }, "required": ["status"] },
+      "then": {
+        "properties": {
+          "diagnostics": {
+            "type": "array",
+            "minItems": 1,
+            "contains": {
+              "allOf": [
+                { "$ref": "#/$defs/diagnostic" },
+                { "type": "object", "properties": { "severity": { "const": "error" } } }
+              ]
+            }
+          }
+        },
+        "anyOf": [
+          {
+            "properties": {
+              "exit_code": { "const": 4 },
+              "failure_kind": { "const": "io" }
+            }
+          },
+          {
+            "properties": {
+              "exit_code": { "const": 70 },
+              "failure_kind": { "const": "internal" }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "validate" } }, "required": ["operation"] },
+      "then": {
+        "properties": {
+          "inputs": { "type": "array", "minItems": 1, "maxItems": 1 },
+          "result": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/validationResult" }] }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "format" } }, "required": ["operation"] },
+      "then": {
+        "properties": {
+          "inputs": { "type": "array", "minItems": 1, "maxItems": 1 },
+          "result": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/documentResult" }] }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "explain" } }, "required": ["operation"] },
+      "then": {
+        "properties": {
+          "inputs": { "type": "array", "maxItems": 1 },
+          "result": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/explanationResult" }] }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "diff" } }, "required": ["operation"] },
+      "then": {
+        "properties": {
+          "inputs": { "type": "array", "minItems": 2, "maxItems": 2 },
+          "result": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/diffResult" }] }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "migrate" } }, "required": ["operation"] },
+      "then": {
+        "properties": {
+          "inputs": { "type": "array", "minItems": 1, "maxItems": 1 },
+          "result": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/migrationResult" }] }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "preview" } }, "required": ["operation"] },
+      "then": {
+        "properties": {
+          "inputs": { "type": "array", "minItems": 1, "maxItems": 2 },
+          "result": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/previewResult" }] }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": { "const": "validate" },
+          "status": { "const": "accepted" }
+        },
+        "required": ["operation", "status"]
+      },
+      "then": {
+        "properties": {
+          "result": { "$ref": "#/$defs/acceptedValidationResult" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "enum": ["format", "explain", "diff", "migrate", "preview"]
+          },
+          "status": { "not": { "const": "accepted" } }
+        },
+        "required": ["operation", "status"]
+      },
+      "then": {
+        "properties": {
+          "result": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": { "const": "validate" },
+          "status": { "const": "rejected" }
+        },
+        "required": ["operation", "status"]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "anyOf": [
+              { "type": "null" },
+              { "$ref": "#/$defs/rejectedValidationResult" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "diagnostics_truncated": { "const": true } }, "required": ["diagnostics_truncated"] },
+      "then": {
+        "properties": {
+          "diagnostics": {
+            "type": "array",
+            "contains": {
+              "allOf": [
+                { "$ref": "#/$defs/diagnostic" },
+                { "type": "object", "properties": { "code": { "const": "BV_CFG_DIAGNOSTICS_TRUNCATED" } } }
+              ]
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "diagnostics": {
+            "type": "array",
+            "not": {
+              "contains": {
+                "type": "object",
+                "properties": { "code": { "const": "BV_CFG_DIAGNOSTICS_TRUNCATED" } },
+                "required": ["code"]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "product_version",
+        "compiler_version",
+        "supported_configuration_schema_versions",
+        "input_configuration_schema_version"
+      ],
+      "properties": {
+        "product_version": { "$ref": "#/$defs/semver" },
+        "compiler_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "supported_configuration_schema_versions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 1 },
+          "uniqueItems": true
+        },
+        "input_configuration_schema_version": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        }
+      }
+    },
+    "input": {
+      "type": "object",
+      "description": "Identity of the bounded bytes observed by the authoring operation. For unreadable input this may be empty; for oversized input it is the first 1 MiB and is not a full-file identity.",
+      "additionalProperties": false,
+      "required": ["source_id", "bytes", "sha256"],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1048576,
+          "description": "Number of bounded input bytes actually observed."
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256",
+          "description": "SHA-256 of exactly the bounded input bytes represented by bytes."
+        }
+      }
+    },
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line", "column", "byte_offset"],
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 },
+        "byte_offset": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "sourceRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "start", "end"],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "start": { "$ref": "#/$defs/position" },
+        "end": { "$ref": "#/$defs/position" }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "message", "redacted"],
+      "properties": {
+        "code": {
+          "enum": [
+            "BV_CFG_DIAGNOSTICS_TRUNCATED",
+            "BV_CFG_DIFF_INPUT_INVALID",
+            "BV_CFG_EXPLAIN_PATH_UNKNOWN",
+            "BV_CFG_FILE_TYPE_UNSUPPORTED",
+            "BV_CFG_FORMAT_UNSAFE",
+            "BV_CFG_INPUT_ENCODING",
+            "BV_CFG_INPUT_NOT_REGULAR",
+            "BV_CFG_INPUT_SYMLINK",
+            "BV_CFG_INPUT_TOO_LARGE",
+            "BV_CFG_INPUT_UNREADABLE",
+            "BV_CFG_INTERNAL",
+            "BV_CFG_MIGRATION_UNSUPPORTED",
+            "BV_CFG_OPERATION_UNSUPPORTED",
+            "BV_CFG_OUTPUT_LIMIT_EXCEEDED",
+            "BV_CFG_PREVIEW_INPUT_INVALID",
+            "BV_CFG_REFERENCE_DUPLICATE",
+            "BV_CFG_REFERENCE_MISSING",
+            "BV_CFG_SCHEMA_CONSTRAINT",
+            "BV_CFG_SCHEMA_REQUIRED_FIELD",
+            "BV_CFG_SCHEMA_TYPE",
+            "BV_CFG_SCHEMA_UNKNOWN_FIELD",
+            "BV_CFG_SCHEMA_VERSION_REQUIRED",
+            "BV_CFG_SCHEMA_VERSION_UNSUPPORTED",
+            "BV_CFG_SECRET_LITERAL_FORBIDDEN",
+            "BV_CFG_SEMANTIC_INVALID",
+            "BV_CFG_VERSION_MISMATCH",
+            "BV_CFG_YAML_ALIAS_UNSUPPORTED",
+            "BV_CFG_YAML_EMPTY",
+            "BV_CFG_YAML_LIMIT_EXCEEDED",
+            "BV_CFG_YAML_MULTIPLE_DOCUMENTS",
+            "BV_CFG_YAML_SYNTAX"
+          ]
+        },
+        "severity": { "enum": ["error", "warning", "info"] },
+        "message": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "path": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^(?:|(?:/(?:[^~/]|~[01])*)+)$"
+        },
+        "source": { "$ref": "#/$defs/sourceRange" },
+        "redacted": { "type": "boolean" }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "bytes",
+        "snapshot_id",
+        "schema_version",
+        "minimum_dataplane_version"
+      ],
+      "properties": {
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "snapshot_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "schema_version": { "type": "integer", "minimum": 1 },
+        "minimum_dataplane_version": { "$ref": "#/$defs/semver" }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["listeners", "virtual_hosts", "routes", "clusters", "endpoints"],
+      "properties": {
+        "listeners": { "type": "integer", "minimum": 0 },
+        "virtual_hosts": { "type": "integer", "minimum": 0 },
+        "routes": { "type": "integer", "minimum": 0 },
+        "clusters": { "type": "integer", "minimum": 0 },
+        "endpoints": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "kind"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^(?:|(?:/(?:[^~/]|~[01])*)+)$"
+        },
+        "kind": { "enum": ["added", "removed", "changed"] }
+      }
+    },
+    "validationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "valid", "artifact"],
+      "properties": {
+        "kind": { "const": "validation" },
+        "valid": { "type": "boolean" },
+        "artifact": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/artifact" }] }
+      }
+    },
+    "acceptedValidationResult": {
+      "allOf": [
+        { "$ref": "#/$defs/validationResult" },
+        {
+          "type": "object",
+          "properties": {
+            "valid": { "const": true },
+            "artifact": { "$ref": "#/$defs/artifact" }
+          }
+        }
+      ]
+    },
+    "rejectedValidationResult": {
+      "allOf": [
+        { "$ref": "#/$defs/validationResult" },
+        {
+          "type": "object",
+          "properties": {
+            "valid": { "const": false },
+            "artifact": { "type": "null" }
+          }
+        }
+      ]
+    },
+    "documentResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "changed", "document", "document_sha256"],
+      "properties": {
+        "kind": { "const": "formatted-document" },
+        "changed": { "type": "boolean" },
+        "document": { "type": "string", "maxLength": 1048576 },
+        "document_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "explanationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "title", "summary"],
+      "properties": {
+        "kind": { "const": "field-explanation" },
+        "path": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^(?:|(?:/(?:[^~/]|~[01])*)+)$"
+        },
+        "title": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 4096 }
+      }
+    },
+    "diffResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "baseline_artifact_sha256", "proposed_artifact_sha256", "changes"],
+      "properties": {
+        "kind": { "const": "semantic-diff" },
+        "baseline_artifact_sha256": { "$ref": "#/$defs/sha256" },
+        "proposed_artifact_sha256": { "$ref": "#/$defs/sha256" },
+        "changes": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/change" } }
+      }
+    },
+    "migrationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "from_schema_version",
+        "to_schema_version",
+        "changed",
+        "document",
+        "document_sha256"
+      ],
+      "properties": {
+        "kind": { "const": "migration" },
+        "from_schema_version": { "type": "integer", "minimum": 1 },
+        "to_schema_version": { "type": "integer", "minimum": 1 },
+        "changed": { "type": "boolean" },
+        "document": { "type": "string", "maxLength": 1048576 },
+        "document_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "previewResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "artifact", "counts", "changes"],
+      "properties": {
+        "kind": { "const": "preview" },
+        "artifact": { "$ref": "#/$defs/artifact" },
+        "counts": { "$ref": "#/$defs/counts" },
+        "baseline_artifact_sha256": { "$ref": "#/$defs/sha256" },
+        "changes": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/change" } }
+      }
+    }
+  }
+}

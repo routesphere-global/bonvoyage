@@ -1,0 +1,67 @@
+server:
+  node_id: phase5-http1-slow-reader
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: phase5-http1-slow-reader
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: cleartext
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [api]
+  - name: tls
+    address: 0.0.0.0
+    port: 8443
+    protocol: http1
+    virtual_hosts: [api]
+    downstream_tls:
+      certificate_chain_secret: server-chain.pem
+      private_key_secret: server-key.pem
+
+virtual_hosts:
+  - name: api
+    domains: [api.example.test]
+    routes:
+      - name: slow-reader
+        match:
+          path_exact: /stream-payload/33554432
+        cluster: controlled-upstream
+        max_concurrent_requests_per_shard: 1
+      - name: recovery
+        match:
+          path_exact: /healthz
+        cluster: controlled-upstream
+      - name: timeout-before-response
+        match:
+          path_exact: /slow/1000
+        cluster: controlled-upstream
+      - name: stalled-request-body
+        match:
+          path_exact: /stalled-body
+        cluster: controlled-upstream
+
+clusters:
+  - name: controlled-upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 500
+    max_connections_per_shard: 1
+    max_pending_requests_per_shard: 1
+    endpoints:
+      - name: upstream
+        address: upstream
+        port: 8081
+
+runtime_limits:
+  max_downstream_connections_per_shard: 16
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 400
+  downstream_idle_timeout_ms: 2500

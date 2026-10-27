@@ -1,0 +1,351 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.routesphere.global/schemas/bonvoyage-authoring-contract-v1.schema.json",
+  "title": "BonVoyage configuration authoring contract v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "classification",
+    "contract_version",
+    "implementation_state",
+    "authority",
+    "version_binding",
+    "file_detection",
+    "operations",
+    "diagnostics",
+    "redaction",
+    "process_exit_codes",
+    "security_boundary"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "classification": {
+      "const": "routesphere-bonvoyage-configuration-authoring-contract"
+    },
+    "contract_version": {
+      "const": "bonvoyage.configuration-authoring.v1"
+    },
+    "implementation_state": {
+      "enum": ["contract-only", "implemented"]
+    },
+    "authority": { "$ref": "#/$defs/authority" },
+    "version_binding": { "$ref": "#/$defs/versionBinding" },
+    "file_detection": { "$ref": "#/$defs/fileDetection" },
+    "operations": { "$ref": "#/$defs/operations" },
+    "diagnostics": { "$ref": "#/$defs/diagnostics" },
+    "redaction": { "$ref": "#/$defs/redaction" },
+    "process_exit_codes": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/exitCode" }
+    },
+    "security_boundary": { "$ref": "#/$defs/securityBoundary" }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "stringList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonEmptyString" },
+      "uniqueItems": true
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compiler_package",
+        "compiler_entrypoint",
+        "compiler_identity",
+        "configuration_schema",
+        "supported_configuration_schema_versions",
+        "json_schema_role"
+      ],
+      "properties": {
+        "compiler_package": { "$ref": "#/$defs/nonEmptyString" },
+        "compiler_entrypoint": { "$ref": "#/$defs/nonEmptyString" },
+        "compiler_identity": { "$ref": "#/$defs/nonEmptyString" },
+        "configuration_schema": { "$ref": "#/$defs/nonEmptyString" },
+        "supported_configuration_schema_versions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 1 },
+          "uniqueItems": true
+        },
+        "json_schema_role": {
+          "const": "structural-assistance-only"
+        }
+      }
+    },
+    "versionBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "product_version_source",
+        "compiler_version_source",
+        "configuration_schema_version_source",
+        "reported_fields",
+        "caller_constraints",
+        "caller_override_allowed",
+        "mismatch_status",
+        "mismatch_reason_code"
+      ],
+      "properties": {
+        "mode": { "const": "installed-release-exact" },
+        "product_version_source": { "const": "installed-release-metadata" },
+        "compiler_version_source": { "const": "compiled-binary" },
+        "configuration_schema_version_source": {
+          "const": "document.snapshot.schema_version"
+        },
+        "reported_fields": { "$ref": "#/$defs/stringList" },
+        "caller_constraints": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "product_version",
+            "compiler_version",
+            "configuration_schema_version"
+          ],
+          "properties": {
+            "product_version": { "const": "exact-semver-when-present" },
+            "compiler_version": { "const": "exact-string-when-present" },
+            "configuration_schema_version": {
+              "const": "exact-integer-when-present"
+            }
+          }
+        },
+        "caller_override_allowed": { "const": false },
+        "mismatch_status": { "const": "refused" },
+        "mismatch_reason_code": { "const": "BV_CFG_VERSION_MISMATCH" }
+      }
+    },
+    "fileDetection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted_input_kinds",
+        "recognized_extensions",
+        "extension_case_sensitive",
+        "automatic_detection_requires",
+        "stdin_requires_explicit_selection",
+        "maximum_bytes",
+        "encoding",
+        "utf8_bom",
+        "line_endings",
+        "multiple_documents",
+        "aliases_and_merge_keys",
+        "read_only_symlink_policy",
+        "in_place_symlink_policy",
+        "source_coordinates"
+      ],
+      "properties": {
+        "accepted_input_kinds": { "$ref": "#/$defs/stringList" },
+        "recognized_extensions": { "$ref": "#/$defs/stringList" },
+        "extension_case_sensitive": { "const": false },
+        "automatic_detection_requires": { "$ref": "#/$defs/stringList" },
+        "stdin_requires_explicit_selection": { "const": true },
+        "maximum_bytes": { "type": "integer", "const": 1048576 },
+        "encoding": { "const": "utf-8" },
+        "utf8_bom": { "const": "accepted-and-preserved" },
+        "line_endings": { "$ref": "#/$defs/stringList" },
+        "multiple_documents": { "const": "reject" },
+        "aliases_and_merge_keys": { "const": "reject" },
+        "read_only_symlink_policy": { "const": "resolve-to-regular-file" },
+        "in_place_symlink_policy": { "const": "reject" },
+        "source_coordinates": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["line", "column", "byte_offset", "end"],
+          "properties": {
+            "line": { "const": "one-based" },
+            "column": { "const": "one-based-unicode-scalar" },
+            "byte_offset": { "const": "zero-based-original-utf8" },
+            "end": { "const": "exclusive" }
+          }
+        }
+      }
+    },
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inputs",
+        "requires_parseable_input",
+        "requires_valid_configuration",
+        "primary_output",
+        "document_output",
+        "in_place",
+        "network_access",
+        "live_mutation",
+        "constraints",
+        "summary"
+      ],
+      "properties": {
+        "inputs": { "$ref": "#/$defs/stringList" },
+        "requires_parseable_input": { "type": "boolean" },
+        "requires_valid_configuration": { "type": "boolean" },
+        "primary_output": { "$ref": "#/$defs/nonEmptyString" },
+        "document_output": {
+          "enum": ["none", "explicit-primary-result-only"]
+        },
+        "in_place": { "enum": ["never", "explicit-only"] },
+        "network_access": { "const": false },
+        "live_mutation": { "const": false },
+        "constraints": { "$ref": "#/$defs/stringList" },
+        "summary": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "operations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["validate", "format", "explain", "diff", "migrate", "preview"],
+      "properties": {
+        "validate": { "$ref": "#/$defs/operation" },
+        "format": { "$ref": "#/$defs/operation" },
+        "explain": { "$ref": "#/$defs/operation" },
+        "diff": { "$ref": "#/$defs/operation" },
+        "migrate": { "$ref": "#/$defs/operation" },
+        "preview": { "$ref": "#/$defs/operation" }
+      }
+    },
+    "diagnosticField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "required", "semantics"],
+      "properties": {
+        "name": {
+          "enum": ["code", "severity", "message", "path", "source", "redacted"]
+        },
+        "required": { "type": "boolean" },
+        "semantics": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "reasonCode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "class", "default_severity", "retryable"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^BV_CFG_[A-Z0-9_]+$"
+        },
+        "class": {
+          "enum": [
+            "input",
+            "syntax",
+            "schema",
+            "semantic",
+            "compatibility",
+            "operation",
+            "security",
+            "internal"
+          ]
+        },
+        "default_severity": { "enum": ["error", "warning", "info"] },
+        "retryable": { "type": "boolean" }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maximum_count",
+        "truncation_reason_code",
+        "ordering",
+        "path_notation",
+        "fields",
+        "reason_codes"
+      ],
+      "properties": {
+        "maximum_count": { "const": 256 },
+        "truncation_reason_code": {
+          "const": "BV_CFG_DIAGNOSTICS_TRUNCATED"
+        },
+        "ordering": { "$ref": "#/$defs/stringList" },
+        "path_notation": { "const": "rfc6901-json-pointer" },
+        "fields": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": { "$ref": "#/$defs/diagnosticField" }
+        },
+        "reason_codes": {
+          "type": "array",
+          "minItems": 20,
+          "items": { "$ref": "#/$defs/reasonCode" }
+        }
+      }
+    },
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_values_are_untrusted",
+        "diagnostics_echo_document_values",
+        "logs_echo_document_values",
+        "default_source_document_output",
+        "primary_document_output_operations",
+        "secret_reference_fields",
+        "secret_reference_semantics",
+        "diagnostic_replacement",
+        "hash_secret_values",
+        "pem_literal_policy"
+      ],
+      "properties": {
+        "document_values_are_untrusted": { "const": true },
+        "diagnostics_echo_document_values": { "const": false },
+        "logs_echo_document_values": { "const": false },
+        "default_source_document_output": { "const": false },
+        "primary_document_output_operations": {
+          "type": "array",
+          "const": ["format", "migrate"]
+        },
+        "secret_reference_fields": { "$ref": "#/$defs/stringList" },
+        "secret_reference_semantics": { "$ref": "#/$defs/nonEmptyString" },
+        "diagnostic_replacement": { "const": "<redacted>" },
+        "hash_secret_values": { "const": false },
+        "pem_literal_policy": { "const": "reject-without-echo" }
+      }
+    },
+    "exitCode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "name", "status", "failure_kind"],
+      "properties": {
+        "code": { "enum": [0, 2, 3, 4, 70] },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "status": { "enum": ["accepted", "rejected", "refused", "failed"] },
+        "failure_kind": {
+          "enum": ["none", "validation", "compatibility", "io", "internal"]
+        }
+      }
+    },
+    "securityBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "offline",
+        "telemetry",
+        "network_access",
+        "live_apply",
+        "shell_execution",
+        "environment_secret_reads",
+        "deterministic_machine_output"
+      ],
+      "properties": {
+        "offline": { "const": true },
+        "telemetry": { "const": false },
+        "network_access": { "const": false },
+        "live_apply": { "const": false },
+        "shell_execution": { "const": false },
+        "environment_secret_reads": { "const": false },
+        "deterministic_machine_output": { "const": true }
+      }
+    }
+  }
+}

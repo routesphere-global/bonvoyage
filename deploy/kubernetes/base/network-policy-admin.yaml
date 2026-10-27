@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: bonvoyage-admin-ingress
+  namespace: bonvoyage
+  labels:
+    app.kubernetes.io/name: bonvoyage
+    app.kubernetes.io/component: gateway
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: bonvoyage
+      app.kubernetes.io/component: gateway
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              routesphere.global/diagnostics-access: "true"
+      ports:
+        - protocol: TCP
+          port: 9901

@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "name": "seastar",
+  "component": "Seastar",
+  "version": "25.05.0",
+  "scope": "core shard-per-core asynchronous runtime; statically linked into the live dataplane executable",
+  "source": {
+    "release_url": "https://github.com/scylladb/seastar/releases/tag/seastar-25.05.0",
+    "repository_url": "https://github.com/scylladb/seastar.git",
+    "tag": "seastar-25.05.0",
+    "commit": "8df8212e53577e1d8477a5c901457cd61d88afc7"
+  },
+  "license": {
+    "spdx": "Apache-2.0",
+    "source_file": "LICENSE",
+    "installed_file": "/usr/share/licenses/seastar/LICENSE"
+  },
+  "build": {
+    "linkage": "static",
+    "dpdk": false,
+    "cxx_standard": 20,
+    "excluded_components": [
+      "tests",
+      "applications",
+      "demos",
+      "C++ modules"
+    ],
+    "local_patches": [
+      {
+        "file": "deploy/docker/bonvoyage/patches/seastar-dns-disable-query-cache.patch",
+        "sha256": "ddf8a8e5f40839f95382541df84a48cea64aa8e0754988eb86de9bb96c50b17e",
+        "purpose": "preserve fixed-interval DNS refresh and an explicit per-server attempt timeout cap with c-ares 1.34.8"
+      },
+      {
+        "file": "deploy/docker/bonvoyage/patches/seastar-http-client-lazy-trace.patch",
+        "sha256": "b924fd7df2910655543d59a4550fc0d0590e6a8d131dc752b166d11f4ad99e7a",
+        "purpose": "avoid disabled trace-site argument evaluation and retire pooled HTTP/1 connections with buffered response-overrun bytes"
+      },
+      {
+        "file": "deploy/docker/bonvoyage/patches/seastar-tls-server-metadata.patch",
+        "sha256": "3d0ac49a8097f7759246fbefb90b27cbcd7c8f7df30b64ca42a97b9625263cbb",
+        "purpose": "expose bounded downstream TLS SNI, ALPN, and abort controls"
+      },
+      {
+        "file": "deploy/docker/bonvoyage/patches/seastar-tls-certificate-policy.patch",
+        "sha256": "8eca7ce0d448d05987288af53ac4282d54362e1fd11fc6d7c65b4cce1bab6f2f",
+        "purpose": "fail closed on malformed or empty keyUsage, CN fallback, and unsupported directoryName or URI name constraints in verified TLS paths"
+      },
+      {
+        "file": "deploy/docker/bonvoyage/patches/seastar-http-client-bounded-chunks.patch",
+        "sha256": "20c7879ebb89ad3808883c7ed8cc2af1e5fc73b44a18b1973aac2de37e921ce5",
+        "purpose": "bound upstream response heads and cumulative chunk metadata, and expose buffered bytes at completed response boundaries"
+      },
+      {
+        "file": "deploy/docker/bonvoyage/patches/seastar-http-client-pool-wait-observer.patch",
+        "sha256": "176c01ecf63925110764eba05c637882960643a3fbb4c3873acea288238e43d1",
+        "purpose": "observe exact time spent waiting at the existing shard-local HTTP/1 connection-pool boundary and permit secure-default connection reuse policy without adding another queue"
+      },
+      {
+        "file": "deploy/docker/bonvoyage/patches/seastar-ascii-case-insensitive-headers.patch",
+        "sha256": "b29aeced29f3e4a7ca9bf2256b68f776e6687dfd283de9c38e9c0299620e99c8",
+        "purpose": "avoid copying header names and locale-aware case conversion during ASCII HTTP field-name hashing and comparison"
+      },
+      {
+        "file": "deploy/docker/bonvoyage/patches/seastar-bounded-log-hook.patch",
+        "sha256": "7e182385e0613c0ee0801d654fa8a5d96c09751d36489c54e37eae67ee06b9a7",
+        "purpose": "provide the immutable bounded custom sink used by BonVoyage to isolate runtime logging from request execution and unbounded formatter storage"
+      }
+    ]
+  },
+  "review": {
+    "date": "2026-08-28",
+    "decision": "admitted as the foundational dataplane runtime",
+    "security_sources": [
+      "https://github.com/scylladb/seastar/security",
+      "https://github.com/scylladb/seastar/releases"
+    ],
+    "automated_vulnerability_scan": {
+      "status": "passed",
+      "scanner": "Grype 0.116.1",
+      "database_built_at": "2026-08-27T09:17:14Z",
+      "threshold": "High",
+      "counts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0
+      },
+      "evidence_record": "docs/implementation/phase-3-http2-production-qualification.md"
+    },
+    "release_sbom": {
+      "status": "generated",
+      "formats": [
+        "CycloneDX JSON",
+        "SPDX JSON"
+      ],
+      "generator": "Syft 1.44.0",
+      "evidence_record": "docs/implementation/phase-3-http2-production-qualification.md"
+    }
+  },
+  "acceptance": {
+    "adr": "docs/architecture/decisions/0001-independent-seastar-dataplane.md",
+    "status": "accepted",
+    "remaining_gates": [
+      "repeat SBOM and vulnerability qualification for every release candidate",
+      "dedicated-host performance publication gate"
+    ]
+  }
+}

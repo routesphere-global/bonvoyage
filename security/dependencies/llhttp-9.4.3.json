@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "name": "llhttp",
+  "component": "libllhttp",
+  "version": "9.4.3",
+  "scope": "production strict upstream response-head parser; also used by the reversible BonVoyage-owned upstream HTTP/1 client candidate",
+  "source": {
+    "release_url": "https://github.com/nodejs/llhttp/releases/tag/release/v9.4.3",
+    "archive_url": "https://github.com/nodejs/llhttp/archive/refs/tags/release/v9.4.3.tar.gz",
+    "tag": "release/v9.4.3",
+    "commit": "0e815792b167a9bd8ace259b95b7da953776c288",
+    "archive_sha256": "1eb813c7437b31a87496a1cd3ed79f00746720f5e7e29c79b42c02cb69f36c39"
+  },
+  "license": {
+    "spdx": "MIT",
+    "source_file": "LICENSE-MIT",
+    "installed_file": "/opt/llhttp/share/licenses/llhttp/LICENSE-MIT"
+  },
+  "build": {
+    "linkage": "static",
+    "default_runtime_selected": true,
+    "default_runtime_role": "strict upstream response-head parsing",
+    "optional_client_selected": false,
+    "cmake_package_version": "9.4.3",
+    "excluded_components": [
+      "shared_library",
+      "development_generator",
+      "Node.js bindings"
+    ]
+  },
+  "review": {
+    "date": "2026-10-07",
+    "decision": "admitted to the production dependency ledger for strict upstream response-head parsing; the alternate llhttp-candidate client remains unpromoted",
+    "security_posture": "all llhttp leniency flags remain disabled; BonVoyage retains independent byte, field-count, framing, timeout, and connection-lifecycle limits",
+    "security_sources": [
+      "https://github.com/nodejs/llhttp/security",
+      "https://github.com/nodejs/llhttp/releases/tag/release/v9.4.3",
+      "https://github.com/nodejs/llhttp/releases/tag/release/v9.4.2",
+      "https://github.com/nodejs/llhttp/releases/tag/release/v9.2.1"
+    ],
+    "automated_vulnerability_scan": {
+      "status": "passed",
+      "scanner": "grype 0.116.1",
+      "database_built_utc": "2026-08-29T06:26:37Z",
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "unknown": 0,
+      "evidence": "benchmarks/results/verification/upstream-http1-client-security-20260829T075600Z",
+      "qualification_limit": "historical scan evidence; a fresh release-bound scan remains required"
+    }
+  },
+  "acceptance": {
+    "adr": "docs/architecture/decisions/0005-profile-guided-upstream-http1-client.md",
+    "status": "production dependency for strict response-head parsing; optional client promotion remains rejected pending its dedicated final decision",
+    "completed_gates": [
+      "golden positive and negative parser tests",
+      "coverage-guided parser fuzzing with ASan and UBSan",
+      "full candidate CTest profile under ASan and UBSan",
+      "live shard-local client lifecycle, cancellation, and no-restart recovery",
+      "downstream and upstream TLS integration",
+      "downstream HTTP/2 bridge, conformance, and bounded lifecycle",
+      "candidate runtime SBOM and vulnerability scan",
+      "balanced five-repetition local A/B executed with optional-client promotion threshold not met"
+    ],
+    "local_ab": {
+      "evidence": "benchmarks/results/optimization/upstream-http1-client-local-ab-20260829T075641Z",
+      "candidate_rps_change_percent": 0.872088966180784,
+      "candidate_p999_change_percent": -55.491959033322935,
+      "optional_client_promotion_threshold_met": false,
+      "publication_authorized": false
+    },
+    "remaining_optional_client_gates": [
+      "multi-hour hostile-peer soak and extended leak qualification",
+      "independent protocol-security review before any optional-client production promotion",
+      "dedicated separated-host final optional-client decision"
+    ]
+  }
+}

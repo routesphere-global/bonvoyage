@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_configure override_dh_auto_build override_dh_auto_test:
+	:
+
+override_dh_auto_install:
+	install -D -m 0755 input/bonvoyage-dataplane debian/bonvoyage-gateway/usr/bin/bonvoyage-dataplane
+
+# Preserve the reviewed executable byte-for-byte; this is not a compilation.
+override_dh_strip override_dh_dwz:
+	:
+
+override_dh_installsystemd:
+	dh_installsystemd --name=bonvoyage --no-enable --no-start --no-restart-after-upgrade

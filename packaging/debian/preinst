@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+case "$1" in
+    install|upgrade)
+        if [ -e /etc/systemd/system/bonvoyage.service ] || [ -L /etc/systemd/system/bonvoyage.service ]; then
+            echo "local bonvoyage.service shadows the package; reconcile the source installation before packaging" >&2
+            exit 1
+        fi
+        ;;
+esac
+
+#DEBHELPER#

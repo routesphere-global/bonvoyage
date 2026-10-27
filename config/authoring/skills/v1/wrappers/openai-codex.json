@@ -1,0 +1,199 @@
+{
+  "$schema": "../../../../schemas/bonvoyage-authoring-openai-codex-wrapper-v1.schema.json",
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-openai-codex-skill-wrapper",
+  "wrapper_version": "bonvoyage.openai-codex-skill.v1",
+  "assistant": "openai-codex",
+  "skill_name": "bonvoyage-config-authoring",
+  "release_binding": {
+    "product_version": "0.2.0",
+    "skill_version": "bonvoyage.configuration-skill.v1",
+    "contract_version": "bonvoyage.configuration-authoring.v1",
+    "compiler_version": "bonvoyage-control-plane-phase4-admin-v1",
+    "configuration_schema_versions": [
+      1
+    ]
+  },
+  "sources": {
+    "shared_contract": {
+      "path": "config/authoring/skills/v1/contract.json",
+      "bytes": 7401,
+      "sha256": "59b566e868388388d052adc769dc44dbc45a2b7b2b93737ec2d9d1ac407a3bba"
+    },
+    "evaluation_manifest": {
+      "path": "config/authoring/skills/v1/evaluations/manifest.json",
+      "bytes": 25836,
+      "sha256": "7402a005a7b30cd5c1467eb19846ab438156ec4c31b383cdbcd50eead8abb067"
+    },
+    "reviewed_wrapper_policy": {
+      "path": "config/authoring/skills/v1/wrappers/openai-codex-policy.json",
+      "bytes": 3690,
+      "sha256": "0467d221840c5c5836c3ed46b64b5465db7d8836ef3dd1fb7e81701750326098"
+    },
+    "installation_check": {
+      "path": "config/authoring/skills/v1/wrappers/openai-codex-check-installation.mjs",
+      "bytes": 4606,
+      "sha256": "8569b71f0c8ecfd842ae7f0e9652c55df756605f8a0c14972b6b7b26e634128f"
+    }
+  },
+  "package": {
+    "path": "skills/bonvoyage-config-authoring",
+    "entrypoint": "SKILL.md",
+    "interface": "agents/openai.yaml",
+    "files": [
+      {
+        "path": "agents/openai.yaml",
+        "role": "interface",
+        "bytes": 284,
+        "sha256": "9d21d74f48795653446a1a495d48b694742eb62a5494fdf10e37a4688e98f097"
+      },
+      {
+        "path": "references/authoring-contract.json",
+        "role": "release-reference",
+        "bytes": 13429,
+        "sha256": "098b41f7a57ac3eadff59137b358df8aaf5e6bd5759639f2beaa5b81b39dcebf"
+      },
+      {
+        "path": "references/command-surface.md",
+        "role": "command-reference",
+        "bytes": 5653,
+        "sha256": "ba1f9ed9476d576f60f3cd333545a0584d5947f35cd1715daa4a534de7b23e99"
+      },
+      {
+        "path": "references/completion.json",
+        "role": "release-reference",
+        "bytes": 75528,
+        "sha256": "9bf0e31afd8725c11d7ac1e56aa0a82df7c607a810cafa7aa8f54c6578060430"
+      },
+      {
+        "path": "references/configuration-schema.json",
+        "role": "release-reference",
+        "bytes": 29314,
+        "sha256": "692bdf2e832d009906bc026f524df474ebde15999e09e0c75b31da2cd43365b0"
+      },
+      {
+        "path": "references/contract.json",
+        "role": "release-reference",
+        "bytes": 7401,
+        "sha256": "59b566e868388388d052adc769dc44dbc45a2b7b2b93737ec2d9d1ac407a3bba"
+      },
+      {
+        "path": "references/corpus.json",
+        "role": "release-reference",
+        "bytes": 9680,
+        "sha256": "869c6a6993328a14b9496de9ad0044921c5a73fe55efc986cfd4557a26adc8b8"
+      },
+      {
+        "path": "references/evaluation-result-schema.json",
+        "role": "release-reference",
+        "bytes": 4778,
+        "sha256": "4310720143d2cb13c94fe3ad52ecc2f727e5a3ed6fdc1adc995d6529418919de"
+      },
+      {
+        "path": "references/evaluations.json",
+        "role": "release-reference",
+        "bytes": 25836,
+        "sha256": "7402a005a7b30cd5c1467eb19846ab438156ec4c31b383cdbcd50eead8abb067"
+      },
+      {
+        "path": "references/reason-codes.json",
+        "role": "release-reference",
+        "bytes": 15739,
+        "sha256": "5e008c683a8ee964a12e58d9beea534a9ebb37302a3c55466b12c9b6519c690f"
+      },
+      {
+        "path": "references/result-schema.json",
+        "role": "release-reference",
+        "bytes": 17359,
+        "sha256": "a88914a51bc419c126745ac525bda840a6f754fa31a1c9fe4cc81660d579ecdf"
+      },
+      {
+        "path": "references/snippets.json",
+        "role": "release-reference",
+        "bytes": 47246,
+        "sha256": "d608373f5a6f9b3746915602457e80cac24073e910ebf13655cf32353fad0356"
+      },
+      {
+        "path": "scripts/check-installation.mjs",
+        "role": "installation-check",
+        "bytes": 4606,
+        "sha256": "8569b71f0c8ecfd842ae7f0e9652c55df756605f8a0c14972b6b7b26e634128f"
+      },
+      {
+        "path": "SKILL.md",
+        "role": "entrypoint",
+        "bytes": 3909,
+        "sha256": "94d4f8bba57f3b2b0e82161927bb9dca19f2c4f63c4c24d3fd73e5ef40d28af1"
+      }
+    ]
+  },
+  "command": {
+    "executable": "bonvoyage-config",
+    "automatic_install": false,
+    "network_lookup": false,
+    "unwritten_document_transport": "stdin",
+    "machine_output": "json",
+    "missing_command": "block",
+    "malformed_output": "block"
+  },
+  "interface": {
+    "display_name": "BonVoyage Configuration",
+    "short_description": "Author and validate BonVoyage gateway YAML",
+    "default_prompt": "Use $bonvoyage-config-authoring to create and validate a BonVoyage configuration for my requirements.",
+    "allow_implicit_invocation": true
+  },
+  "capability_ids": [
+    "diagnose",
+    "explain",
+    "generate",
+    "migrate",
+    "modify",
+    "verify"
+  ],
+  "workflow_stages": [
+    "requirements",
+    "release-binding",
+    "draft",
+    "authoritative-check",
+    "present"
+  ],
+  "security_boundary": {
+    "offline_by_default": true,
+    "telemetry": false,
+    "network_access": false,
+    "live_state_reads": false,
+    "live_apply": false,
+    "production_mutation": false,
+    "environment_secret_reads": false,
+    "secret_values_included": false,
+    "secret_reference_representation": "deployment-secret-filenames-only",
+    "private_material_included": false
+  },
+  "operator_authorization": {
+    "source_document_write": "explicit",
+    "in_place_format": "explicit",
+    "in_place_migration": "explicit",
+    "verification_command_execution": "explicit",
+    "apply_command_generation": "explicit-request-only",
+    "apply_execution": "forbidden",
+    "production_mutation": "forbidden"
+  },
+  "claim_boundary": {
+    "draft_without_compiler": "unvalidated",
+    "accepted_validate": "offline-validated-only",
+    "accepted_preview": "offline-preview-only",
+    "deployment_state_source": "authoritative-runtime-only",
+    "validation_implies_deployment": false,
+    "preview_implies_ack_or_activation": false
+  },
+  "evaluation_categories": [
+    "ambiguous-requirements",
+    "invalid-yaml",
+    "malicious-embedded-instructions",
+    "rollback-guidance",
+    "secret-handling",
+    "semantic-conflict",
+    "stale-version",
+    "valid-request"
+  ]
+}

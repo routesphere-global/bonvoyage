@@ -1,0 +1,243 @@
+diff --git a/src/net/tls.cc b/src/net/tls.cc
+index 296aa7c7..7c1f924a 100644
+--- a/src/net/tls.cc
++++ b/src/net/tls.cc
+@@ -189,6 +189,182 @@ static auto get_gtls_string = [](auto func, auto... args) noexcept {
+     return std::make_pair(ret, res);
+ };
+ 
++class x509_certificate {
++public:
++    explicit x509_certificate(const gnutls_datum_t& encoded) {
++        gtls_chk(gnutls_x509_crt_init(&_certificate));
++        try {
++            gtls_chk(gnutls_x509_crt_import(
++                    _certificate, &encoded, GNUTLS_X509_FMT_DER));
++        } catch (...) {
++            gnutls_x509_crt_deinit(_certificate);
++            _certificate = nullptr;
++            throw;
++        }
++    }
++
++    x509_certificate(const x509_certificate&) = delete;
++    x509_certificate& operator=(const x509_certificate&) = delete;
++
++    ~x509_certificate() {
++        if (_certificate != nullptr) {
++            gnutls_x509_crt_deinit(_certificate);
++        }
++    }
++
++    operator gnutls_x509_crt_t() const {
++        return _certificate;
++    }
++
++private:
++    gnutls_x509_crt_t _certificate = nullptr;
++};
++
++class x509_certificate_list {
++public:
++    x509_certificate_list(const tls::blob& encoded, tls::x509_crt_format fmt) {
++        blob_wrapper data(encoded);
++        const auto result = gnutls_x509_crt_list_import2(
++                &_certificates, &_count, &data,
++                gnutls_x509_crt_fmt_t(fmt), 0);
++        if (result < 0) {
++            // gnutls_x509_crt_list_import2() releases the partially imported
++            // objects and the returned array before reporting an error.
++            _certificates = nullptr;
++            _count = 0;
++            gtls_chk(result);
++        }
++    }
++
++    x509_certificate_list(const x509_certificate_list&) = delete;
++    x509_certificate_list& operator=(const x509_certificate_list&) = delete;
++
++    ~x509_certificate_list() {
++        release();
++    }
++
++    void release() noexcept {
++        for (unsigned int i = 0; i < _count; ++i) {
++            gnutls_x509_crt_deinit(_certificates[i]);
++        }
++        gnutls_free(_certificates);
++        _certificates = nullptr;
++        _count = 0;
++    }
++
++    unsigned int size() const {
++        return _count;
++    }
++
++    gnutls_x509_crt_t operator[](unsigned int index) const {
++        return _certificates[index];
++    }
++
++private:
++    gnutls_x509_crt_t* _certificates = nullptr;
++    unsigned int _count = 0;
++};
++
++static void verify_supported_name_constraints(gnutls_x509_crt_t certificate) {
++    gnutls_x509_name_constraints_t constraints = nullptr;
++    gtls_chk(gnutls_x509_name_constraints_init(&constraints));
++    std::unique_ptr<std::remove_pointer_t<gnutls_x509_name_constraints_t>,
++            void(*)(gnutls_x509_name_constraints_t)> guard(
++            constraints, &gnutls_x509_name_constraints_deinit);
++
++    unsigned int critical = 0;
++    const auto result = gnutls_x509_crt_get_name_constraints(
++            certificate, constraints, 0, &critical);
++    if (result == GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE) {
++        return;
++    }
++    if (result < 0) {
++        throw tls::verification_error(
++                "TLS certificate contains malformed name constraints");
++    }
++
++    const auto verify_entries = [constraints](auto getter) {
++        for (unsigned int index = 0;; ++index) {
++            unsigned int type = 0;
++            gnutls_datum_t name{};
++            const auto entry_result = getter(
++                    constraints, index, &type, &name);
++            if (entry_result == GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE) {
++                return;
++            }
++            if (entry_result < 0) {
++                throw tls::verification_error(
++                        "TLS certificate contains malformed name constraints");
++            }
++            if (type == GNUTLS_SAN_DN || type == GNUTLS_SAN_URI) {
++                throw tls::verification_error(
++                        "TLS certificate uses unsupported directoryName or URI name constraints");
++            }
++        }
++    };
++
++    verify_entries(&gnutls_x509_name_constraints_get_permitted);
++    verify_entries(&gnutls_x509_name_constraints_get_excluded);
++}
++
++static void verify_key_usage(gnutls_x509_crt_t certificate) {
++    unsigned int usage = 0;
++    unsigned int critical = 0;
++    const auto result = gnutls_x509_crt_get_key_usage(
++            certificate, &usage, &critical);
++    if (result == GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE) {
++        return;
++    }
++    if (result < 0) {
++        throw tls::verification_error(
++                "TLS certificate contains malformed keyUsage");
++    }
++    if (usage == 0) {
++        throw tls::verification_error(
++                "TLS certificate keyUsage asserts no permitted operation");
++    }
++}
++
++static bool has_dns_subject_alt_name(gnutls_x509_crt_t certificate) {
++    for (unsigned int index = 0;; ++index) {
++        size_t size = 0;
++        unsigned int critical = 0;
++        auto result = gnutls_x509_crt_get_subject_alt_name(
++                certificate, index, nullptr, &size, &critical);
++        if (result == GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE) {
++            return false;
++        }
++        if (result != GNUTLS_E_SHORT_MEMORY_BUFFER) {
++            if (result < 0) {
++                throw tls::verification_error(
++                        "TLS certificate contains malformed subjectAltName");
++            }
++            if (result == GNUTLS_SAN_DNSNAME) {
++                return true;
++            }
++        }
++
++        std::vector<char> value(size);
++        result = gnutls_x509_crt_get_subject_alt_name(
++                certificate, index, value.data(), &size, &critical);
++        if (result < 0) {
++            throw tls::verification_error(
++                    "TLS certificate contains malformed subjectAltName");
++        }
++        if (result == GNUTLS_SAN_DNSNAME) {
++            return true;
++        }
++    }
++}
++
++static void verify_trust_bundle_policy(
++        const tls::blob& encoded, tls::x509_crt_format fmt) {
++    x509_certificate_list certificates(encoded, fmt);
++    for (unsigned int i = 0; i < certificates.size(); ++i) {
++        verify_supported_name_constraints(certificates[i]);
++    }
++}
++
+ }
+ 
+ class tls::dh_params::impl : gnutlsobj {
+@@ -394,6 +570,7 @@ public:
+     }
+ 
+     void set_x509_trust(const blob& b, x509_crt_format fmt) {
++        verify_trust_bundle_policy(b, fmt);
+         blob_wrapper w(b);
+         const auto loaded = gnutls_certificate_set_x509_trust_mem(
+                 _creds, &w, gnutls_x509_crt_fmt_t(fmt));
+@@ -1361,6 +1538,39 @@ class session : public enable_lw_shared_from_this<session> {
+         return from_transport_ptr(ptr)->pull(dst, len);
+     }
+ 
++    void verify_peer_certificate_policy() {
++        if (gnutls_certificate_type_get(*this) != GNUTLS_CRT_X509) {
++            throw verification_error("TLS peer did not provide an X.509 certificate");
++        }
++
++        unsigned int peer_count = 0;
++        const auto* peers = gnutls_certificate_get_peers(*this, &peer_count);
++        if (peers == nullptr || peer_count == 0) {
++            throw verification_error("TLS peer did not provide a certificate");
++        }
++
++        x509_certificate leaf(peers[0]);
++        verify_key_usage(leaf);
++        verify_supported_name_constraints(leaf);
++
++        for (unsigned int i = 1; i < peer_count; ++i) {
++            x509_certificate issuer(peers[i]);
++            verify_supported_name_constraints(issuer);
++        }
++
++        if (_type == type::CLIENT && !_options.server_name.empty()) {
++            if (!has_dns_subject_alt_name(leaf)) {
++                throw verification_error(
++                        "TLS server certificate requires a DNS subjectAltName");
++            }
++            if (gnutls_x509_crt_check_hostname(
++                        leaf, _options.server_name.c_str()) == 0) {
++                throw verification_error(
++                        "TLS server certificate DNS subjectAltName does not match the configured server name");
++            }
++        }
++    }
++
+     void verify() {
+         if (!_creds->_enable_certificate_verification) {
+             return;
+@@ -1389,6 +1599,7 @@ class session : public enable_lw_shared_from_this<session> {
+             }
+             throw verification_error(stat_str);
+         }
++        verify_peer_certificate_policy();
+         if (_creds->_dn_callback) {
+             // if the user registered a DN (Distinguished Name) callback
+             // then extract subject and issuer from the (leaf) peer certificate and invoke the callback

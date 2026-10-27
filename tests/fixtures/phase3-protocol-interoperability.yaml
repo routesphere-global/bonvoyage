@@ -1,0 +1,124 @@
+server:
+  node_id: phase3-protocol-interoperability
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-protocol-interoperability
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: cleartext-http1
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [api-http1]
+  - name: tls-http2
+    address: 0.0.0.0
+    port: 8443
+    protocol: http2
+    virtual_hosts: [api-http2]
+    downstream_tls:
+      certificate_chain_secret: server-chain.pem
+      private_key_secret: server-key.pem
+  - name: tls-http1
+    address: 0.0.0.0
+    port: 9443
+    protocol: http1
+    virtual_hosts: [api-http1]
+    downstream_tls:
+      certificate_chain_secret: server-chain.pem
+      private_key_secret: server-key.pem
+
+virtual_hosts:
+  - name: api-http1
+    domains: [api-http1.example.test]
+    routes:
+      - name: websocket-echo
+        match:
+          path_exact: /socket
+          methods: [GET]
+        cluster: websocket-upstream
+        max_concurrent_requests_per_shard: 16
+        websocket:
+          idle_timeout_ms: 5000
+        header_transformations:
+          request:
+            - {operation: set, name: x-route-action, value: interoperability}
+          response:
+            - {operation: set, name: x-gateway-policy, value: enforced}
+      - name: ready
+        match:
+          path_exact: /ready
+        fixed_response:
+          status_code: 200
+          body: "ready\n"
+          content_type: text/plain
+      - name: http-upstream
+        match:
+          path_prefix: /
+        cluster: http-upstream
+  - name: api-http2
+    domains: [api-http2.example.test]
+    routes:
+      - name: grpc-unary
+        match:
+          path_prefix: /bonvoyage.test.v1.Echo/
+        cluster: grpc-upstream
+      - name: ready-http2
+        match:
+          path_exact: /ready
+        fixed_response:
+          status_code: 200
+          body: "ready\n"
+          content_type: text/plain
+      - name: http-upstream-http2
+        match:
+          path_prefix: /
+        cluster: http-upstream
+
+clusters:
+  - name: http-upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 1000
+    max_connections_per_shard: 32
+    max_pending_requests_per_shard: 64
+    endpoints:
+      - name: http-upstream-1
+        address: http-upstream
+        port: 8081
+  - name: websocket-upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 1000
+    max_connections_per_shard: 16
+    max_pending_requests_per_shard: 16
+    max_concurrent_requests_per_endpoint: 32
+    endpoints:
+      - name: websocket-upstream-1
+        address: websocket-upstream
+        port: 8081
+  - name: grpc-upstream
+    protocol: http2
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 2000
+    max_connections_per_shard: 1
+    max_pending_requests_per_shard: 64
+    max_http2_streams_per_connection: 32
+    upstream_tls:
+      server_name: upstream-grpc.example.test
+      trust_bundle_secret: upstream-ca.pem
+    endpoints:
+      - name: grpc-upstream-1
+        address: upstream-grpc.example.test
+        port: 8443
+
+runtime_limits:
+  max_downstream_connections_per_shard: 1024
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 5000
+  downstream_idle_timeout_ms: 30000

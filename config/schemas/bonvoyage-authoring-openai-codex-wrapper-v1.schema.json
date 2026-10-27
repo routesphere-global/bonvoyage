@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://routesphere.global/schemas/bonvoyage-authoring-openai-codex-wrapper-v1.schema.json",
+  "title": "RouteSphere BonVoyage OpenAI Codex configuration-skill wrapper",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "classification",
+    "wrapper_version",
+    "assistant",
+    "skill_name",
+    "release_binding",
+    "sources",
+    "package",
+    "command",
+    "interface",
+    "capability_ids",
+    "workflow_stages",
+    "security_boundary",
+    "operator_authorization",
+    "claim_boundary",
+    "evaluation_categories"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "../../../../schemas/bonvoyage-authoring-openai-codex-wrapper-v1.schema.json"
+    },
+    "schema_version": {"const": 1},
+    "classification": {
+      "const": "routesphere-bonvoyage-openai-codex-skill-wrapper"
+    },
+    "wrapper_version": {"const": "bonvoyage.openai-codex-skill.v1"},
+    "assistant": {"const": "openai-codex"},
+    "skill_name": {"const": "bonvoyage-config-authoring"},
+    "release_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "product_version",
+        "skill_version",
+        "contract_version",
+        "compiler_version",
+        "configuration_schema_versions"
+      ],
+      "properties": {
+        "product_version": {"const": "0.2.0"},
+        "skill_version": {"const": "bonvoyage.configuration-skill.v1"},
+        "contract_version": {"const": "bonvoyage.configuration-authoring.v1"},
+        "compiler_version": {"const": "bonvoyage-control-plane-phase4-admin-v1"},
+        "configuration_schema_versions": {
+          "type": "array",
+          "const": [1]
+        }
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shared_contract", "evaluation_manifest", "reviewed_wrapper_policy", "installation_check"],
+      "properties": {
+        "shared_contract": {"$ref": "#/$defs/source"},
+        "evaluation_manifest": {"$ref": "#/$defs/source"},
+        "reviewed_wrapper_policy": {"$ref": "#/$defs/source"},
+        "installation_check": {"$ref": "#/$defs/source"}
+      }
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "entrypoint", "interface", "files"],
+      "properties": {
+        "path": {"const": "skills/bonvoyage-config-authoring"},
+        "entrypoint": {"const": "SKILL.md"},
+        "interface": {"const": "agents/openai.yaml"},
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/packageFile"}
+        }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executable", "automatic_install", "network_lookup", "unwritten_document_transport", "machine_output", "missing_command", "malformed_output"],
+      "properties": {
+        "executable": {"const": "bonvoyage-config"},
+        "automatic_install": {"const": false},
+        "network_lookup": {"const": false},
+        "unwritten_document_transport": {"const": "stdin"},
+        "machine_output": {"const": "json"},
+        "missing_command": {"const": "block"},
+        "malformed_output": {"const": "block"}
+      }
+    },
+    "interface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["display_name", "short_description", "default_prompt", "allow_implicit_invocation"],
+      "properties": {
+        "display_name": {"type": "string", "minLength": 1, "maxLength": 64},
+        "short_description": {"type": "string", "minLength": 25, "maxLength": 64},
+        "default_prompt": {"type": "string", "minLength": 1, "maxLength": 240},
+        "allow_implicit_invocation": {"const": true}
+      }
+    },
+    "capability_ids": {
+      "type": "array",
+      "const": ["diagnose", "explain", "generate", "migrate", "modify", "verify"]
+    },
+    "workflow_stages": {
+      "type": "array",
+      "const": ["requirements", "release-binding", "draft", "authoritative-check", "present"]
+    },
+    "security_boundary": {"$ref": "#/$defs/securityBoundary"},
+    "operator_authorization": {"$ref": "#/$defs/operatorAuthorization"},
+    "claim_boundary": {"$ref": "#/$defs/claimBoundary"},
+    "evaluation_categories": {
+      "type": "array",
+      "const": ["ambiguous-requirements", "invalid-yaml", "malicious-embedded-instructions", "rollback-guidance", "secret-handling", "semantic-conflict", "stale-version", "valid-request"]
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "bytes": {"type": "integer", "minimum": 1},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "packageFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "role", "bytes", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "role": {
+          "enum": ["entrypoint", "interface", "installation-check", "command-reference", "release-reference"]
+        },
+        "bytes": {"type": "integer", "minimum": 1},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "securityBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "offline_by_default",
+        "telemetry",
+        "network_access",
+        "live_state_reads",
+        "live_apply",
+        "production_mutation",
+        "environment_secret_reads",
+        "secret_values_included",
+        "secret_reference_representation",
+        "private_material_included"
+      ],
+      "properties": {
+        "offline_by_default": {"const": true},
+        "telemetry": {"const": false},
+        "network_access": {"const": false},
+        "live_state_reads": {"const": false},
+        "live_apply": {"const": false},
+        "production_mutation": {"const": false},
+        "environment_secret_reads": {"const": false},
+        "secret_values_included": {"const": false},
+        "secret_reference_representation": {
+          "const": "deployment-secret-filenames-only"
+        },
+        "private_material_included": {"const": false}
+      }
+    },
+    "operatorAuthorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_document_write",
+        "in_place_format",
+        "in_place_migration",
+        "verification_command_execution",
+        "apply_command_generation",
+        "apply_execution",
+        "production_mutation"
+      ],
+      "properties": {
+        "source_document_write": {"const": "explicit"},
+        "in_place_format": {"const": "explicit"},
+        "in_place_migration": {"const": "explicit"},
+        "verification_command_execution": {"const": "explicit"},
+        "apply_command_generation": {"const": "explicit-request-only"},
+        "apply_execution": {"const": "forbidden"},
+        "production_mutation": {"const": "forbidden"}
+      }
+    },
+    "claimBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "draft_without_compiler",
+        "accepted_validate",
+        "accepted_preview",
+        "deployment_state_source",
+        "validation_implies_deployment",
+        "preview_implies_ack_or_activation"
+      ],
+      "properties": {
+        "draft_without_compiler": {"const": "unvalidated"},
+        "accepted_validate": {"const": "offline-validated-only"},
+        "accepted_preview": {"const": "offline-preview-only"},
+        "deployment_state_source": {"const": "authoritative-runtime-only"},
+        "validation_implies_deployment": {"const": false},
+        "preview_implies_ack_or_activation": {"const": false}
+      }
+    }
+  }
+}

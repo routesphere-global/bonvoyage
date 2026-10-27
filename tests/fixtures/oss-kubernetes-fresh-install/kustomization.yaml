@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../deploy/kubernetes/base
+  - configmap-v1.yaml
+  - configmap-v2.yaml
+  - configmap-invalid.yaml
+  - upstream.yaml
+patches:
+  - path: remove-base-configmap.yaml
+  - path: deployment-patch.yaml
+images:
+  - name: routesphere-global/bonvoyage-dataplane
+    newName: bonvoyage-local-bonvoyage
+    newTag: oss-kubernetes
+  - name: routesphere-global/bonvoyage-snapshot-compiler
+    newName: bonvoyage-local-snapshot-compiler
+    newTag: oss-kubernetes
+  - name: routesphere-global/bonvoyage-test-upstream
+    newName: bonvoyage-local-upstream
+    newTag: oss-kubernetes

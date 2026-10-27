@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://routesphere.local/schemas/host-tuning-policy.schema.json",
+  "title": "BonVoyage host tuning policy",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "gateway_cpu_target_percent",
+    "discovery",
+    "cpu",
+    "memory",
+    "numa",
+    "irq",
+    "network",
+    "safety"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "gateway_cpu_target_percent": {
+      "type": "integer",
+      "minimum": 50,
+      "maximum": 90
+    },
+    "discovery": {
+      "type": "object",
+      "required": [
+        "require_linux",
+        "require_sysfs",
+        "collect_lscpu",
+        "collect_lspci",
+        "collect_kernel_messages",
+        "kernel_message_access",
+        "collect_network_driver_state",
+        "collect_systemd_and_cgroup"
+      ],
+      "properties": {
+        "require_linux": { "const": true },
+        "require_sysfs": { "const": true },
+        "collect_lscpu": { "const": true },
+        "collect_lspci": { "const": true },
+        "collect_kernel_messages": { "const": true },
+        "kernel_message_access": {
+          "const": "record-evidence-gap-when-restricted"
+        },
+        "collect_network_driver_state": { "const": true },
+        "collect_systemd_and_cgroup": { "const": true }
+      },
+      "additionalProperties": false
+    },
+    "cpu": {
+      "type": "object",
+      "required": [
+        "minimum_reserved_physical_cores",
+        "minimum_reserved_percent",
+        "keep_smt_siblings_together",
+        "require_online_cpu_verification"
+      ],
+      "properties": {
+        "minimum_reserved_physical_cores": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "minimum_reserved_percent": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 50
+        },
+        "keep_smt_siblings_together": { "const": true },
+        "require_online_cpu_verification": { "const": true }
+      },
+      "additionalProperties": false
+    },
+    "memory": {
+      "type": "object",
+      "required": [
+        "allocation_mode",
+        "seastar_mib_per_shard",
+        "seastar_minimum_mib",
+        "seastar_maximum_host_percent",
+        "minimum_host_reserve_mib",
+        "systemd_memory_high_percent",
+        "systemd_memory_max_percent",
+        "benchmark_mode",
+        "require_cgroup_v2_verification",
+        "require_swap_state_recording"
+      ],
+      "properties": {
+        "allocation_mode": { "const": "bounded-per-shard" },
+        "seastar_mib_per_shard": {
+          "type": "integer",
+          "minimum": 128,
+          "maximum": 4096
+        },
+        "seastar_minimum_mib": {
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 16384
+        },
+        "seastar_maximum_host_percent": {
+          "type": "integer",
+          "minimum": 25,
+          "maximum": 75
+        },
+        "minimum_host_reserve_mib": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65536
+        },
+        "systemd_memory_high_percent": {
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 90
+        },
+        "systemd_memory_max_percent": {
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 95
+        },
+        "benchmark_mode": { "const": "fixed-explicit" },
+        "require_cgroup_v2_verification": { "const": true },
+        "require_swap_state_recording": { "const": true }
+      },
+      "additionalProperties": false
+    },
+    "numa": {
+      "type": "object",
+      "required": [
+        "prefer_single_node",
+        "prefer_nic_locality",
+        "reject_asymmetric_partial_core_sets",
+        "record_distance_matrix"
+      ],
+      "properties": {
+        "prefer_single_node": { "const": true },
+        "prefer_nic_locality": { "const": true },
+        "reject_asymmetric_partial_core_sets": { "const": true },
+        "record_distance_matrix": { "const": true }
+      },
+      "additionalProperties": false
+    },
+    "irq": {
+      "type": "object",
+      "required": [
+        "strategy",
+        "keep_irqbalance_enabled",
+        "exclude_gateway_cpus",
+        "minimum_reserved_physical_cores",
+        "maximum_reserved_physical_cores",
+        "queues_per_reserved_core",
+        "require_queue_irq_inventory",
+        "require_effective_affinity_verification"
+      ],
+      "properties": {
+        "strategy": { "const": "reserved-same-numa" },
+        "keep_irqbalance_enabled": { "const": true },
+        "exclude_gateway_cpus": { "const": true },
+        "minimum_reserved_physical_cores": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        },
+        "maximum_reserved_physical_cores": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "queues_per_reserved_core": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "require_queue_irq_inventory": { "const": true },
+        "require_effective_affinity_verification": { "const": true }
+      },
+      "additionalProperties": false
+    },
+    "network": {
+      "type": "object",
+      "required": [
+        "discover_pci_numa_locality",
+        "discover_rx_tx_queues",
+        "rps_policy",
+        "xps_policy",
+        "offload_policy",
+        "coalescing_policy",
+        "require_before_after_counters"
+      ],
+      "properties": {
+        "discover_pci_numa_locality": { "const": true },
+        "discover_rx_tx_queues": { "const": true },
+        "rps_policy": { "const": "only-when-hardware-rss-is-insufficient" },
+        "xps_policy": { "const": "topology-aware-when-measured" },
+        "offload_policy": { "const": "preserve-unless-ab-qualified" },
+        "coalescing_policy": { "const": "preserve-unless-ab-qualified" },
+        "require_before_after_counters": { "const": true }
+      },
+      "additionalProperties": false
+    },
+    "safety": {
+      "type": "object",
+      "required": [
+        "default_mode",
+        "require_explicit_apply",
+        "require_rollback_plan",
+        "reject_unverified_changes",
+        "allow_kernel_boot_changes"
+      ],
+      "properties": {
+        "default_mode": { "const": "plan-only" },
+        "require_explicit_apply": { "const": true },
+        "require_rollback_plan": { "const": true },
+        "reject_unverified_changes": { "const": true },
+        "allow_kernel_boot_changes": { "const": false }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

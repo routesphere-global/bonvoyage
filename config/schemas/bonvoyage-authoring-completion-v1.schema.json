@@ -1,0 +1,261 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.routesphere.global/schemas/bonvoyage-authoring-completion-v1.schema.json",
+  "title": "RouteSphere BonVoyage configuration completion metadata v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "classification",
+    "completion_version",
+    "contract_version",
+    "compiler_version",
+    "configuration_schema_version",
+    "authority",
+    "security_boundary",
+    "sources",
+    "entry_count",
+    "entries"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "../../../schemas/bonvoyage-authoring-completion-v1.schema.json"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "classification": {
+      "const": "routesphere-bonvoyage-configuration-completion-metadata"
+    },
+    "completion_version": {
+      "const": "bonvoyage.configuration-completion.v1"
+    },
+    "contract_version": {
+      "const": "bonvoyage.configuration-authoring.v1"
+    },
+    "compiler_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "configuration_schema_version": {
+      "const": 1
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semantic_validation",
+        "configuration_schema_role",
+        "completion_scope",
+        "field_help",
+        "network_access",
+        "live_mutation"
+      ],
+      "properties": {
+        "semantic_validation": {
+          "const": "snapshot.Compile"
+        },
+        "configuration_schema_role": {
+          "const": "structural-assistance-only"
+        },
+        "completion_scope": {
+          "const": "direct-structural-and-literal-hints-only"
+        },
+        "field_help": {
+          "const": "reviewed-release-asset"
+        },
+        "network_access": {
+          "const": false
+        },
+        "live_mutation": {
+          "const": false
+        }
+      }
+    },
+    "security_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "offline",
+        "document_values_included",
+        "secret_values_included",
+        "environment_secret_reads"
+      ],
+      "properties": {
+        "offline": {
+          "const": true
+        },
+        "document_values_included": {
+          "const": false
+        },
+        "secret_values_included": {
+          "const": false
+        },
+        "environment_secret_reads": {
+          "const": false
+        }
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authoring_contract",
+        "configuration_schema",
+        "field_explanations"
+      ],
+      "properties": {
+        "authoring_contract": {
+          "$ref": "#/$defs/source"
+        },
+        "configuration_schema": {
+          "$ref": "#/$defs/source"
+        },
+        "field_explanations": {
+          "$ref": "#/$defs/source"
+        }
+      }
+    },
+    "entry_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/entry"
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "scalar": {
+      "anyOf": [
+        {"type": "string"},
+        {"type": "number"},
+        {"type": "boolean"}
+      ]
+    },
+    "value": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "enum": ["object", "array", "string", "integer", "number", "boolean"]
+        },
+        "enum_values": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/scalar"
+          }
+        },
+        "const_value": {
+          "$ref": "#/$defs/scalar"
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "min_length": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_length": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "min_items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unique_items": {
+          "type": "boolean"
+        },
+        "item": {
+          "$ref": "#/$defs/value"
+        }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "parent_path",
+        "key",
+        "title",
+        "summary",
+        "required_in_parent",
+        "secret_reference",
+        "value"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(?:|/.*)$"
+        },
+        "parent_path": {
+          "type": ["string", "null"],
+          "pattern": "^(?:|/.*)$"
+        },
+        "key": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "required_in_parent": {
+          "type": "boolean"
+        },
+        "secret_reference": {
+          "type": "boolean"
+        },
+        "value": {
+          "$ref": "#/$defs/value"
+        }
+      }
+    }
+  }
+}

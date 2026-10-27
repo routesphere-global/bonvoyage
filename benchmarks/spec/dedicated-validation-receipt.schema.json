@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://routesphere.local/schemas/dedicated-validation-receipt.schema.json",
+  "title": "BonVoyage dedicated qualification validation receipt",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "campaign_id",
+    "source_commit",
+    "artifact_lock",
+    "validation_plan",
+    "started_at",
+    "completed_at",
+    "platform",
+    "checks",
+    "passed"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "receipt_id": { "type": "string", "pattern": "^dq-validation-[a-z0-9-]+$" },
+    "campaign_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "source_commit": { "$ref": "#/$defs/gitCommit" },
+    "artifact_lock": { "$ref": "#/$defs/evidence" },
+    "validation_plan": { "$ref": "#/$defs/evidence" },
+    "started_at": { "type": "string", "format": "date-time" },
+    "completed_at": { "type": "string", "format": "date-time" },
+    "platform": { "$ref": "#/$defs/platform" },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/check" }
+    },
+    "passed": { "const": true }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "gitCommit": {
+      "type": "string",
+      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "platform": {
+      "type": "object",
+      "required": ["operating_system", "architecture", "container_platform"],
+      "properties": {
+        "operating_system": { "const": "Ubuntu 24.04 LTS" },
+        "architecture": { "const": "x86_64" },
+        "container_platform": { "const": "linux/amd64" }
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "sha256": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    },
+    "check": {
+      "type": "object",
+      "required": ["id", "status", "record", "evidence"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "status": { "const": "pass" },
+        "record": { "$ref": "#/$defs/evidence" },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/evidence" }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

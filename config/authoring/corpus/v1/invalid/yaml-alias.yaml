@@ -1,0 +1,16 @@
+server: &server
+  node_id: corpus-alias
+  admin_addr: 127.0.0.1:9901
+  metrics_addr: 127.0.0.1:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: corpus-alias
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+
+listeners: []
+virtual_hosts: []
+clusters: []
+runtime_limits: {}
+copied_server: *server

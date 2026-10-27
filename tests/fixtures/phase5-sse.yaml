@@ -1,0 +1,59 @@
+server:
+  node_id: phase5-sse-node
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: phase5-sse-local-preflight
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: tls-http1
+    address: 0.0.0.0
+    port: 8443
+    protocol: http1
+    virtual_hosts: [sse-api]
+    downstream_tls:
+      certificate_chain_secret: server-chain.pem
+      private_key_secret: server-key.pem
+  - name: tls-http2
+    address: 0.0.0.0
+    port: 8444
+    protocol: http2
+    virtual_hosts: [sse-api]
+    downstream_tls:
+      certificate_chain_secret: server-chain.pem
+      private_key_secret: server-key.pem
+
+virtual_hosts:
+  - name: sse-api
+    domains: [api.example.test]
+    routes:
+      - name: sse
+        match:
+          path_prefix: /sse/
+        cluster: controlled-sse
+
+clusters:
+  - name: controlled-sse
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 200
+    max_connections_per_shard: 16
+    max_pending_requests_per_shard: 16
+    endpoints:
+      - name: controlled-upstream
+        address: upstream
+        port: 8081
+        weight: 1
+
+runtime_limits:
+  max_downstream_connections_per_shard: 64
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 800
+  downstream_idle_timeout_ms: 1000
+

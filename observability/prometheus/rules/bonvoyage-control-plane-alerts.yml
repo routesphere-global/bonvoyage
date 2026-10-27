@@ -1,0 +1,42 @@
+groups:
+  - name: bonvoyage-control-plane-recovery
+    interval: 15s
+    rules:
+      - alert: BonVoyageControlPlaneTargetMissing
+        expr: up{job="bonvoyage-control-plane"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          owner: infrastructure
+          decision: restore_control_plane
+        annotations:
+          summary: BonVoyage control-plane telemetry is unavailable
+          action: Confirm dataplanes still serve their last-known-good snapshots, then restore the same durable repository and control-plane identity before attempting any rollout.
+      - alert: BonVoyageControlPlaneAuthorityMismatch
+        expr: bonvoyage_control_plane_runtime_authority_match == 0
+        labels:
+          severity: critical
+          owner: infrastructure
+          decision: halt_mutations_and_reconcile_authority
+        annotations:
+          summary: BonVoyage durable and runtime rollout authority disagree
+          action: Halt configuration mutations, inspect the selected sequence and restart replay, and restore one matching runtime authority before resuming changes.
+      - alert: BonVoyageControlPlaneRecoveryRequired
+        expr: bonvoyage_control_plane_recovery_required == 1
+        labels:
+          severity: critical
+          owner: infrastructure
+          decision: reconcile_or_rollback
+        annotations:
+          summary: BonVoyage rollout requires operator recovery
+          action: Inspect rollout status and integrity-bound audit events, reconcile every target, and complete exact cleanup or rollback without bypassing artifact checks.
+      - alert: BonVoyageControlPlaneNodesUnreconciled
+        expr: bonvoyage_control_plane_unreconciled_nodes > 0
+        for: 2m
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: restore_node_reconciliation
+        annotations:
+          summary: One or more BonVoyage targets remain unreconciled
+          action: Check authenticated discovery ownership, node heartbeat, active artifact identity, and pending commands before promoting or starting another rollout.

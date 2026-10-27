@@ -1,0 +1,111 @@
+server:
+  node_id: request-content-node
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-request-content
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: request-content-http1
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [api]
+  - name: request-content-http2
+    address: 0.0.0.0
+    port: 8443
+    protocol: http2
+    virtual_hosts: [api]
+    downstream_tls:
+      certificate_chain_secret: server-chain.pem
+      private_key_secret: server-key.pem
+
+virtual_hosts:
+  - name: api
+    domains: [api.example.test]
+    routes:
+      - name: declared-body
+        match:
+          path_exact: /content/declared
+          methods: [POST]
+        cors:
+          allowed_origins: [https://app.example.com]
+          allowed_methods: [POST]
+          allowed_headers: [Content-Type]
+          max_age_seconds: 600
+        request_content:
+          max_body_bytes: 8
+          allowed_content_types:
+            - application/json
+            - application/problem+json
+        cluster: upstream
+      - name: chunked-fixed
+        match:
+          path_exact: /content/fixed
+          methods: [POST]
+        request_content:
+          max_body_bytes: 8
+          allowed_content_types: [application/json]
+        fixed_response:
+          status_code: 200
+          body: "fixed ready\n"
+          content_type: text/plain
+      - name: size-only
+        match:
+          path_exact: /content/size-only
+          methods: [POST]
+        request_content:
+          max_body_bytes: 8
+        cluster: upstream
+      - name: type-only
+        match:
+          path_exact: /content/type-only
+          methods: [POST]
+        request_content:
+          allowed_content_types: [application/json]
+        cluster: upstream
+      - name: auth-order
+        match:
+          path_exact: /content/auth-order
+          methods: [POST]
+        request_content:
+          allowed_content_types: [application/json]
+        api_key_auth:
+          credentials_secret: phase3-request-content-api-keys.txt
+        fixed_response:
+          status_code: 200
+          body: "authenticated\n"
+          content_type: text/plain
+      - name: public
+        match:
+          path_exact: /public
+          methods: [GET]
+        fixed_response:
+          status_code: 200
+          body: "public ready\n"
+          content_type: text/plain
+
+clusters:
+  - name: upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 1000
+    max_connections_per_shard: 16
+    max_pending_requests_per_shard: 16
+    endpoints:
+      - name: upstream-1
+        address: upstream
+        port: 8081
+        weight: 1
+
+runtime_limits:
+  max_downstream_connections_per_shard: 256
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 64
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 5000
+  downstream_idle_timeout_ms: 5000

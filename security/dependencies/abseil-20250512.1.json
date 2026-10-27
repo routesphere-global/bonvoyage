@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "name": "abseil",
+  "component": "Abseil C++",
+  "version": "20250512.1",
+  "scope": "transitive static runtime dependency required by the admitted RE2 safe-regex route engine",
+  "source": {
+    "release_url": "https://github.com/abseil/abseil-cpp/releases/tag/20250512.1",
+    "archive_url": "https://github.com/abseil/abseil-cpp/releases/download/20250512.1/abseil-cpp-20250512.1.tar.gz",
+    "tag": "20250512.1",
+    "commit": "76bb24329e8bf5f39704eb10d21b9a80befa7c81",
+    "archive_sha256": "9b7a064305e9fd94d124ffa6cc358592eb42b5da588fb4e07d09254aa40086db"
+  },
+  "license": {
+    "spdx": "Apache-2.0",
+    "source_file": "LICENSE",
+    "installed_file": "/usr/share/licenses/abseil/LICENSE"
+  },
+  "build": {
+    "linkage": "static",
+    "cxx_standard": 20,
+    "position_independent_code": true,
+    "excluded_components": [
+      "tests",
+      "shared_libraries",
+      "optional ICU integration"
+    ]
+  },
+  "review": {
+    "date": "2026-08-29",
+    "decision": "admitted at the version declared by RE2 2025-11-05",
+    "security_sources": [
+      "https://github.com/abseil/abseil-cpp/security",
+      "https://github.com/abseil/abseil-cpp/releases"
+    ],
+    "automated_vulnerability_scan": {
+      "status": "passed",
+      "scanner": "Grype 0.116.1",
+      "database_built_at": "2026-08-29T06:26:37Z",
+      "threshold": "High",
+      "counts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0
+      },
+      "evidence_record": "docs/implementation/phase-3-routing-predicates.md"
+    },
+    "release_sbom": {
+      "status": "generated",
+      "formats": [
+        "CycloneDX JSON",
+        "SPDX JSON"
+      ],
+      "generator": "Syft 1.44.0",
+      "evidence_record": "docs/implementation/phase-3-routing-predicates.md"
+    },
+    "local_qualification": {
+      "status": "passed",
+      "evidence_record": "docs/implementation/phase-3-routing-predicates.md",
+      "note": "Static release integration and ASan qualification passed. Direct GCC UBSan instrumentation is excluded because GCC bug 71962, tracked by Abseil issue 1634, prevents the affected constexpr hash helper from compiling."
+    }
+  },
+  "acceptance": {
+    "adr": "docs/architecture/decisions/0011-bounded-route-predicate-engine.md",
+    "status": "accepted",
+    "remaining_gates": [
+      "periodic release-image dependency rescanning",
+      "revisit direct Abseil UBSan instrumentation when GCC bug 71962 or Abseil issue 1634 is resolved"
+    ]
+  }
+}

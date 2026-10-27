@@ -1,0 +1,74 @@
+server:
+  node_id: api-key-node
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-api-key
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: api-key-http1
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [api]
+  - name: api-key-http2
+    address: 0.0.0.0
+    port: 8443
+    protocol: http2
+    virtual_hosts: [api]
+    downstream_tls:
+      certificate_chain_secret: server-chain.pem
+      private_key_secret: server-key.pem
+
+virtual_hosts:
+  - name: api
+    domains: [api.example.test]
+    routes:
+      - name: protected-upstream
+        match:
+          path_exact: /api-key-observation
+        api_key_auth:
+          credentials_secret: phase3-api-keys.txt
+        cluster: upstream
+      - name: protected-fixed
+        match:
+          path_exact: /protected-fixed
+        api_key_auth:
+          header_name: X-API-Key
+          credentials_secret: phase3-api-keys.txt
+        fixed_response:
+          status_code: 200
+          body: "protected ready\n"
+          content_type: text/plain
+      - name: public
+        match:
+          path_exact: /public
+        fixed_response:
+          status_code: 200
+          body: "public ready\n"
+          content_type: text/plain
+
+clusters:
+  - name: upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 1000
+    max_connections_per_shard: 16
+    max_pending_requests_per_shard: 16
+    endpoints:
+      - name: upstream-1
+        address: upstream
+        port: 8081
+        weight: 1
+
+runtime_limits:
+  max_downstream_connections_per_shard: 256
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 5000
+  downstream_idle_timeout_ms: 5000

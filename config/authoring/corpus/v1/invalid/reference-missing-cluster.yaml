@@ -1,0 +1,47 @@
+server:
+  node_id: corpus-missing-cluster
+  admin_addr: 127.0.0.1:9901
+  metrics_addr: 127.0.0.1:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: corpus-missing-cluster
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: http
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [default]
+
+virtual_hosts:
+  - name: default
+    domains: ["*"]
+    routes:
+      - name: upstream
+        match:
+          path_prefix: /
+        cluster: missing-upstream
+
+clusters:
+  - name: declared-upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 1000
+    max_connections_per_shard: 16
+    max_pending_requests_per_shard: 16
+    endpoints:
+      - name: upstream-1
+        address: upstream
+        port: 8081
+        weight: 1
+
+runtime_limits:
+  max_downstream_connections_per_shard: 128
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 5000
+  downstream_idle_timeout_ms: 5000

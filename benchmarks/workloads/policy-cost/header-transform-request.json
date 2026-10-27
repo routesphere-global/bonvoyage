@@ -1,0 +1,5 @@
+{
+  "x-policy-append": "client-append",
+  "x-policy-remove": "client-remove",
+  "x-policy-set": "client-set"
+}

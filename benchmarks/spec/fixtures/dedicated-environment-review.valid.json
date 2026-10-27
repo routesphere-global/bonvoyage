@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "campaign_id": "phase1-phase3-dedicated-qualification-v1",
+  "environment_id": "dq-infra-002-aaaaaaaaaaaaaaaa",
+  "raw_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "reviewed_at": "2026-09-05T02:00:00Z",
+  "reviewer_id_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+  "attestations": {
+    "unrelated_processes_absent": true,
+    "scheduled_work_quiesced": true,
+    "kernel_and_frequency_state_accepted": true,
+    "cloud_events_and_host_identity_accepted": true,
+    "clock_state_accepted": true,
+    "network_noise_accepted": true
+  },
+  "notes": []
+}

@@ -1,0 +1,394 @@
+{
+  "schema_version": 1,
+  "seed": "schema-fixture-v1",
+  "products": [
+    "bonvoyage",
+    "envoy",
+    "nginx",
+    "haproxy"
+  ],
+  "settings": {
+    "repetitions": 5,
+    "resilience_repetitions": 3,
+    "utilization_targets": [
+      0.5,
+      0.7,
+      0.8,
+      0.9,
+      0.95
+    ]
+  },
+  "groups": [
+    {
+      "key": "capacity-discovery.1core.rep1",
+      "stage": "capacity-discovery",
+      "gateway_cores": 1,
+      "repetition": 1,
+      "product_order": [
+        "haproxy",
+        "envoy",
+        "bonvoyage",
+        "nginx"
+      ]
+    },
+    {
+      "key": "capacity-confirmation.1core.rep1",
+      "stage": "capacity-confirmation",
+      "gateway_cores": 1,
+      "repetition": 1,
+      "product_order": [
+        "bonvoyage",
+        "envoy",
+        "nginx",
+        "haproxy"
+      ]
+    },
+    {
+      "key": "operating-curve.1core.rep1",
+      "stage": "operating-curve",
+      "gateway_cores": 1,
+      "repetition": 1,
+      "utilization_targets": [
+        0.5,
+        0.7,
+        0.8,
+        0.9,
+        0.95
+      ],
+      "product_order": [
+        "envoy",
+        "nginx",
+        "haproxy",
+        "bonvoyage"
+      ]
+    },
+    {
+      "key": "capacity-confirmation.1core.rep2",
+      "stage": "capacity-confirmation",
+      "gateway_cores": 1,
+      "repetition": 2,
+      "product_order": [
+        "envoy",
+        "nginx",
+        "haproxy",
+        "bonvoyage"
+      ]
+    },
+    {
+      "key": "operating-curve.1core.rep2",
+      "stage": "operating-curve",
+      "gateway_cores": 1,
+      "repetition": 2,
+      "utilization_targets": [
+        0.5,
+        0.7,
+        0.8,
+        0.9,
+        0.95
+      ],
+      "product_order": [
+        "nginx",
+        "haproxy",
+        "bonvoyage",
+        "envoy"
+      ]
+    },
+    {
+      "key": "capacity-confirmation.1core.rep3",
+      "stage": "capacity-confirmation",
+      "gateway_cores": 1,
+      "repetition": 3,
+      "product_order": [
+        "nginx",
+        "haproxy",
+        "bonvoyage",
+        "envoy"
+      ]
+    },
+    {
+      "key": "operating-curve.1core.rep3",
+      "stage": "operating-curve",
+      "gateway_cores": 1,
+      "repetition": 3,
+      "utilization_targets": [
+        0.5,
+        0.7,
+        0.8,
+        0.9,
+        0.95
+      ],
+      "product_order": [
+        "haproxy",
+        "bonvoyage",
+        "envoy",
+        "nginx"
+      ]
+    },
+    {
+      "key": "capacity-confirmation.1core.rep4",
+      "stage": "capacity-confirmation",
+      "gateway_cores": 1,
+      "repetition": 4,
+      "product_order": [
+        "haproxy",
+        "bonvoyage",
+        "envoy",
+        "nginx"
+      ]
+    },
+    {
+      "key": "operating-curve.1core.rep4",
+      "stage": "operating-curve",
+      "gateway_cores": 1,
+      "repetition": 4,
+      "utilization_targets": [
+        0.5,
+        0.7,
+        0.8,
+        0.9,
+        0.95
+      ],
+      "product_order": [
+        "bonvoyage",
+        "envoy",
+        "nginx",
+        "haproxy"
+      ]
+    },
+    {
+      "key": "capacity-confirmation.1core.rep5",
+      "stage": "capacity-confirmation",
+      "gateway_cores": 1,
+      "repetition": 5,
+      "product_order": [
+        "haproxy",
+        "nginx",
+        "bonvoyage",
+        "envoy"
+      ]
+    },
+    {
+      "key": "operating-curve.1core.rep5",
+      "stage": "operating-curve",
+      "gateway_cores": 1,
+      "repetition": 5,
+      "utilization_targets": [
+        0.5,
+        0.7,
+        0.8,
+        0.9,
+        0.95
+      ],
+      "product_order": [
+        "nginx",
+        "bonvoyage",
+        "haproxy",
+        "envoy"
+      ]
+    },
+    {
+      "key": "capacity-discovery.2core.rep1",
+      "stage": "capacity-discovery",
+      "gateway_cores": 2,
+      "repetition": 1,
+      "product_order": [
+        "haproxy",
+        "envoy",
+        "nginx",
+        "bonvoyage"
+      ]
+    },
+    {
+      "key": "capacity-confirmation.2core.rep1",
+      "stage": "capacity-confirmation",
+      "gateway_cores": 2,
+      "repetition": 1,
+      "product_order": [
+        "envoy",
+        "haproxy",
+        "nginx",
+        "bonvoyage"
+      ]
+    },
+    {
+      "key": "operating-curve.2core.rep1",
+      "stage": "operating-curve",
+      "gateway_cores": 2,
+      "repetition": 1,
+      "utilization_targets": [
+        0.5,
+        0.7,
+        0.8,
+        0.9,
+        0.95
+      ],
+      "product_order": [
+        "haproxy",
+        "envoy",
+        "bonvoyage",
+        "nginx"
+      ]
+    },
+    {
+      "key": "capacity-confirmation.2core.rep2",
+      "stage": "capacity-confirmation",
+      "gateway_cores": 2,
+      "repetition": 2,
+      "product_order": [
+        "haproxy",
+        "nginx",
+        "bonvoyage",
+        "envoy"
+      ]
+    },
+    {
+      "key": "operating-curve.2core.rep2",
+      "stage": "operating-curve",
+      "gateway_cores": 2,
+      "repetition": 2,
+      "utilization_targets": [
+        0.5,
+        0.7,
+        0.8,
+        0.9,
+        0.95
+      ],
+      "product_order": [
+        "envoy",
+        "bonvoyage",
+        "nginx",
+        "haproxy"
+      ]
+    },
+    {
+      "key": "capacity-confirmation.2core.rep3",
+      "stage": "capacity-confirmation",
+      "gateway_cores": 2,
+      "repetition": 3,
+      "product_order": [
+        "nginx",
+        "bonvoyage",
+        "envoy",
+        "haproxy"
+      ]
+    },
+    {
+      "key": "operating-curve.2core.rep3",
+      "stage": "operating-curve",
+      "gateway_cores": 2,
+      "repetition": 3,
+      "utilization_targets": [
+        0.5,
+        0.7,
+        0.8,
+        0.9,
+        0.95
+      ],
+      "product_order": [
+        "bonvoyage",
+        "nginx",
+        "haproxy",
+        "envoy"
+      ]
+    },
+    {
+      "key": "capacity-confirmation.2core.rep4",
+      "stage": "capacity-confirmation",
+      "gateway_cores": 2,
+      "repetition": 4,
+      "product_order": [
+        "bonvoyage",
+        "envoy",
+        "haproxy",
+        "nginx"
+      ]
+    },
+    {
+      "key": "operating-curve.2core.rep4",
+      "stage": "operating-curve",
+      "gateway_cores": 2,
+      "repetition": 4,
+      "utilization_targets": [
+        0.5,
+        0.7,
+        0.8,
+        0.9,
+        0.95
+      ],
+      "product_order": [
+        "nginx",
+        "haproxy",
+        "envoy",
+        "bonvoyage"
+      ]
+    },
+    {
+      "key": "capacity-confirmation.2core.rep5",
+      "stage": "capacity-confirmation",
+      "gateway_cores": 2,
+      "repetition": 5,
+      "product_order": [
+        "bonvoyage",
+        "haproxy",
+        "envoy",
+        "nginx"
+      ]
+    },
+    {
+      "key": "operating-curve.2core.rep5",
+      "stage": "operating-curve",
+      "gateway_cores": 2,
+      "repetition": 5,
+      "utilization_targets": [
+        0.5,
+        0.7,
+        0.8,
+        0.9,
+        0.95
+      ],
+      "product_order": [
+        "nginx",
+        "envoy",
+        "haproxy",
+        "bonvoyage"
+      ]
+    },
+    {
+      "key": "resilience.2core.rep1",
+      "stage": "resilience",
+      "gateway_cores": 2,
+      "repetition": 1,
+      "product_order": [
+        "nginx",
+        "bonvoyage",
+        "haproxy",
+        "envoy"
+      ]
+    },
+    {
+      "key": "resilience.2core.rep2",
+      "stage": "resilience",
+      "gateway_cores": 2,
+      "repetition": 2,
+      "product_order": [
+        "bonvoyage",
+        "haproxy",
+        "envoy",
+        "nginx"
+      ]
+    },
+    {
+      "key": "resilience.2core.rep3",
+      "stage": "resilience",
+      "gateway_cores": 2,
+      "repetition": 3,
+      "product_order": [
+        "haproxy",
+        "envoy",
+        "nginx",
+        "bonvoyage"
+      ]
+    }
+  ],
+  "plan_id": "phase2-31e18476aa60aa33"
+}

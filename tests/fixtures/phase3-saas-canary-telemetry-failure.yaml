@@ -1,0 +1,128 @@
+server:
+  node_id: phase3-saas-canary-telemetry-failure
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-saas-canary-telemetry-failure
+  generation: 41
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: saas-http1
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [tenant-a, tenant-b]
+
+virtual_hosts:
+  - name: tenant-a
+    domains: [tenant-a.saas.example.test]
+    routes:
+      - name: tenant-a-overload
+        match:
+          path_exact: /v1/slow
+          methods: [GET]
+        api_key_auth:
+          header_name: X-API-Key
+          credentials_secret: tenant-a-api-keys.txt
+        max_concurrent_requests_per_shard: 2
+        cluster: tenant-a-stable
+        rewrite:
+          path: /slow/300
+      - name: tenant-a-quota
+        match:
+          path_exact: /v1/quota
+          methods: [GET]
+        api_key_auth:
+          header_name: X-API-Key
+          credentials_secret: tenant-a-api-keys.txt
+        local_rate_limit:
+          capacity: 1
+          refill_tokens_per_second: 1
+        cluster: tenant-a-stable
+        rewrite:
+          path: /identity
+      - name: tenant-a-release
+        match:
+          path_exact: /v1/data
+          methods: [GET]
+        api_key_auth:
+          header_name: X-API-Key
+          credentials_secret: tenant-a-api-keys.txt
+        weighted_clusters:
+          - {cluster: tenant-a-stable, weight: 3}
+          - {cluster: tenant-a-canary, weight: 1}
+        rewrite:
+          path: /identity
+  - name: tenant-b
+    domains: [tenant-b.saas.example.test]
+    routes:
+      - name: tenant-b-release
+        match:
+          path_exact: /v1/data
+          methods: [GET]
+        api_key_auth:
+          header_name: X-API-Key
+          credentials_secret: tenant-b-api-keys.txt
+        weighted_clusters:
+          - {cluster: tenant-b-stable, weight: 3}
+          - {cluster: tenant-b-canary, weight: 1}
+        rewrite:
+          path: /identity
+
+clusters:
+  - name: tenant-a-stable
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 500
+    max_connections_per_shard: 64
+    max_pending_requests_per_shard: 256
+    max_concurrent_requests_per_endpoint: 128
+    endpoints:
+      - name: tenant-a-stable-1
+        address: tenant-a-stable
+        port: 8081
+  - name: tenant-a-canary
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 500
+    max_connections_per_shard: 64
+    max_pending_requests_per_shard: 256
+    max_concurrent_requests_per_endpoint: 128
+    passive_health:
+      consecutive_failures: 1
+      ejection_time_ms: 2000
+      max_ejection_percent: 100
+    endpoints:
+      - name: tenant-a-canary-1
+        address: tenant-a-canary
+        port: 8081
+  - name: tenant-b-stable
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 500
+    max_connections_per_shard: 64
+    max_pending_requests_per_shard: 256
+    max_concurrent_requests_per_endpoint: 128
+    endpoints:
+      - name: tenant-b-stable-1
+        address: tenant-b-stable
+        port: 8081
+  - name: tenant-b-canary
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 500
+    max_connections_per_shard: 64
+    max_pending_requests_per_shard: 256
+    max_concurrent_requests_per_endpoint: 128
+    endpoints:
+      - name: tenant-b-canary-1
+        address: tenant-b-canary
+        port: 8081
+
+runtime_limits:
+  max_downstream_connections_per_shard: 2048
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 3000
+  downstream_idle_timeout_ms: 10000

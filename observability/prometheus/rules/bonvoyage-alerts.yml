@@ -1,0 +1,229 @@
+groups:
+  - name: bonvoyage-availability
+    interval: 15s
+    rules:
+      - alert: BonVoyageTargetMissing
+        expr: up{job="bonvoyage"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          owner: infrastructure
+          decision: restore_or_fail_over
+        annotations:
+          summary: BonVoyage telemetry target is unavailable
+          action: Verify process health, metrics-network policy, and target discovery; fail traffic over if the dataplane is also unavailable.
+      - alert: BonVoyageShardNotReady
+        expr: bonvoyage:gateway_ready:min < 1
+        for: 1m
+        labels:
+          severity: critical
+          owner: infrastructure
+          decision: remove_node_from_service
+        annotations:
+          summary: At least one BonVoyage shard is not ready
+          action: Remove the node from service and inspect snapshot preparation, listener startup, and resource limits.
+      - alert: BonVoyageSnapshotShardMismatch
+        expr: bonvoyage:snapshot_generation:mismatch > 0
+        for: 1m
+        labels:
+          severity: critical
+          owner: infrastructure
+          decision: halt_rollout
+        annotations:
+          summary: BonVoyage shards disagree on active snapshot generation
+          action: Halt rollout and retain the prior artifact until all-shard activation state is understood.
+      - alert: BonVoyageHighGatewayErrorRatio
+        expr: bonvoyage:gateway_5xx:ratio5m > 0.01 and bonvoyage:gateway_responses:rate5m_total > 1
+        for: 10m
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: investigate_or_rollback
+        annotations:
+          summary: BonVoyage 5xx response ratio exceeds the default one-percent guardrail
+          action: Separate upstream failures, timeouts, and overload rejections; rollback a recent change when correlated.
+      - alert: BonVoyageCriticalGatewayErrorRatio
+        expr: bonvoyage:gateway_5xx:ratio5m > 0.05 and bonvoyage:gateway_responses:rate5m_total > 1
+        for: 5m
+        labels:
+          severity: critical
+          owner: infrastructure
+          decision: fail_over_or_rollback
+        annotations:
+          summary: BonVoyage 5xx response ratio exceeds five percent
+          action: Fail over or rollback while isolating gateway, upstream, and capacity causes.
+      - alert: BonVoyageP999LatencyHigh
+        expr: bonvoyage:gateway_latency:p999_microseconds5m > 250000 and bonvoyage:gateway_responses:rate5m_total > 10
+        for: 10m
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: inspect_tail_latency
+        annotations:
+          summary: BonVoyage p99.9 latency exceeds the default 250 ms guardrail
+          action: Compare reactor saturation, shard balance, upstream health, retries, and recent configuration changes; tune this threshold to the workload SLO.
+
+  - name: bonvoyage-capacity-and-runtime
+    interval: 15s
+    rules:
+      - alert: BonVoyageReactorSaturated
+        expr: bonvoyage:reactor_utilization:max > 90
+        for: 10m
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: scale_out_or_reduce_work
+        annotations:
+          summary: A BonVoyage shard has sustained reactor utilization above 90 percent
+          action: Scale out or reduce expensive policy work after checking p99.9 latency and shard balance.
+      - alert: BonVoyageMemoryPressure
+        expr: bonvoyage:memory_utilization:ratio > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: add_memory_or_reduce_connection_pressure
+        annotations:
+          summary: BonVoyage allocated memory exceeds 85 percent of its Seastar budget
+          action: Increase the explicit memory budget or reduce connection and stream pressure before allocation failure.
+      - alert: BonVoyageMemoryAllocationFailure
+        expr: sum without (shard) (increase(bonvoyage_memory_malloc_failed[5m])) > 0
+        labels:
+          severity: critical
+          owner: infrastructure
+          decision: remove_node_and_investigate
+        annotations:
+          summary: BonVoyage reported a failed memory allocation
+          action: Remove the node from service and inspect memory sizing, connection pressure, and allocation growth.
+      - alert: BonVoyageShardTrafficImbalance
+        expr: bonvoyage:gateway_shard_imbalance:ratio5m > 0.20 and bonvoyage:gateway_requests:rate5m > 100
+        for: 15m
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: inspect_irq_rss_and_client_distribution
+        annotations:
+          summary: BonVoyage shard request rates differ by more than 20 percent
+          action: Inspect NIC RSS, IRQ placement, client connection reuse, CPU pinning, and per-shard saturation.
+      - alert: BonVoyageUpstreamHttp1PoolPressure
+        expr: sum without (shard) (bonvoyage:upstream_http1_pool_waits:rate5m) > 0 and bonvoyage:upstream_http1_pool_pressure:max >= 1
+        for: 10m
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: inspect_upstream_pool_distribution
+        annotations:
+          summary: BonVoyage HTTP/1 upstream requests are waiting at connection capacity
+          action: Compare per-shard request and connection acceptance, endpoint distribution, upstream latency, and configured pool capacity before increasing limits.
+      - alert: BonVoyageAbandonedFailedFuture
+        expr: sum without (shard) (increase(bonvoyage_reactor_abandoned_failed_futures[5m])) > 0
+        labels:
+          severity: critical
+          owner: engineering
+          decision: open_runtime_defect
+        annotations:
+          summary: Seastar reported an abandoned failed future
+          action: Preserve logs and workload context, then open a runtime correctness defect before rollout continues.
+      - alert: BonVoyageLoggingFailure
+        expr: sum without (shard) (increase(bonvoyage_reactor_logging_failures[5m])) > 0
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: restore_diagnostic_path
+        annotations:
+          summary: BonVoyage could not emit one or more operational log records
+          action: Inspect stdout or journald pressure and the node log collector without blocking gateway traffic.
+      - alert: BonVoyageRuntimeLogSinkUnavailable
+        expr: min without (shard) (bonvoyage_bonvoyage_runtime_log_sink_healthy) < 1
+        for: 2m
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: restore_runtime_log_receiver
+        annotations:
+          summary: At least one BonVoyage runtime-log receiver is unavailable
+          action: Restore the local runtime-log receiver or socket; gateway requests remain fail-open while bounded diagnostic loss is reported separately.
+      - alert: BonVoyageRuntimeLogDropping
+        expr: sum without (shard) (increase(bonvoyage_bonvoyage_runtime_log_records_dropped_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: relieve_runtime_log_backpressure
+        annotations:
+          summary: BonVoyage is dropping bounded operational log records
+          action: Inspect receiver availability, queue overflow and local collector capacity; preserve request service while restoring diagnostic coverage.
+      - alert: BonVoyageAccessLogSinkUnavailable
+        expr: bonvoyage:access_log_enabled:min == 1 and bonvoyage:access_log_sink_healthy:min < 1
+        for: 2m
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: restore_access_log_storage
+        annotations:
+          summary: At least one enabled BonVoyage access-log sink is unavailable
+          action: Restore the configured directory, permissions, or storage capacity; request service remains fail-open while records are dropped observably.
+      - alert: BonVoyageAccessLogDropping
+        expr: bonvoyage:access_log_enabled:min == 1 and (bonvoyage:access_log_drops:rate5m > 0 or bonvoyage:access_log_capacity_exhaustions:increase5m > 0)
+        for: 2m
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: relieve_access_log_backpressure
+        annotations:
+          summary: BonVoyage is dropping bounded asynchronous access records
+          action: Inspect queue pressure, write failures, and the per-shard disk budget; keep request traffic serving while restoring evidence delivery.
+      - alert: BonVoyageTraceExporterUnavailable
+        expr: bonvoyage:otlp_traces_enabled:min == 1 and bonvoyage:otlp_trace_exporter_healthy:min < 1
+        for: 2m
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: restore_trace_collector
+        annotations:
+          summary: At least one enabled BonVoyage OTLP exporter is unhealthy
+          action: Restore collector reachability, trust, or capacity; request service remains fail-open while trace loss is reported separately.
+      - alert: BonVoyageTraceDeliveryIncomplete
+        expr: bonvoyage:otlp_traces_enabled:min == 1 and (bonvoyage:otlp_trace_spans_dropped:rate5m > 0 or bonvoyage:otlp_trace_retry_exhaustions:increase5m > 0 or bonvoyage:otlp_trace_partial_success:increase5m > 0)
+        for: 2m
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: relieve_trace_delivery_backpressure
+        annotations:
+          summary: BonVoyage trace delivery is incomplete
+          action: Inspect queue pressure, collector rejection, export failures, and retry exhaustion; preserve request service while restoring diagnostic coverage.
+
+  - name: bonvoyage-policy-and-upstreams
+    interval: 15s
+    rules:
+      - alert: BonVoyageOverloadShedding
+        expr: sum without (reason) (bonvoyage:gateway_rejections:rate5m{reason=~"route_overloaded|cluster_overloaded|endpoint_overloaded|downstream_connection_limit|jwt_cpu_budget"}) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: scale_or_tune_explicit_limits
+        annotations:
+          summary: BonVoyage is shedding traffic through an explicit capacity limit
+          action: Identify the rejection reason, then scale capacity or tune the matching bounded limit after confirming downstream headroom.
+      - alert: BonVoyageNoEligibleUpstream
+        expr: bonvoyage:gateway_resilience_events:rate5m{event="no_eligible_endpoint"} > 0
+        for: 2m
+        labels:
+          severity: critical
+          owner: infrastructure
+          decision: restore_upstream_or_fail_over
+        annotations:
+          summary: BonVoyage has requests with no eligible upstream endpoint
+          action: Restore endpoint health, verify circuit state and DNS, or fail traffic over to a healthy cluster.
+      - alert: BonVoyageDnsRefreshFailure
+        expr: bonvoyage:gateway_resilience_events:rate5m{event="dns_refresh_failure"} > 0
+        for: 5m
+        labels:
+          severity: warning
+          owner: infrastructure
+          decision: restore_dns_resolution
+        annotations:
+          summary: BonVoyage DNS refresh is failing
+          action: Verify resolver reachability and records; BonVoyage retains the last-known-good address while failures continue.

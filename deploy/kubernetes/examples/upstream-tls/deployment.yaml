@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bonvoyage
+  namespace: bonvoyage
+spec:
+  template:
+    spec:
+      containers:
+        - name: dataplane
+          volumeMounts:
+            - name: upstream-tls
+              mountPath: /etc/bonvoyage/secrets
+              readOnly: true
+      volumes:
+        - name: upstream-tls
+          secret:
+            secretName: bonvoyage-upstream-tls
+            defaultMode: 0440

@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "evidence_class": "shared-vm-engineering",
+  "protocol": "http1",
+  "tls": {
+    "version": "1.3",
+    "cipher_family": "AES"
+  },
+  "method": "GET",
+  "core_counts": [8, 24],
+  "profiles": [
+    {
+      "id": "P5-C00",
+      "feature": "plain-proxy-control",
+      "response_payload_bytes": 8192,
+      "request_headers_mode": "none",
+      "request_header_names": [],
+      "bonvoyage_policy": "none",
+      "nginx_comparator": "vanilla-equivalent"
+    },
+    {
+      "id": "P5-C01",
+      "feature": "bounded-header-transformations",
+      "response_payload_bytes": 256,
+      "request_headers_mode": "digest-bound-json",
+      "request_header_names": ["x-policy-append", "x-policy-remove", "x-policy-set"],
+      "bonvoyage_policy": "request-and-response-set-append-remove",
+      "nginx_comparator": "vanilla-equivalent"
+    },
+    {
+      "id": "P5-C02",
+      "feature": "bounded-header-transformations",
+      "response_payload_bytes": 8192,
+      "request_headers_mode": "digest-bound-json",
+      "request_header_names": ["x-policy-append", "x-policy-remove", "x-policy-set"],
+      "bonvoyage_policy": "request-and-response-set-append-remove",
+      "nginx_comparator": "vanilla-equivalent"
+    },
+    {
+      "id": "P5-C03",
+      "feature": "static-api-key-hmac-admission",
+      "response_payload_bytes": 8192,
+      "request_headers_mode": "api-key-file",
+      "request_header_names": ["x-api-key"],
+      "bonvoyage_policy": "hmac-sha256-api-key-digest-lookup",
+      "nginx_comparator": "semantic-only-no-hmac-equivalence"
+    },
+    {
+      "id": "P5-C04",
+      "feature": "rs256-jwt-admission",
+      "response_payload_bytes": 256,
+      "request_headers_mode": "digest-bound-json",
+      "request_header_names": ["authorization"],
+      "bonvoyage_policy": "signature-issuer-audience-type-scope-claim-validation",
+      "nginx_comparator": "blocked-until-extension-pinned"
+    },
+    {
+      "id": "P5-C05",
+      "feature": "rs256-jwt-admission",
+      "response_payload_bytes": 8192,
+      "request_headers_mode": "digest-bound-json",
+      "request_header_names": ["authorization"],
+      "bonvoyage_policy": "signature-issuer-audience-type-scope-claim-validation",
+      "nginx_comparator": "blocked-until-extension-pinned"
+    }
+  ],
+  "excluded_claims": [
+    "The static API-key HMAC authenticates the presented API key, not the HTTP payload.",
+    "JWT signature validation authenticates the token and claims, not the proxied response payload.",
+    "Vanilla OSS NGINX does not provide equivalent native JWT validation.",
+    "No result from this shared-VM catalog is publication-grade or Dedicated Host evidence."
+  ]
+}

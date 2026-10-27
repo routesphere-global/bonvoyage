@@ -1,0 +1,395 @@
+rule_files:
+  - ../rules/bonvoyage-recording-rules.yml
+  - ../rules/bonvoyage-alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: bounded two-shard decision series
+    interval: 1m
+    input_series:
+      - series: 'bonvoyage_bonvoyage_gateway_ready{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '1x10'
+      - series: 'bonvoyage_bonvoyage_gateway_ready{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '1x10'
+      - series: 'bonvoyage_bonvoyage_gateway_snapshot_generation{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '42x10'
+      - series: 'bonvoyage_bonvoyage_gateway_snapshot_generation{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '42x10'
+      - series: 'bonvoyage_bonvoyage_gateway_configured_listeners{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '2x10'
+      - series: 'bonvoyage_bonvoyage_gateway_configured_listeners{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '2x10'
+      - series: 'bonvoyage_bonvoyage_gateway_configured_routes{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '12x10'
+      - series: 'bonvoyage_bonvoyage_gateway_configured_routes{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '12x10'
+      - series: 'bonvoyage_bonvoyage_gateway_configured_clusters{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '3x10'
+      - series: 'bonvoyage_bonvoyage_gateway_configured_clusters{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '3x10'
+      - series: 'bonvoyage_bonvoyage_gateway_configured_endpoints{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '8x10'
+      - series: 'bonvoyage_bonvoyage_gateway_configured_endpoints{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '8x10'
+      - series: 'bonvoyage_bonvoyage_gateway_requests_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+600x10'
+      - series: 'bonvoyage_bonvoyage_gateway_requests_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+600x10'
+      - series: 'bonvoyage_bonvoyage_gateway_downstream_connections_accepted_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+60x10'
+      - series: 'bonvoyage_bonvoyage_gateway_downstream_connections_accepted_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+30x10'
+      - series: 'bonvoyage_bonvoyage_gateway_upstream_http1_pool_waits_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+6x10'
+      - series: 'bonvoyage_bonvoyage_gateway_upstream_http1_pool_waits_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_upstream_http1_pool_wait_nanoseconds_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+12000000x10'
+      - series: 'bonvoyage_bonvoyage_gateway_upstream_http1_pool_wait_nanoseconds_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_upstream_http1_pool_wait_max_nanoseconds{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '3000000x10'
+      - series: 'bonvoyage_bonvoyage_gateway_upstream_http1_pool_wait_max_nanoseconds{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_active_upstream_http1_requests{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '20x10'
+      - series: 'bonvoyage_bonvoyage_gateway_active_upstream_http1_requests{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '10x10'
+      - series: 'bonvoyage_bonvoyage_gateway_configured_upstream_http1_connections{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '16x10'
+      - series: 'bonvoyage_bonvoyage_gateway_configured_upstream_http1_connections{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '16x10'
+      - series: 'bonvoyage_bonvoyage_gateway_responses_2xx_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+570x10'
+      - series: 'bonvoyage_bonvoyage_gateway_responses_2xx_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+570x10'
+      - series: 'bonvoyage_bonvoyage_gateway_responses_3xx_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_responses_3xx_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_responses_4xx_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+15x10'
+      - series: 'bonvoyage_bonvoyage_gateway_responses_4xx_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+15x10'
+      - series: 'bonvoyage_bonvoyage_gateway_responses_5xx_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+15x10'
+      - series: 'bonvoyage_bonvoyage_gateway_responses_5xx_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+15x10'
+      - series: 'bonvoyage_bonvoyage_gateway_route_overload_rejections_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+6x10'
+      - series: 'bonvoyage_bonvoyage_gateway_route_overload_rejections_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+6x10'
+      - series: 'bonvoyage_reactor_utilization{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '91x10'
+      - series: 'bonvoyage_reactor_utilization{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '70x10'
+      - series: 'bonvoyage_reactor_tasks_pending{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '2x10'
+      - series: 'bonvoyage_reactor_tasks_pending{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '1x10'
+      - series: 'bonvoyage_memory_allocated_memory{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '900x10'
+      - series: 'bonvoyage_memory_allocated_memory{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '900x10'
+      - series: 'bonvoyage_memory_total_memory{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '1000x10'
+      - series: 'bonvoyage_memory_total_memory{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '1000x10'
+      - series: 'bonvoyage_bonvoyage_gateway_access_log_enabled{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '1x10'
+      - series: 'bonvoyage_bonvoyage_gateway_access_log_enabled{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '1x10'
+      - series: 'bonvoyage_bonvoyage_gateway_access_log_sink_healthy{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '1x10'
+      - series: 'bonvoyage_bonvoyage_gateway_access_log_sink_healthy{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_access_log_queue_depth{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '25x10'
+      - series: 'bonvoyage_bonvoyage_gateway_access_log_queue_depth{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '50x10'
+      - series: 'bonvoyage_bonvoyage_gateway_access_log_queue_capacity{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '100x10'
+      - series: 'bonvoyage_bonvoyage_gateway_access_log_queue_capacity{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '100x10'
+      - series: 'bonvoyage_bonvoyage_gateway_access_log_records_dropped_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+6x10'
+      - series: 'bonvoyage_bonvoyage_gateway_access_log_records_dropped_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_access_log_write_failures_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_access_log_write_failures_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_access_log_capacity_exhaustions_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_access_log_capacity_exhaustions_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_traces_enabled{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '1x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_traces_enabled{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '1x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_exporter_healthy{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '1x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_exporter_healthy{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_queue_depth{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '2x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_queue_depth{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '8x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_queue_capacity{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '16x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_queue_capacity{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '16x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_spans_exported_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+60x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_spans_exported_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+60x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_spans_dropped_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+6x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_spans_dropped_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_export_failures_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_export_failures_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+6x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_retry_exhaustions_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_retry_exhaustions_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+1x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_partial_success_responses_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+0x10'
+      - series: 'bonvoyage_bonvoyage_gateway_otlp_trace_partial_success_responses_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+1x10'
+      - series: 'bonvoyage_bonvoyage_runtime_log_sink_healthy{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '1x10'
+      - series: 'bonvoyage_bonvoyage_runtime_log_sink_healthy{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0x10'
+      - series: 'bonvoyage_bonvoyage_runtime_log_records_dropped_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="0"}'
+        values: '0+6x10'
+      - series: 'bonvoyage_bonvoyage_runtime_log_records_dropped_total{job="bonvoyage",instance="gw1",environment="test",deployment="blue",shard="1"}'
+        values: '0+0x10'
+    promql_expr_test:
+      - expr: 'bonvoyage:gateway_ready:min'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:gateway_ready:min",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 1
+      - expr: 'bonvoyage:snapshot_generation:mismatch'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:snapshot_generation:mismatch",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 0
+      - expr: 'bonvoyage:gateway_requests:rate5m'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:gateway_requests:rate5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 20
+      - expr: 'bonvoyage:gateway_responses:rate5m{outcome="successful"}'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:gateway_responses:rate5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage",outcome="successful"}'
+            value: 19
+      - expr: 'bonvoyage:gateway_responses:rate5m_total'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:gateway_responses:rate5m_total",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 20
+      - expr: 'bonvoyage:gateway_success:ratio5m'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:gateway_success:ratio5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 0.95
+      - expr: 'bonvoyage:gateway_5xx:ratio5m'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:gateway_5xx:ratio5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 0.025
+      - expr: 'bonvoyage:gateway_rejections:rate5m{reason="route_overloaded"}'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:gateway_rejections:rate5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage",reason="route_overloaded"}'
+            value: 0.2
+      - expr: 'bonvoyage:reactor_utilization:max'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:reactor_utilization:max",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 91
+      - expr: 'bonvoyage:memory_utilization:ratio'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:memory_utilization:ratio",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 0.9
+      - expr: 'bonvoyage:gateway_shard_imbalance:ratio5m'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:gateway_shard_imbalance:ratio5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 0
+      - expr: 'bonvoyage:gateway_connections_accepted_per_shard:rate5m'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:gateway_connections_accepted_per_shard:rate5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage",shard="0"}'
+            value: 1
+          - labels: '{__name__="bonvoyage:gateway_connections_accepted_per_shard:rate5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage",shard="1"}'
+            value: 0.5
+      - expr: 'bonvoyage:gateway_connection_shard_imbalance:ratio5m'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:gateway_connection_shard_imbalance:ratio5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 0.6666666666666666
+      - expr: 'bonvoyage:upstream_http1_pool_waits:rate5m'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:upstream_http1_pool_waits:rate5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage",shard="0"}'
+            value: 0.1
+          - labels: '{__name__="bonvoyage:upstream_http1_pool_waits:rate5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage",shard="1"}'
+            value: 0
+      - expr: 'bonvoyage:upstream_http1_pool_wait_duration:mean_microseconds5m'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:upstream_http1_pool_wait_duration:mean_microseconds5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 2000
+      - expr: 'bonvoyage:upstream_http1_pool_wait_duration:lifetime_max_microseconds'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:upstream_http1_pool_wait_duration:lifetime_max_microseconds",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 3000
+      - expr: 'bonvoyage:upstream_http1_pool_pressure:max'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:upstream_http1_pool_pressure:max",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 1.25
+      - expr: 'bonvoyage:access_log_enabled:min'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:access_log_enabled:min",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 1
+      - expr: 'bonvoyage:access_log_sink_healthy:min'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:access_log_sink_healthy:min",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 0
+      - expr: 'bonvoyage:access_log_queue_utilization:max'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:access_log_queue_utilization:max",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 0.5
+      - expr: 'bonvoyage:access_log_drops:rate5m'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:access_log_drops:rate5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 0.1
+      - expr: 'bonvoyage:otlp_traces_enabled:min'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:otlp_traces_enabled:min",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 1
+      - expr: 'bonvoyage:otlp_trace_exporter_healthy:min'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:otlp_trace_exporter_healthy:min",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 0
+      - expr: 'bonvoyage:otlp_trace_queue_utilization:max'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:otlp_trace_queue_utilization:max",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 0.5
+      - expr: 'bonvoyage:otlp_trace_spans_exported:rate5m'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:otlp_trace_spans_exported:rate5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 2
+      - expr: 'bonvoyage:otlp_trace_spans_dropped:rate5m'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:otlp_trace_spans_dropped:rate5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 0.1
+      - expr: 'bonvoyage:otlp_trace_export_failures:rate5m'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{__name__="bonvoyage:otlp_trace_export_failures:rate5m",deployment="blue",environment="test",instance="gw1",job="bonvoyage"}'
+            value: 0.1
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: BonVoyageRuntimeLogSinkUnavailable
+        exp_alerts:
+          - exp_labels:
+              decision: restore_runtime_log_receiver
+              deployment: blue
+              environment: test
+              instance: gw1
+              job: bonvoyage
+              owner: infrastructure
+              severity: warning
+            exp_annotations:
+              summary: At least one BonVoyage runtime-log receiver is unavailable
+              action: Restore the local runtime-log receiver or socket; gateway requests remain fail-open while bounded diagnostic loss is reported separately.
+      - eval_time: 10m
+        alertname: BonVoyageRuntimeLogDropping
+        exp_alerts:
+          - exp_labels:
+              decision: relieve_runtime_log_backpressure
+              deployment: blue
+              environment: test
+              instance: gw1
+              job: bonvoyage
+              owner: infrastructure
+              severity: warning
+            exp_annotations:
+              summary: BonVoyage is dropping bounded operational log records
+              action: Inspect receiver availability, queue overflow and local collector capacity; preserve request service while restoring diagnostic coverage.
+      - eval_time: 10m
+        alertname: BonVoyageAccessLogSinkUnavailable
+        exp_alerts:
+          - exp_labels:
+              decision: restore_access_log_storage
+              deployment: blue
+              environment: test
+              instance: gw1
+              job: bonvoyage
+              owner: infrastructure
+              severity: warning
+            exp_annotations:
+              summary: At least one enabled BonVoyage access-log sink is unavailable
+              action: Restore the configured directory, permissions, or storage capacity; request service remains fail-open while records are dropped observably.
+      - eval_time: 10m
+        alertname: BonVoyageAccessLogDropping
+        exp_alerts:
+          - exp_labels:
+              decision: relieve_access_log_backpressure
+              deployment: blue
+              environment: test
+              instance: gw1
+              job: bonvoyage
+              owner: infrastructure
+              severity: warning
+            exp_annotations:
+              summary: BonVoyage is dropping bounded asynchronous access records
+              action: Inspect queue pressure, write failures, and the per-shard disk budget; keep request traffic serving while restoring evidence delivery.
+      - eval_time: 10m
+        alertname: BonVoyageTraceExporterUnavailable
+        exp_alerts:
+          - exp_labels:
+              decision: restore_trace_collector
+              deployment: blue
+              environment: test
+              instance: gw1
+              job: bonvoyage
+              owner: infrastructure
+              severity: warning
+            exp_annotations:
+              summary: At least one enabled BonVoyage OTLP exporter is unhealthy
+              action: Restore collector reachability, trust, or capacity; request service remains fail-open while trace loss is reported separately.
+      - eval_time: 10m
+        alertname: BonVoyageTraceDeliveryIncomplete
+        exp_alerts:
+          - exp_labels:
+              decision: relieve_trace_delivery_backpressure
+              deployment: blue
+              environment: test
+              instance: gw1
+              job: bonvoyage
+              owner: infrastructure
+              severity: warning
+            exp_annotations:
+              summary: BonVoyage trace delivery is incomplete
+              action: Inspect queue pressure, collector rejection, export failures, and retry exhaustion; preserve request service while restoring diagnostic coverage.

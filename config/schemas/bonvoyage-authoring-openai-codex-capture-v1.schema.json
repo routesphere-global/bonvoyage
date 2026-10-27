@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.routesphere.global/schemas/bonvoyage-authoring-openai-codex-capture-v1.schema.json",
+  "title": "RouteSphere BonVoyage OpenAI Codex evaluation capture v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "classification",
+    "assistant",
+    "wrapper_version",
+    "model_id",
+    "codex_cli_version",
+    "capture_started_at",
+    "capture_completed_at",
+    "wrapper_manifest_sha256",
+    "skill_contract_sha256",
+    "evaluation_manifest_sha256",
+    "command_sha256",
+    "execution",
+    "cases"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://docs.routesphere.global/schemas/bonvoyage-authoring-openai-codex-capture-v1.schema.json"
+    },
+    "schema_version": {"const": 1},
+    "classification": {
+      "const": "routesphere-bonvoyage-openai-codex-evaluation-capture"
+    },
+    "assistant": {"const": "openai-codex"},
+    "wrapper_version": {"const": "bonvoyage.openai-codex-skill.v1"},
+    "model_id": {"$ref": "#/$defs/boundedLine"},
+    "codex_cli_version": {"$ref": "#/$defs/boundedLine"},
+    "capture_started_at": {"$ref": "#/$defs/utcTimestamp"},
+    "capture_completed_at": {"$ref": "#/$defs/utcTimestamp"},
+    "wrapper_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "skill_contract_sha256": {"$ref": "#/$defs/sha256"},
+    "evaluation_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "command_sha256": {"$ref": "#/$defs/sha256"},
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ephemeral",
+        "sandbox",
+        "shell_tool_enabled",
+        "web_search",
+        "mcp_server_count",
+        "disabled_features",
+        "tool_event_policy",
+        "ignored_user_config",
+        "ignored_rules",
+        "expected_answers_exposed",
+        "automatic_retry",
+        "working_tree"
+      ],
+      "properties": {
+        "ephemeral": {"const": true},
+        "sandbox": {"const": "read-only"},
+        "shell_tool_enabled": {"const": false},
+        "web_search": {"const": "disabled"},
+        "mcp_server_count": {"const": 0},
+        "disabled_features": {
+          "const": [
+            "apps",
+            "browser_use",
+            "code_mode",
+            "code_mode_host",
+            "computer_use",
+            "goals",
+            "hooks",
+            "image_generation",
+            "in_app_browser",
+            "multi_agent",
+            "plugins",
+            "remote_plugin",
+            "shell_tool",
+            "skill_search",
+            "sleep_tool",
+            "tool_suggest",
+            "view_image",
+            "workspace_dependencies",
+            "worktrees"
+          ]
+        },
+        "tool_event_policy": {"const": "reject"},
+        "ignored_user_config": {"const": true},
+        "ignored_rules": {"const": true},
+        "expected_answers_exposed": {"const": false},
+        "embedded_reference_paths": {
+          "const": [
+            "skills/bonvoyage-config-authoring/references/command-surface.md",
+            "skills/bonvoyage-config-authoring/references/completion.json",
+            "skills/bonvoyage-config-authoring/references/configuration-schema.json",
+            "skills/bonvoyage-config-authoring/references/snippets.json"
+          ]
+        },
+        "automatic_retry": {"const": false},
+        "working_tree": {"const": "sanitized-no-git-oss-export"}
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "items": {"$ref": "#/$defs/caseCapture"}
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "boundedLine": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[^\\r\\n]+$"
+    },
+    "utcTimestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{3})?Z$"
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[^\\r\\n\\\\]+$"
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_tokens",
+        "cached_input_tokens",
+        "output_tokens",
+        "reasoning_output_tokens"
+      ],
+      "properties": {
+        "input_tokens": {"type": "integer", "minimum": 0},
+        "cached_input_tokens": {"type": "integer", "minimum": 0},
+        "output_tokens": {"type": "integer", "minimum": 0},
+        "reasoning_output_tokens": {"type": "integer", "minimum": 0}
+      }
+    },
+    "caseCapture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "prompt_path",
+        "prompt_sha256",
+        "transcript_path",
+        "transcript_sha256",
+        "provider_event_log_path",
+        "provider_event_log_sha256",
+        "action_log_path",
+        "action_log_sha256",
+        "provider_stderr_path",
+        "provider_stderr_sha256",
+        "thread_id",
+        "exit_code",
+        "event_count",
+        "usage"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "maxLength": 96
+        },
+        "prompt_path": {"$ref": "#/$defs/relativePath"},
+        "prompt_sha256": {"$ref": "#/$defs/sha256"},
+        "transcript_path": {"$ref": "#/$defs/relativePath"},
+        "transcript_sha256": {"$ref": "#/$defs/sha256"},
+        "provider_event_log_path": {"$ref": "#/$defs/relativePath"},
+        "provider_event_log_sha256": {"$ref": "#/$defs/sha256"},
+        "action_log_path": {"$ref": "#/$defs/relativePath"},
+        "action_log_sha256": {"$ref": "#/$defs/sha256"},
+        "provider_stderr_path": {"$ref": "#/$defs/relativePath"},
+        "provider_stderr_sha256": {"$ref": "#/$defs/sha256"},
+        "thread_id": {"$ref": "#/$defs/boundedLine"},
+        "exit_code": {"const": 0},
+        "event_count": {"type": "integer", "minimum": 4},
+        "startup_warnings": {
+          "type": "array",
+          "maxItems": 1,
+          "items": {"$ref": "#/$defs/startupWarning"}
+        },
+        "usage": {"$ref": "#/$defs/usage"}
+      }
+    },
+    "startupWarning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "event_index"],
+      "properties": {
+        "code": {"const": "code_mode_host_disabled"},
+        "message": {
+          "const": "Code Mode is unavailable because code-mode host is disabled. Code mode will fail closed; enable `features.code_mode_host` and install `codex-code-mode-host`."
+        },
+        "event_index": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

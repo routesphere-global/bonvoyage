@@ -1,0 +1,58 @@
+server:
+  node_id: phase3-active-health-dns-node
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-active-health-dns-smoke
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: cleartext-http1
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [api]
+
+virtual_hosts:
+  - name: api
+    domains: [api.example.test]
+    routes:
+      - name: upstream-identity
+        match:
+          path_exact: /identity
+        cluster: maintained-upstream
+
+clusters:
+  - name: maintained-upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 500
+    max_connections_per_shard: 4
+    max_pending_requests_per_shard: 8
+    active_health:
+      path: /healthz
+      interval_ms: 1000
+      timeout_ms: 500
+      healthy_threshold: 2
+      unhealthy_threshold: 2
+      expected_status_min: 200
+      expected_status_max: 299
+    dns_refresh:
+      refresh_interval_ms: 1000
+      resolve_timeout_ms: 500
+    endpoints:
+      - name: maintained-upstream
+        address: maintenance-upstream
+        port: 8081
+        weight: 1
+
+runtime_limits:
+  max_downstream_connections_per_shard: 1024
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 5000
+  downstream_idle_timeout_ms: 30000

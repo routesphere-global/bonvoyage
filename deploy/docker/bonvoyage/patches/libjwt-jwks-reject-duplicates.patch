@@ -1,0 +1,105 @@
+diff --git a/libjwt/jansson/jwt-jansson.c b/libjwt/jansson/jwt-jansson.c
+--- a/libjwt/jansson/jwt-jansson.c
++++ b/libjwt/jansson/jwt-jansson.c
+@@ -80,6 +80,48 @@ static void map_error(jwt_json_error_t *dst, const json_error_t *src)
+ 	}
+ }
+ 
++/* C-string consumers cannot distinguish an embedded NUL suffix. Reject it
++ * once, immediately after parsing, before any JOSE comparison or key lookup. */
++static int contains_embedded_nul(json_t *value)
++{
++	const char *key;
++	json_t *child;
++	size_t index;
++
++	if (json_is_string(value)) {
++		const char *text = json_string_value(value);
++
++		return text == NULL || strlen(text) != json_string_length(value);
++	}
++	if (json_is_array(value)) {
++		json_array_foreach(value, index, child) {
++			if (contains_embedded_nul(child))
++				return 1;
++		}
++		return 0;
++	}
++	if (json_is_object(value)) {
++		json_object_foreach(value, key, child) {
++			(void)key;
++			if (contains_embedded_nul(child))
++				return 1;
++		}
++	}
++	return 0;
++}
++
++static json_t *reject_embedded_nul(json_t *value, json_error_t *error)
++{
++	if (value == NULL || !contains_embedded_nul(value))
++		return value;
++
++	json_decref(value);
++	memset(error, 0, sizeof(*error));
++	snprintf(error->text, sizeof(error->text),
++		 "embedded NUL in JSON string");
++	return NULL;
++}
++
+ /* ================================================================
+  * Reference counting
+  * ================================================================ */
+@@ -286,7 +328,8 @@ jwt_json_t *jwt_json_parse(const char *input, size_t flags,
+ 			   jwt_json_error_t *error)
+ {
+ 	json_error_t jerr;
+-	json_t *obj = json_loads(input, decode_flags(flags), &jerr);
++	json_t *obj = reject_embedded_nul(
++		json_loads(input, decode_flags(flags), &jerr), &jerr);
+ 
+ 	if (!obj && error)
+ 		map_error(error, &jerr);
+@@ -299,7 +342,8 @@ jwt_json_t *jwt_json_parse_buf(const char *buffer, size_t buflen,
+ 			       size_t flags, jwt_json_error_t *error)
+ {
+ 	json_error_t jerr;
+-	json_t *obj = json_loadb(buffer, buflen, decode_flags(flags), &jerr);
++	json_t *obj = reject_embedded_nul(
++		json_loadb(buffer, buflen, decode_flags(flags), &jerr), &jerr);
+ 
+ 	if (!obj && error)
+ 		map_error(error, &jerr);
+@@ -312,7 +356,8 @@ jwt_json_t *jwt_json_parse_file(const char *path, size_t flags,
+ 				jwt_json_error_t *error)
+ {
+ 	json_error_t jerr;
+-	json_t *obj = json_load_file(path, decode_flags(flags), &jerr);
++	json_t *obj = reject_embedded_nul(
++		json_load_file(path, decode_flags(flags), &jerr), &jerr);
+ 
+ 	if (!obj && error)
+ 		map_error(error, &jerr);
+@@ -325,7 +370,8 @@ jwt_json_t *jwt_json_parse_fp(FILE *input, size_t flags,
+ 			      jwt_json_error_t *error)
+ {
+ 	json_error_t jerr;
+-	json_t *obj = json_loadf(input, decode_flags(flags), &jerr);
++	json_t *obj = reject_embedded_nul(
++		json_loadf(input, decode_flags(flags), &jerr), &jerr);
+ 
+ 	if (!obj && error)
+ 		map_error(error, &jerr);
+diff --git a/libjwt/jwks.c b/libjwt/jwks.c
+--- a/libjwt/jwks.c
++++ b/libjwt/jwks.c
+@@ -650,7 +650,8 @@ static jwk_set_t *__jwks_load_strn(jwk_set_t *jwk_set, const char *jwk_json_str,
+ 		return jwk_set;
+ 
+ 	/* Parse the JSON string. */
+-	j_all = jwt_json_parse_buf(jwk_json_str, len, JWT_JSON_DECODE_ANY, &error);
++	j_all = jwt_json_parse_buf(jwk_json_str, len,
++				       JWT_JSON_DECODE_ANY | JWT_JSON_REJECT_DUPLICATES, &error);
+ 
+ 	return jwks_process(jwk_set, j_all, &error);
+ }

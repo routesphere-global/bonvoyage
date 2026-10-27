@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://routesphere.local/schemas/benchmark-workload.schema.json",
+  "title": "BonVoyage benchmark workload",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "protocol",
+    "request",
+    "response",
+    "connection",
+    "execution"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "description": { "type": "string", "minLength": 1 },
+    "protocol": { "enum": ["http1", "http1-tls", "http2", "grpc-unary"] },
+    "request": {
+      "type": "object",
+      "required": ["method", "path", "body_bytes"],
+      "properties": {
+        "method": { "type": "string", "pattern": "^[A-Z]+$" },
+        "path": { "type": "string", "pattern": "^/" },
+        "body_bytes": { "type": "integer", "minimum": 0 },
+        "headers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "response": {
+      "type": "object",
+      "required": ["status", "body_bytes", "sha256"],
+      "properties": {
+        "status": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "body_bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "connection": {
+      "type": "object",
+      "required": ["keep_alive", "pipeline_depth"],
+      "properties": {
+        "keep_alive": { "type": "boolean" },
+        "pipeline_depth": { "type": "integer", "minimum": 1 },
+        "tls_version": { "enum": ["none", "TLSv1.2", "TLSv1.3"] },
+        "upstream_tls": {
+          "type": "object",
+          "required": ["tls_version", "verify_server_name", "mutual_tls"],
+          "properties": {
+            "tls_version": { "enum": ["TLSv1.2", "TLSv1.3"] },
+            "verify_server_name": { "const": true },
+            "mutual_tls": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "topology": {
+      "type": "object",
+      "properties": {
+        "route_count": { "type": "integer", "minimum": 1 },
+        "endpoint_count": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "execution": {
+      "type": "object",
+      "required": [
+        "warmup_seconds",
+        "measurement_seconds",
+        "repetitions",
+        "gateway_cores",
+        "load_model",
+        "concurrency",
+        "utilization_targets"
+      ],
+      "properties": {
+        "warmup_seconds": { "type": "integer", "minimum": 10 },
+        "measurement_seconds": { "type": "integer", "minimum": 30 },
+        "repetitions": { "type": "integer", "minimum": 5 },
+        "gateway_cores": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 1, "maximum": 256 }
+        },
+        "load_model": { "enum": ["open-loop", "closed-loop"] },
+        "concurrency": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "utilization_targets": {
+          "type": "array",
+          "minItems": 5,
+          "uniqueItems": true,
+          "items": { "type": "number", "minimum": 0.1, "maximum": 1.1 }
+        },
+        "latency_ceiling_ms": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

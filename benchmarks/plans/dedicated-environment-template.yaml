@@ -1,0 +1,44 @@
+schema_version: 1
+campaign_id: phase1-phase3-dedicated-qualification-v1
+mode: rehearsal
+source_commit: "0000000000000000000000000000000000000000"
+
+observation:
+  # Qualification mode requires at least 900 seconds. Keep rehearsal short only
+  # while proving orchestration, never when accepting a measurement environment.
+  idle_seconds: 60
+  maximum_steal_percent: 0.1
+  maximum_network_error_delta: 0
+  required_gateway_physical_cores: [1, 2, 4, 8, 16]
+
+aws:
+  region: ap-southeast-1
+  availability_zone: ap-southeast-1a
+  image_id: ami-00000000000000000
+
+# SSH targets are aliases from the operator's SSH configuration. Credentials,
+# key paths, account IDs, and public addresses never belong in this document.
+roles:
+  - role: load-generator
+    ssh_target: bonvoyage-load-generator
+    instance_id: i-00000000000000001
+    instance_type: c7a.16xlarge
+    private_ipv4: 10.42.0.11
+    network_interface: auto
+    expected_tenancy: default
+
+  - role: gateway-target
+    ssh_target: bonvoyage-gateway-target
+    instance_id: i-00000000000000002
+    instance_type: c7a.16xlarge
+    private_ipv4: 10.42.0.12
+    network_interface: auto
+    expected_tenancy: default
+
+  - role: controlled-upstream
+    ssh_target: bonvoyage-controlled-upstream
+    instance_id: i-00000000000000003
+    instance_type: c7a.16xlarge
+    private_ipv4: 10.42.0.13
+    network_interface: auto
+    expected_tenancy: default

@@ -1,0 +1,116 @@
+server:
+  node_id: weighted-traffic-splitting-node
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-weighted-traffic-splitting
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+listeners:
+  - name: weighted-http1
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [api]
+  - name: weighted-http2
+    address: 0.0.0.0
+    port: 8443
+    protocol: http2
+    virtual_hosts: [api]
+    downstream_tls:
+      certificate_chain_secret: server-chain.pem
+      private_key_secret: server-key.pem
+virtual_hosts:
+  - name: api
+    domains: [api.example.test]
+    routes:
+      - name: release-split
+        match:
+          path_prefix: /split/
+          methods: [GET]
+        weighted_clusters:
+          - {cluster: stable, weight: 3}
+          - {cluster: canary, weight: 1}
+        api_key_auth:
+          header_name: x-api-key
+          credentials_secret: weighted-api-keys.txt
+        cors:
+          allowed_origins: [https://app.example.com]
+          allowed_methods: [GET]
+        rewrite:
+          path_prefix: /weighted/
+        header_transformations:
+          request:
+            - {operation: set, name: x-route-action, value: weighted}
+      - name: retry-pinned-split
+        match:
+          path_exact: /retry
+          methods: [GET]
+        weighted_clusters:
+          - {cluster: stable, weight: 1}
+          - {cluster: canary, weight: 1}
+        rewrite:
+          path: /weighted-retry
+        header_transformations:
+          request:
+            - {operation: set, name: x-route-action, value: weighted-retry}
+      - name: bounded-split
+        match:
+          path_exact: /bounded
+          methods: [GET]
+        weighted_clusters:
+          - {cluster: stable, weight: 1}
+          - {cluster: canary, weight: 1}
+        rewrite:
+          path: /xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      - name: untouched-direct
+        match:
+          path_exact: /direct
+          methods: [GET]
+        cluster: stable
+clusters:
+  - name: stable
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 1000
+    max_connections_per_shard: 8
+    max_pending_requests_per_shard: 16
+    retry:
+      max_attempts: 2
+      per_try_timeout_ms: 1000
+      retryable_methods: [GET]
+      budget:
+        capacity: 32
+        refill_tokens_per_second: 32
+        max_concurrent_retries_per_shard: 8
+    endpoints:
+      - name: stable-1
+        address: stable
+        port: 8081
+        weight: 1
+  - name: canary
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 1000
+    max_connections_per_shard: 8
+    max_pending_requests_per_shard: 16
+    retry:
+      max_attempts: 2
+      per_try_timeout_ms: 1000
+      retryable_methods: [GET]
+      budget:
+        capacity: 32
+        refill_tokens_per_second: 32
+        max_concurrent_retries_per_shard: 8
+    endpoints:
+      - name: canary-1
+        address: canary
+        port: 8081
+        weight: 1
+runtime_limits:
+  max_downstream_connections_per_shard: 128
+  max_request_header_bytes: 1024
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 4096
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 5000
+  downstream_idle_timeout_ms: 10000

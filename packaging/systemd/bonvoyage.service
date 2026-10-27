@@ -1,0 +1,38 @@
+[Unit]
+Description=BonVoyage API Gateway
+Documentation=https://docs.routesphere.io/bonvoyage/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bonvoyage
+Group=bonvoyage
+ExecStart=/usr/local/bin/bonvoyage-dataplane --snapshot /etc/bonvoyage/snapshot.pb --admin-address 127.0.0.1 --metrics-address 127.0.0.1 --runtime-log-transport unix --runtime-log-socket /dev/log --log-to-syslog 1 --log-to-stdout 0 --log-with-color 0 --smp 1 --memory 512M
+# Seastar supplies severity through syslog; raw stream text cannot supply it.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bonvoyage
+SyslogLevel=info
+SyslogLevelPrefix=no
+Restart=on-failure
+RestartSec=2s
+TimeoutStopSec=30s
+LimitNOFILE=1048576
+LogsDirectory=bonvoyage
+LogsDirectoryMode=0750
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+ReadWritePaths=/var/lib/bonvoyage /var/log/bonvoyage
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,192 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+import {fileURLToPath} from 'node:url';
+
+import {
+  hostedReceipt,
+  validateImageInspection,
+  verifyHostedBuildContract,
+} from './verify-oss-deb-hosted-build.mjs';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const CONTRACT = path.join(ROOT,
+  'packaging/release/debian/oss-deb-hosted-build-contract.json');
+const WORKFLOW = path.join(ROOT,
+  'packaging/release/debian/oss-deb-reproducibility.workflow.yml');
+const IMAGE_DIGEST = 'a'.repeat(64);
+const IMAGE_REFERENCE =
+  `ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:${IMAGE_DIGEST}`;
+
+function copyFixture(t) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bonvoyage-hosted-deb-'));
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  const packageRoot = path.join(root, 'packaging/release/debian');
+  fs.mkdirSync(packageRoot, {recursive: true});
+  const contractPath = path.join(packageRoot, 'oss-deb-hosted-build-contract.json');
+  const workflowPath = path.join(packageRoot, 'oss-deb-reproducibility.workflow.yml');
+  fs.copyFileSync(CONTRACT, contractPath);
+  fs.copyFileSync(WORKFLOW, workflowPath);
+  return {root, contractPath, workflowPath};
+}
+
+function activate(contractPath, root) {
+  const packageRoot = path.join(root, 'packaging/release/debian');
+  const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8'));
+  contract.activation = {
+    ...contract.activation,
+    state: 'activatable',
+    public_repository_created: true,
+    builder_image_identity_verified: true,
+    repository_settings_verified: true,
+  };
+  contract.builder_image.reference = IMAGE_REFERENCE;
+  contract.builder_image.verification_receipt =
+    'packaging/release/debian/oss-deb-builder-image-verification.json';
+  const receiptPath = path.join(packageRoot, 'oss-deb-builder-image-verification.json');
+  fs.writeFileSync(receiptPath, `${JSON.stringify({
+    schema_version: 1,
+    classification: 'routesphere-bonvoyage-oss-deb-builder-image-verification',
+    repository: contract.builder_image.repository,
+    reference: IMAGE_REFERENCE,
+    digest: IMAGE_DIGEST,
+    platform: 'linux/amd64',
+    registry: 'ghcr.io',
+    verified_at: '2026-10-07T12:00:00.000Z',
+    verification_methods: ['registry-manifest', 'anonymous-pull', 'local-image-inspect'],
+    release_admitted: false,
+    publishable: false,
+  }, null, 2)}\n`);
+  fs.writeFileSync(contractPath, `${JSON.stringify(contract, null, 2)}\n`);
+  return contract;
+}
+
+test('committed hosted-build contract is valid, blocked and powerless', () => {
+  const {result} = verifyHostedBuildContract(CONTRACT, WORKFLOW);
+  assert.equal(result.outcome, 'blocked');
+  assert.equal(result.activation_ready, false);
+  assert.equal(result.blockers.length, 3);
+  assert.equal(result.release_admitted, false);
+  assert.equal(result.publishable, false);
+  assert.throws(() => verifyHostedBuildContract(CONTRACT, WORKFLOW,
+    {requireActivatable: true}), /not activatable/u);
+});
+
+test('blocked contract rejects accidental workflow activation', (t) => {
+  const fixture = copyFixture(t);
+  const activeWorkflow = path.join(fixture.root,
+    '.github/workflows/oss-deb-reproducibility.yml');
+  fs.mkdirSync(path.dirname(activeWorkflow), {recursive: true});
+  fs.copyFileSync(fixture.workflowPath, activeWorkflow);
+  assert.throws(() => verifyHostedBuildContract(fixture.contractPath,
+    fixture.workflowPath), /must not have an active GitHub workflow/u);
+});
+
+test('activatable fixture requires exact image verification and tagged public source', (t) => {
+  const fixture = copyFixture(t);
+  activate(fixture.contractPath, fixture.root);
+  const activeWorkflow = path.join(fixture.root,
+    '.github/workflows/oss-deb-reproducibility.yml');
+  fs.mkdirSync(path.dirname(activeWorkflow), {recursive: true});
+  fs.copyFileSync(fixture.workflowPath, activeWorkflow);
+  const {result} = verifyHostedBuildContract(fixture.contractPath, fixture.workflowPath, {
+    requireActivatable: true,
+    githubRepository: 'routesphere-global/bonvoyage',
+    githubRefType: 'tag',
+    githubRefName: 'v1.0.0-rc.1',
+    githubSha: 'b'.repeat(40),
+  });
+  assert.equal(result.outcome, 'activatable');
+  assert.equal(result.builder_image_verification.path,
+    'packaging/release/debian/oss-deb-builder-image-verification.json');
+  assert.throws(() => verifyHostedBuildContract(fixture.contractPath, fixture.workflowPath, {
+    requireActivatable: true,
+    githubRepository: 'fork/bonvoyage',
+    githubRefType: 'branch',
+    githubRefName: 'main',
+    githubSha: 'b'.repeat(40),
+  }), /tagged public commit/u);
+});
+
+test('floating image, partial activation and changed authority are rejected', (t) => {
+  for (const mutation of [
+    (contract) => { contract.builder_image.reference = 'ghcr.io/routesphere/builder:latest'; },
+    (contract) => { contract.activation.repository_settings_verified = false; },
+    (contract) => { contract.authority.publishable = true; },
+    (contract) => { contract.execution.permissions = {contents: 'write'}; },
+  ]) {
+    const fixture = copyFixture(t);
+    const contract = activate(fixture.contractPath, fixture.root);
+    mutation(contract);
+    fs.writeFileSync(fixture.contractPath, `${JSON.stringify(contract, null, 2)}\n`);
+    assert.throws(() => verifyHostedBuildContract(
+      fixture.contractPath, fixture.workflowPath, {requireActivatable: true}));
+  }
+});
+
+test('automatic trigger, unpinned action, secret and publishing command are rejected', (t) => {
+  for (const replacement of [
+    ['  workflow_dispatch:\n', '  push:\n    branches: [main]\n'],
+    ['actions/checkout@11d5960a326750d5838078e36cf38b85af677262', 'actions/checkout@v4'],
+    ['npm ci --ignore-scripts', 'echo "${{ secrets.RELEASE_TOKEN }}"'],
+    ['mkdir -p "$RUNNER_TEMP/oss-deb-comparison"', 'gh release create v1.0.0'],
+  ]) {
+    const fixture = copyFixture(t);
+    const source = fs.readFileSync(fixture.workflowPath, 'utf8');
+    fs.writeFileSync(fixture.workflowPath, source.replace(replacement[0], replacement[1]));
+    assert.throws(() => verifyHostedBuildContract(fixture.contractPath, fixture.workflowPath));
+  }
+});
+
+test('pulled image observation must expose the exact contracted digest', (t) => {
+  const fixture = copyFixture(t);
+  const contract = activate(fixture.contractPath, fixture.root);
+  const observation = validateImageInspection(contract, [{
+    Id: `sha256:${'c'.repeat(64)}`,
+    RepoDigests: [IMAGE_REFERENCE],
+    Architecture: 'amd64',
+    Os: 'linux',
+  }]);
+  assert.equal(observation.manifest_digest, IMAGE_DIGEST);
+  assert.equal(observation.externally_resolved, true);
+  assert.equal(observation.publishable, false);
+  assert.throws(() => validateImageInspection(contract, [{
+    Id: `sha256:${'c'.repeat(64)}`,
+    RepoDigests: [`ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:${'d'.repeat(64)}`],
+    Architecture: 'amd64',
+    Os: 'linux',
+  }]), /contracted repository digest/u);
+});
+
+test('hosted comparison upgrades independence only and retains no release authority', (t) => {
+  const fixture = copyFixture(t);
+  const contract = activate(fixture.contractPath, fixture.root);
+  const technical = {
+    classification: 'routesphere-bonvoyage-oss-deb-reproducibility',
+    outcome: 'byte-identical-technical-candidates',
+    source: {repository: 'https://github.com/routesphere-global/bonvoyage',
+      commit: 'b'.repeat(40), dirty: false},
+    builders: ['github-42-1-a', 'github-42-1-b'],
+    package: {path: 'bonvoyage-gateway_1.0.0-1_amd64.deb', bytes: 10,
+      sha256: 'e'.repeat(64), version: '1.0.0-1', architecture: 'amd64'},
+    technical_reproducibility_observed: true,
+    hosted_builder_independence_qualified: false,
+    release_admitted: false,
+    publishable: false,
+  };
+  const receipt = hostedReceipt(contract, technical, {
+    githubSha: 'b'.repeat(40), githubRefName: 'v1.0.0', githubRunId: '42',
+    githubRunAttempt: '1', firstArtifactDigest: 'f'.repeat(64),
+    secondArtifactDigest: '0'.repeat(64), technicalReceiptSha256: '1'.repeat(64),
+  });
+  assert.equal(receipt.hosted_builder_independence_qualified, true);
+  assert.equal(receipt.release_admitted, false);
+  assert.equal(receipt.publishable, false);
+  assert.throws(() => hostedReceipt(contract, technical, {
+    githubSha: 'b'.repeat(40), githubRefName: 'v1.0.0', githubRunId: '42',
+    githubRunAttempt: '1', firstArtifactDigest: 'f'.repeat(64),
+    secondArtifactDigest: 'f'.repeat(64), technicalReceiptSha256: '1'.repeat(64),
+  }), /distinct uploaded evidence/u);
+});

@@ -1,0 +1,1249 @@
+{
+  "$schema": "../../../schemas/bonvoyage-authoring-snippets-v1.schema.json",
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-configuration-snippet-catalog",
+  "snippet_version": "bonvoyage.configuration-snippets.v1",
+  "contract_version": "bonvoyage.configuration-authoring.v1",
+  "compiler_version": "bonvoyage-control-plane-phase4-admin-v1",
+  "configuration_schema_version": 1,
+  "authority": {
+    "semantic_validation": "snapshot.Compile",
+    "snippet_scope": "reviewed-syntactic-starting-points-only",
+    "insertion_authority": "consumer",
+    "validation_required_after_insertion": true,
+    "network_access": false,
+    "live_mutation": false
+  },
+  "security_boundary": {
+    "offline": true,
+    "secret_values_included": false,
+    "secret_references_may_be_included": true,
+    "environment_secret_reads": false,
+    "private_material_included": false
+  },
+  "sources": {
+    "authoring_contract": {
+      "path": "config/authoring/bonvoyage-authoring-v1.json",
+      "sha256": "098b41f7a57ac3eadff59137b358df8aaf5e6bd5759639f2beaa5b81b39dcebf"
+    },
+    "completion_metadata": {
+      "path": "config/authoring/completion/v1/metadata.json",
+      "sha256": "9bf0e31afd8725c11d7ac1e56aa0a82df7c607a810cafa7aa8f54c6578060430"
+    },
+    "reviewed_source_manifest": {
+      "path": "config/authoring/snippets/v1/reviewed-sources.json",
+      "sha256": "58174edec3cbb25bb7aed1f8fcda3bde88b0f6e08a4bf3908685b28f1f84eaad"
+    }
+  },
+  "source_document_count": 12,
+  "source_documents": [
+    {
+      "path": "config/examples/local.yaml",
+      "sha256": "f8fd66340d769ee505e4135e0cabd713e338b9fc8323ba1d9c21e28ecc03e4a8"
+    },
+    {
+      "path": "config/examples/tls.yaml",
+      "sha256": "1cabf7e80599ff06924f3db511cf2b340d9adccc860c343edefb0083686e071c"
+    },
+    {
+      "path": "config/examples/upstream-tls.yaml",
+      "sha256": "ed9925d1fa73f1d49e695311deb42f18934424cf496650ede1dbf42bae3ff317"
+    },
+    {
+      "path": "tests/fixtures/phase3-api-key.yaml",
+      "sha256": "6e400dfa5f617bd3ce8bd66bd3a31b438c95cf80c71e9fa201f89326a70ec3ca"
+    },
+    {
+      "path": "tests/fixtures/phase3-cors.yaml",
+      "sha256": "a4da2371bde1da956b35faf0beb32460dbe44b848128cf454874a8e3d9af4ed9"
+    },
+    {
+      "path": "tests/fixtures/phase3-header-transformations.yaml",
+      "sha256": "715e3ee392c55d3004d1b756ef13fd7af9f63e5c09fd8d9948d9261022e19b10"
+    },
+    {
+      "path": "tests/fixtures/phase3-jwt.yaml",
+      "sha256": "4ef9c354d4071d17b144c95b549bf4aeee8ca30dc868f520ca4e469f119b7f9e"
+    },
+    {
+      "path": "tests/fixtures/phase3-redirect.yaml",
+      "sha256": "e32f20d6b7e9f526050f22e6a40c58e704904e0b6475a8ed7e97906a7a570897"
+    },
+    {
+      "path": "tests/fixtures/phase3-request-content.yaml",
+      "sha256": "890048221b4313d96e01d17d9c8f7931988e9ef6b5766ac73dc65982dda39c9c"
+    },
+    {
+      "path": "tests/fixtures/phase3-route-admission.yaml",
+      "sha256": "98f990af5319ab6bfb423b81041f76234706ad88e3005f38006e6a9b56c05406"
+    },
+    {
+      "path": "tests/fixtures/phase3-route-rewrites.yaml",
+      "sha256": "e145ef6a3f7480c8e5401345f8aba5515d984e4b63216d90e394f8a7c0430854"
+    },
+    {
+      "path": "tests/fixtures/phase3-weighted-traffic-splitting.yaml",
+      "sha256": "d82913c24f15cc674ea0a07f7ce726fae0fdc6929fd91afbeaf79ae1f262c421"
+    }
+  ],
+  "entry_count": 14,
+  "entries": [
+    {
+      "id": "cluster-upstream-mtls",
+      "title": "Upstream TLS and mTLS",
+      "summary": "Add server identity verification and an optional client certificate to one upstream cluster.",
+      "category": "transport",
+      "source": {
+        "path": "config/examples/upstream-tls.yaml",
+        "pointer": "/clusters/0/upstream_tls",
+        "sha256": "ed9925d1fa73f1d49e695311deb42f18934424cf496650ede1dbf42bae3ff317"
+      },
+      "insertion": {
+        "container_path": "/clusters/*",
+        "mode": "merge-object"
+      },
+      "payload": {
+        "upstream_tls": {
+          "server_name": "backend.internal.example.com",
+          "trust_bundle_secret": "backend-ca.pem",
+          "certificate_chain_secret": "gateway-client.pem",
+          "private_key_secret": "gateway-client-key.pem"
+        }
+      },
+      "yaml": "upstream_tls:\n  server_name: backend.internal.example.com\n  trust_bundle_secret: backend-ca.pem\n  certificate_chain_secret: gateway-client.pem\n  private_key_secret: gateway-client-key.pem\n",
+      "yaml_sha256": "549719e5a15c8909914f98fc1c62a097b36dd63c0f427e2acf1a633765b19896",
+      "edit_points": [
+        {
+          "payload_path": "/upstream_tls/certificate_chain_secret",
+          "configuration_path": "/clusters/*/upstream_tls/certificate_chain_secret",
+          "title": "Client certificate secret",
+          "summary": "The deployment-secret filename containing the client certificate chain used for upstream mTLS.",
+          "secret_reference": true,
+          "value": {
+            "kind": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+          }
+        },
+        {
+          "payload_path": "/upstream_tls/private_key_secret",
+          "configuration_path": "/clusters/*/upstream_tls/private_key_secret",
+          "title": "Client private-key secret",
+          "summary": "The deployment-secret filename containing the private key used for upstream mTLS.",
+          "secret_reference": true,
+          "value": {
+            "kind": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+          }
+        },
+        {
+          "payload_path": "/upstream_tls/server_name",
+          "configuration_path": "/clusters/*/upstream_tls/server_name",
+          "title": "TLS server name",
+          "summary": "The expected upstream server identity used for SNI and certificate verification.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1,
+            "max_length": 253,
+            "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$"
+          }
+        },
+        {
+          "payload_path": "/upstream_tls/trust_bundle_secret",
+          "configuration_path": "/clusters/*/upstream_tls/trust_bundle_secret",
+          "title": "Upstream trust-bundle secret",
+          "summary": "The deployment-secret filename containing trusted certificate authorities for the upstream server.",
+          "secret_reference": true,
+          "value": {
+            "kind": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+          }
+        }
+      ]
+    },
+    {
+      "id": "document-local-baseline",
+      "title": "Local gateway baseline",
+      "summary": "Start a complete local listener, fixed response, proxied route, upstream cluster and bounded runtime profile.",
+      "category": "baseline",
+      "source": {
+        "path": "config/examples/local.yaml",
+        "pointer": "",
+        "sha256": "f8fd66340d769ee505e4135e0cabd713e338b9fc8323ba1d9c21e28ecc03e4a8"
+      },
+      "insertion": {
+        "container_path": "",
+        "mode": "replace-document"
+      },
+      "payload": {
+        "server": {
+          "node_id": "bonvoyage-local",
+          "admin_addr": "127.0.0.1:9901",
+          "metrics_addr": "127.0.0.1:9090"
+        },
+        "snapshot": {
+          "schema_version": 1,
+          "snapshot_id": "local-bootstrap",
+          "generation": 1,
+          "minimum_dataplane_version": "0.2.0"
+        },
+        "listeners": [
+          {
+            "name": "http",
+            "address": "0.0.0.0",
+            "port": 8080,
+            "protocol": "http1",
+            "virtual_hosts": [
+              "default"
+            ]
+          }
+        ],
+        "virtual_hosts": [
+          {
+            "name": "default",
+            "domains": [
+              "*"
+            ],
+            "routes": [
+              {
+                "name": "local-response",
+                "match": {
+                  "path_exact": "/bonvoyage/ready"
+                },
+                "fixed_response": {
+                  "status_code": 200,
+                  "body": "ready\n",
+                  "content_type": "text/plain"
+                }
+              },
+              {
+                "name": "default-route",
+                "match": {
+                  "path_prefix": "/"
+                },
+                "cluster": "local-upstream"
+              }
+            ]
+          }
+        ],
+        "clusters": [
+          {
+            "name": "local-upstream",
+            "load_balancing_policy": "round_robin",
+            "connect_timeout_ms": 1000,
+            "max_connections_per_shard": 128,
+            "max_pending_requests_per_shard": 256,
+            "endpoints": [
+              {
+                "name": "upstream-1",
+                "address": "upstream",
+                "port": 8081,
+                "weight": 1
+              }
+            ]
+          }
+        ],
+        "runtime_limits": {
+          "max_downstream_connections_per_shard": 16384,
+          "max_request_header_bytes": 32768,
+          "max_request_body_bytes": 10485760,
+          "max_upstream_response_header_bytes": 32768,
+          "max_upstream_chunk_metadata_bytes": 32768,
+          "request_timeout_ms": 15000,
+          "downstream_idle_timeout_ms": 60000
+        }
+      },
+      "yaml": "server:\n  node_id: bonvoyage-local\n  admin_addr: 127.0.0.1:9901\n  metrics_addr: 127.0.0.1:9090\nsnapshot:\n  schema_version: 1\n  snapshot_id: local-bootstrap\n  generation: 1\n  minimum_dataplane_version: 0.2.0\nlisteners:\n  - name: http\n    address: 0.0.0.0\n    port: 8080\n    protocol: http1\n    virtual_hosts:\n      - default\nvirtual_hosts:\n  - name: default\n    domains:\n      - '*'\n    routes:\n      - name: local-response\n        match:\n          path_exact: /bonvoyage/ready\n        fixed_response:\n          status_code: 200\n          body: |\n            ready\n          content_type: text/plain\n      - name: default-route\n        match:\n          path_prefix: /\n        cluster: local-upstream\nclusters:\n  - name: local-upstream\n    load_balancing_policy: round_robin\n    connect_timeout_ms: 1000\n    max_connections_per_shard: 128\n    max_pending_requests_per_shard: 256\n    endpoints:\n      - name: upstream-1\n        address: upstream\n        port: 8081\n        weight: 1\nruntime_limits:\n  max_downstream_connections_per_shard: 16384\n  max_request_header_bytes: 32768\n  max_request_body_bytes: 10485760\n  max_upstream_response_header_bytes: 32768\n  max_upstream_chunk_metadata_bytes: 32768\n  request_timeout_ms: 15000\n  downstream_idle_timeout_ms: 60000\n",
+      "yaml_sha256": "b38444b9082bcd3bf287cc7e3a76b03c71424309900f0d14c40656aa11daea09",
+      "edit_points": [
+        {
+          "payload_path": "/clusters/0/endpoints/0/address",
+          "configuration_path": "/clusters/*/endpoints/*/address",
+          "title": "Endpoint address",
+          "summary": "The IP address or hostname used to connect to this upstream endpoint.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1
+          }
+        },
+        {
+          "payload_path": "/listeners/0/port",
+          "configuration_path": "/listeners/*/port",
+          "title": "Listener port",
+          "summary": "The TCP port on which this listener accepts downstream connections.",
+          "secret_reference": false,
+          "value": {
+            "kind": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          }
+        },
+        {
+          "payload_path": "/server/node_id",
+          "configuration_path": "/server/node_id",
+          "title": "Node ID",
+          "summary": "The stable identity reported by this gateway node to management and observability surfaces.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1
+          }
+        },
+        {
+          "payload_path": "/snapshot/snapshot_id",
+          "configuration_path": "/snapshot/snapshot_id",
+          "title": "Snapshot ID",
+          "summary": "The stable operator-visible identifier assigned to this desired-state snapshot.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1
+          }
+        },
+        {
+          "payload_path": "/virtual_hosts/0/domains",
+          "configuration_path": "/virtual_hosts/*/domains",
+          "title": "Virtual-host domains",
+          "summary": "The domain patterns matched by this virtual host.",
+          "secret_reference": false,
+          "value": {
+            "kind": "array",
+            "min_items": 1,
+            "item": {
+              "kind": "string",
+              "min_length": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "listener-downstream-tls",
+      "title": "Downstream TLS",
+      "summary": "Enable a listener certificate and private-key reference using deployment-secret filenames.",
+      "category": "transport",
+      "source": {
+        "path": "config/examples/tls.yaml",
+        "pointer": "/listeners/0/downstream_tls",
+        "sha256": "1cabf7e80599ff06924f3db511cf2b340d9adccc860c343edefb0083686e071c"
+      },
+      "insertion": {
+        "container_path": "/listeners/*",
+        "mode": "merge-object"
+      },
+      "payload": {
+        "downstream_tls": {
+          "certificate_chain_secret": "server-chain.pem",
+          "private_key_secret": "server-key.pem"
+        }
+      },
+      "yaml": "downstream_tls:\n  certificate_chain_secret: server-chain.pem\n  private_key_secret: server-key.pem\n",
+      "yaml_sha256": "3fb331c345f9f24587626f11f7a568a56f2449cc1ea6851581afda69a410dd56",
+      "edit_points": [
+        {
+          "payload_path": "/downstream_tls/certificate_chain_secret",
+          "configuration_path": "/listeners/*/downstream_tls/certificate_chain_secret",
+          "title": "Server certificate secret",
+          "summary": "The deployment-secret filename containing the listener certificate chain.",
+          "secret_reference": true,
+          "value": {
+            "kind": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+          }
+        },
+        {
+          "payload_path": "/downstream_tls/private_key_secret",
+          "configuration_path": "/listeners/*/downstream_tls/private_key_secret",
+          "title": "Server private-key secret",
+          "summary": "The deployment-secret filename containing the listener private key.",
+          "secret_reference": true,
+          "value": {
+            "kind": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+          }
+        }
+      ]
+    },
+    {
+      "id": "route-api-key-auth",
+      "title": "API-key admission",
+      "summary": "Require a named request header whose value is checked against a deployment-secret credential file.",
+      "category": "security",
+      "source": {
+        "path": "tests/fixtures/phase3-api-key.yaml",
+        "pointer": "/virtual_hosts/0/routes/1/api_key_auth",
+        "sha256": "6e400dfa5f617bd3ce8bd66bd3a31b438c95cf80c71e9fa201f89326a70ec3ca"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "payload": {
+        "api_key_auth": {
+          "header_name": "X-API-Key",
+          "credentials_secret": "phase3-api-keys.txt"
+        }
+      },
+      "yaml": "api_key_auth:\n  header_name: X-API-Key\n  credentials_secret: phase3-api-keys.txt\n",
+      "yaml_sha256": "ca158917064494d30e06b865edab8f5ae5922104c83bc59ed04cbb567b0551c4",
+      "edit_points": [
+        {
+          "payload_path": "/api_key_auth/credentials_secret",
+          "configuration_path": "/virtual_hosts/*/routes/*/api_key_auth/credentials_secret",
+          "title": "API-key credentials secret",
+          "summary": "The deployment-secret filename containing the accepted API-key credential set.",
+          "secret_reference": true,
+          "value": {
+            "kind": "string",
+            "min_length": 1,
+            "max_length": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+          }
+        },
+        {
+          "payload_path": "/api_key_auth/header_name",
+          "configuration_path": "/virtual_hosts/*/routes/*/api_key_auth/header_name",
+          "title": "API-key header",
+          "summary": "The downstream HTTP header from which the API key is read.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1,
+            "max_length": 128,
+            "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
+          }
+        }
+      ]
+    },
+    {
+      "id": "route-cors",
+      "title": "CORS policy",
+      "summary": "Add bounded browser-origin, method, header, credential and preflight-cache rules to one route.",
+      "category": "security",
+      "source": {
+        "path": "tests/fixtures/phase3-cors.yaml",
+        "pointer": "/virtual_hosts/0/routes/0/cors",
+        "sha256": "a4da2371bde1da956b35faf0beb32460dbe44b848128cf454874a8e3d9af4ed9"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "payload": {
+        "cors": {
+          "allowed_origins": [
+            "https://app.example.com",
+            "http://localhost:3000"
+          ],
+          "allowed_methods": [
+            "GET"
+          ],
+          "allowed_headers": [
+            "Authorization",
+            "Content-Type",
+            "X-Request-Id"
+          ],
+          "exposed_headers": [
+            "X-Request-Id",
+            "X-Trace-Id"
+          ],
+          "allow_credentials": true,
+          "max_age_seconds": 600
+        }
+      },
+      "yaml": "cors:\n  allowed_origins:\n    - https://app.example.com\n    - http://localhost:3000\n  allowed_methods:\n    - GET\n  allowed_headers:\n    - Authorization\n    - Content-Type\n    - X-Request-Id\n  exposed_headers:\n    - X-Request-Id\n    - X-Trace-Id\n  allow_credentials: true\n  max_age_seconds: 600\n",
+      "yaml_sha256": "9ec7a07a2ebea50885f4dbdc68115a011d42836c9e58d249cd2442ff0a8ecf7c",
+      "edit_points": [
+        {
+          "payload_path": "/cors/allow_credentials",
+          "configuration_path": "/virtual_hosts/*/routes/*/cors/allow_credentials",
+          "title": "Allow credentials",
+          "summary": "Whether CORS responses permit downstream credentials under the configured origin policy.",
+          "secret_reference": false,
+          "value": {
+            "kind": "boolean"
+          }
+        },
+        {
+          "payload_path": "/cors/allowed_headers",
+          "configuration_path": "/virtual_hosts/*/routes/*/cors/allowed_headers",
+          "title": "Allowed request headers",
+          "summary": "The bounded request-header names allowed by CORS preflight handling.",
+          "secret_reference": false,
+          "value": {
+            "kind": "array",
+            "max_items": 32,
+            "unique_items": true,
+            "item": {
+              "kind": "string",
+              "min_length": 1,
+              "max_length": 128,
+              "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
+            }
+          }
+        },
+        {
+          "payload_path": "/cors/allowed_methods",
+          "configuration_path": "/virtual_hosts/*/routes/*/cors/allowed_methods",
+          "title": "Allowed CORS methods",
+          "summary": "The HTTP methods allowed by this route's CORS policy.",
+          "secret_reference": false,
+          "value": {
+            "kind": "array",
+            "min_items": 1,
+            "max_items": 16,
+            "unique_items": true,
+            "item": {
+              "kind": "string",
+              "min_length": 1,
+              "max_length": 32,
+              "pattern": "^[!#$%&'*+.^_`|~0-9A-Z-]+$"
+            }
+          }
+        },
+        {
+          "payload_path": "/cors/allowed_origins",
+          "configuration_path": "/virtual_hosts/*/routes/*/cors/allowed_origins",
+          "title": "Allowed origins",
+          "summary": "The explicit origin values accepted when any-origin mode is disabled.",
+          "secret_reference": false,
+          "value": {
+            "kind": "array",
+            "min_items": 1,
+            "max_items": 32,
+            "unique_items": true,
+            "item": {
+              "kind": "string",
+              "min_length": 8,
+              "max_length": 512
+            }
+          }
+        },
+        {
+          "payload_path": "/cors/exposed_headers",
+          "configuration_path": "/virtual_hosts/*/routes/*/cors/exposed_headers",
+          "title": "Exposed response headers",
+          "summary": "The response-header names exposed to browser clients by CORS.",
+          "secret_reference": false,
+          "value": {
+            "kind": "array",
+            "max_items": 32,
+            "unique_items": true,
+            "item": {
+              "kind": "string",
+              "min_length": 1,
+              "max_length": 128,
+              "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
+            }
+          }
+        },
+        {
+          "payload_path": "/cors/max_age_seconds",
+          "configuration_path": "/virtual_hosts/*/routes/*/cors/max_age_seconds",
+          "title": "Preflight maximum age",
+          "summary": "The maximum number of seconds a browser may cache a successful CORS preflight.",
+          "secret_reference": false,
+          "value": {
+            "kind": "integer",
+            "minimum": 0,
+            "maximum": 86400
+          }
+        }
+      ]
+    },
+    {
+      "id": "route-fixed-response",
+      "title": "Fixed-response route",
+      "summary": "Append a route that returns a local status, body and content type without contacting an upstream.",
+      "category": "routing",
+      "source": {
+        "path": "config/examples/local.yaml",
+        "pointer": "/virtual_hosts/0/routes/0",
+        "sha256": "f8fd66340d769ee505e4135e0cabd713e338b9fc8323ba1d9c21e28ecc03e4a8"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes",
+        "mode": "append-array-item"
+      },
+      "payload": [
+        {
+          "name": "local-response",
+          "match": {
+            "path_exact": "/bonvoyage/ready"
+          },
+          "fixed_response": {
+            "status_code": 200,
+            "body": "ready\n",
+            "content_type": "text/plain"
+          }
+        }
+      ],
+      "yaml": "- name: local-response\n  match:\n    path_exact: /bonvoyage/ready\n  fixed_response:\n    status_code: 200\n    body: |\n      ready\n    content_type: text/plain\n",
+      "yaml_sha256": "cd1acb83af315fc2f4e0e7bc35433db274d1c4eb9e02dd8bb2cb071a00858dff",
+      "edit_points": [
+        {
+          "payload_path": "/0/fixed_response/body",
+          "configuration_path": "/virtual_hosts/*/routes/*/fixed_response/body",
+          "title": "Fixed-response body",
+          "summary": "The optional response body returned by this fixed-response action.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string"
+          }
+        },
+        {
+          "payload_path": "/0/fixed_response/content_type",
+          "configuration_path": "/virtual_hosts/*/routes/*/fixed_response/content_type",
+          "title": "Fixed-response content type",
+          "summary": "The optional media type returned with this fixed response.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1
+          }
+        },
+        {
+          "payload_path": "/0/fixed_response/status_code",
+          "configuration_path": "/virtual_hosts/*/routes/*/fixed_response/status_code",
+          "title": "Fixed-response status",
+          "summary": "The HTTP status code returned by this fixed-response action.",
+          "secret_reference": false,
+          "value": {
+            "kind": "integer",
+            "minimum": 200,
+            "maximum": 599
+          }
+        },
+        {
+          "payload_path": "/0/match/path_exact",
+          "configuration_path": "/virtual_hosts/*/routes/*/match/path_exact",
+          "title": "Exact path match",
+          "summary": "An absolute request path that must match exactly.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1,
+            "max_length": 4096,
+            "pattern": "^/"
+          }
+        },
+        {
+          "payload_path": "/0/name",
+          "configuration_path": "/virtual_hosts/*/routes/*/name",
+          "title": "Route name",
+          "summary": "The unique stable route name within its virtual host.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "route-header-transformations",
+      "title": "Header transformations",
+      "summary": "Set, append or remove bounded request and response headers on one route.",
+      "category": "transformation",
+      "source": {
+        "path": "tests/fixtures/phase3-header-transformations.yaml",
+        "pointer": "/virtual_hosts/0/routes/0/header_transformations",
+        "sha256": "715e3ee392c55d3004d1b756ef13fd7af9f63e5c09fd8d9948d9261022e19b10"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "payload": {
+        "header_transformations": {
+          "request": [
+            {
+              "operation": "set",
+              "name": "x-request-set",
+              "value": "gateway-set"
+            },
+            {
+              "operation": "append",
+              "name": "x-request-append",
+              "value": "gateway-append"
+            },
+            {
+              "operation": "remove",
+              "name": "x-request-remove"
+            },
+            {
+              "operation": "set",
+              "name": "x-request-added",
+              "value": "gateway-added"
+            }
+          ],
+          "response": [
+            {
+              "operation": "set",
+              "name": "x-response-set",
+              "value": "gateway-set"
+            },
+            {
+              "operation": "append",
+              "name": "x-response-append",
+              "value": "gateway-append"
+            },
+            {
+              "operation": "remove",
+              "name": "x-response-remove"
+            },
+            {
+              "operation": "set",
+              "name": "x-response-added",
+              "value": "gateway-added"
+            }
+          ]
+        }
+      },
+      "yaml": "header_transformations:\n  request:\n    - operation: set\n      name: x-request-set\n      value: gateway-set\n    - operation: append\n      name: x-request-append\n      value: gateway-append\n    - operation: remove\n      name: x-request-remove\n    - operation: set\n      name: x-request-added\n      value: gateway-added\n  response:\n    - operation: set\n      name: x-response-set\n      value: gateway-set\n    - operation: append\n      name: x-response-append\n      value: gateway-append\n    - operation: remove\n      name: x-response-remove\n    - operation: set\n      name: x-response-added\n      value: gateway-added\n",
+      "yaml_sha256": "3ca7f9f2afcd613141f481645a74bedd98fd99a3f7c3c3def347e562f8244bb5",
+      "edit_points": [
+        {
+          "payload_path": "/header_transformations/request",
+          "configuration_path": "/virtual_hosts/*/routes/*/header_transformations/request",
+          "title": "Request header mutations",
+          "summary": "The ordered bounded mutations applied before forwarding an upstream request.",
+          "secret_reference": false,
+          "value": {
+            "kind": "array",
+            "max_items": 16,
+            "item": {
+              "kind": "object"
+            }
+          }
+        },
+        {
+          "payload_path": "/header_transformations/response",
+          "configuration_path": "/virtual_hosts/*/routes/*/header_transformations/response",
+          "title": "Response header mutations",
+          "summary": "The ordered bounded mutations applied before returning an upstream response.",
+          "secret_reference": false,
+          "value": {
+            "kind": "array",
+            "max_items": 16,
+            "item": {
+              "kind": "object"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "route-jwt-auth",
+      "title": "JWT admission",
+      "summary": "Validate JWT signature, issuer, audience, scopes, claims and bounded verification admission on one route.",
+      "category": "security",
+      "source": {
+        "path": "tests/fixtures/phase3-jwt.yaml",
+        "pointer": "/virtual_hosts/0/routes/0/jwt_auth",
+        "sha256": "4ef9c354d4071d17b144c95b549bf4aeee8ca30dc868f520ca4e469f119b7f9e"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "payload": {
+        "jwt_auth": {
+          "jwks_secret": "phase3-jwks.json",
+          "issuer": "https://issuer.example.test",
+          "audience": "payments-api",
+          "required_type": "at+jwt",
+          "algorithms": [
+            "RS256"
+          ],
+          "clock_skew_seconds": 5,
+          "max_token_lifetime_seconds": 300,
+          "required_scopes": [
+            "payments:read"
+          ],
+          "required_claims": [
+            {
+              "name": "tenant",
+              "exact": "tenant-a"
+            }
+          ],
+          "verification_rate_limit": {
+            "capacity": 1000,
+            "refill_tokens_per_second": 1000
+          }
+        }
+      },
+      "yaml": "jwt_auth:\n  jwks_secret: phase3-jwks.json\n  issuer: https://issuer.example.test\n  audience: payments-api\n  required_type: at+jwt\n  algorithms:\n    - RS256\n  clock_skew_seconds: 5\n  max_token_lifetime_seconds: 300\n  required_scopes:\n    - payments:read\n  required_claims:\n    - name: tenant\n      exact: tenant-a\n  verification_rate_limit:\n    capacity: 1000\n    refill_tokens_per_second: 1000\n",
+      "yaml_sha256": "dffc4e4f54d45767cdd89697823c948a53fe0a020b20537824995fe811159c2b",
+      "edit_points": [
+        {
+          "payload_path": "/jwt_auth/algorithms",
+          "configuration_path": "/virtual_hosts/*/routes/*/jwt_auth/algorithms",
+          "title": "JWT algorithms",
+          "summary": "The explicit accepted JWT signature algorithms for this route.",
+          "secret_reference": false,
+          "value": {
+            "kind": "array",
+            "min_items": 1,
+            "max_items": 3,
+            "unique_items": true,
+            "item": {
+              "kind": "string",
+              "enum_values": [
+                "RS256",
+                "PS256",
+                "ES256"
+              ]
+            }
+          }
+        },
+        {
+          "payload_path": "/jwt_auth/audience",
+          "configuration_path": "/virtual_hosts/*/routes/*/jwt_auth/audience",
+          "title": "JWT audience",
+          "summary": "The required audience claim for tokens admitted by this route.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1,
+            "max_length": 256,
+            "pattern": "^(?!\\s)[^\\u0000-\\u001F\\u007F]*[^\\s\\u0000-\\u001F\\u007F]$"
+          }
+        },
+        {
+          "payload_path": "/jwt_auth/issuer",
+          "configuration_path": "/virtual_hosts/*/routes/*/jwt_auth/issuer",
+          "title": "JWT issuer",
+          "summary": "The required HTTPS issuer identity for tokens admitted by this route.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1,
+            "max_length": 1024,
+            "pattern": "^[Hh][Tt][Tt][Pp][Ss]://\\S+$"
+          }
+        },
+        {
+          "payload_path": "/jwt_auth/jwks_secret",
+          "configuration_path": "/virtual_hosts/*/routes/*/jwt_auth/jwks_secret",
+          "title": "JWKS secret",
+          "summary": "The deployment-secret filename containing the reviewed JSON Web Key Set used for signature verification.",
+          "secret_reference": true,
+          "value": {
+            "kind": "string",
+            "min_length": 1,
+            "max_length": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+          }
+        },
+        {
+          "payload_path": "/jwt_auth/required_claims",
+          "configuration_path": "/virtual_hosts/*/routes/*/jwt_auth/required_claims",
+          "title": "Required JWT claims",
+          "summary": "The bounded set of additional exact claim matches required for admission.",
+          "secret_reference": false,
+          "value": {
+            "kind": "array",
+            "max_items": 16,
+            "unique_items": true,
+            "item": {
+              "kind": "object"
+            }
+          }
+        },
+        {
+          "payload_path": "/jwt_auth/required_scopes",
+          "configuration_path": "/virtual_hosts/*/routes/*/jwt_auth/required_scopes",
+          "title": "Required JWT scopes",
+          "summary": "The bounded set of scopes that an admitted token must contain.",
+          "secret_reference": false,
+          "value": {
+            "kind": "array",
+            "max_items": 16,
+            "unique_items": true,
+            "item": {
+              "kind": "string",
+              "min_length": 1,
+              "max_length": 128,
+              "pattern": "^[!-~]+$"
+            }
+          }
+        },
+        {
+          "payload_path": "/jwt_auth/verification_rate_limit/capacity",
+          "configuration_path": "/virtual_hosts/*/routes/*/jwt_auth/verification_rate_limit/capacity",
+          "title": "Verification capacity",
+          "summary": "The maximum verification tokens retained by each shard-local bucket.",
+          "secret_reference": false,
+          "value": {
+            "kind": "integer",
+            "minimum": 1,
+            "maximum": 1000000
+          }
+        },
+        {
+          "payload_path": "/jwt_auth/verification_rate_limit/refill_tokens_per_second",
+          "configuration_path": "/virtual_hosts/*/routes/*/jwt_auth/verification_rate_limit/refill_tokens_per_second",
+          "title": "Verification token refill",
+          "summary": "The number of JWT verification tokens replenished per second on each shard.",
+          "secret_reference": false,
+          "value": {
+            "kind": "integer",
+            "minimum": 1,
+            "maximum": 1000000
+          }
+        }
+      ]
+    },
+    {
+      "id": "route-local-rate-limit",
+      "title": "Local route rate limit",
+      "summary": "Add a shard-local token bucket with explicit capacity and refill rate to one route.",
+      "category": "traffic-policy",
+      "source": {
+        "path": "tests/fixtures/phase3-route-admission.yaml",
+        "pointer": "/virtual_hosts/0/routes/2/local_rate_limit",
+        "sha256": "98f990af5319ab6bfb423b81041f76234706ad88e3005f38006e6a9b56c05406"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "payload": {
+        "local_rate_limit": {
+          "capacity": 2,
+          "refill_tokens_per_second": 1
+        }
+      },
+      "yaml": "local_rate_limit:\n  capacity: 2\n  refill_tokens_per_second: 1\n",
+      "yaml_sha256": "a8d35bc9ada9a8992d2270318d76344727ec81425c3154b48b9a6e047c0db33e",
+      "edit_points": [
+        {
+          "payload_path": "/local_rate_limit/capacity",
+          "configuration_path": "/virtual_hosts/*/routes/*/local_rate_limit/capacity",
+          "title": "Rate-limit capacity",
+          "summary": "The maximum request tokens retained by each shard-local route bucket.",
+          "secret_reference": false,
+          "value": {
+            "kind": "integer",
+            "minimum": 1,
+            "maximum": 1000000
+          }
+        },
+        {
+          "payload_path": "/local_rate_limit/refill_tokens_per_second",
+          "configuration_path": "/virtual_hosts/*/routes/*/local_rate_limit/refill_tokens_per_second",
+          "title": "Rate-limit token refill",
+          "summary": "The number of route-admission tokens replenished per second on each shard.",
+          "secret_reference": false,
+          "value": {
+            "kind": "integer",
+            "minimum": 1,
+            "maximum": 1000000
+          }
+        }
+      ]
+    },
+    {
+      "id": "route-request-content",
+      "title": "Request-content policy",
+      "summary": "Constrain request body size and accepted media types before forwarding upstream.",
+      "category": "security",
+      "source": {
+        "path": "tests/fixtures/phase3-request-content.yaml",
+        "pointer": "/virtual_hosts/0/routes/0/request_content",
+        "sha256": "890048221b4313d96e01d17d9c8f7931988e9ef6b5766ac73dc65982dda39c9c"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "payload": {
+        "request_content": {
+          "max_body_bytes": 8,
+          "allowed_content_types": [
+            "application/json",
+            "application/problem+json"
+          ]
+        }
+      },
+      "yaml": "request_content:\n  max_body_bytes: 8\n  allowed_content_types:\n    - application/json\n    - application/problem+json\n",
+      "yaml_sha256": "e45e4427e0e736bb945d257d6cf147b6a339f3eb63f8d8d8c192392b3eaefbc8",
+      "edit_points": [
+        {
+          "payload_path": "/request_content/allowed_content_types",
+          "configuration_path": "/virtual_hosts/*/routes/*/request_content/allowed_content_types",
+          "title": "Allowed content types",
+          "summary": "The explicit media types accepted by this route's request-content policy.",
+          "secret_reference": false,
+          "value": {
+            "kind": "array",
+            "min_items": 1,
+            "max_items": 16,
+            "unique_items": true,
+            "item": {
+              "kind": "string",
+              "min_length": 3,
+              "max_length": 128,
+              "pattern": "^[!#$%&'*+.^_`|~0-9a-z-]+/[!#$%&'*+.^_`|~0-9a-z-]+$"
+            }
+          }
+        },
+        {
+          "payload_path": "/request_content/max_body_bytes",
+          "configuration_path": "/virtual_hosts/*/routes/*/request_content/max_body_bytes",
+          "title": "Route body limit",
+          "summary": "The maximum request-body size in bytes accepted by this route.",
+          "secret_reference": false,
+          "value": {
+            "kind": "integer",
+            "minimum": 1,
+            "maximum": 1073741824
+          }
+        }
+      ]
+    },
+    {
+      "id": "route-rewrite",
+      "title": "Upstream request rewrite",
+      "summary": "Rewrite the upstream authority and path prefix for one matched route.",
+      "category": "transformation",
+      "source": {
+        "path": "tests/fixtures/phase3-route-rewrites.yaml",
+        "pointer": "/virtual_hosts/0/routes/0/rewrite",
+        "sha256": "e145ef6a3f7480c8e5401345f8aba5515d984e4b63216d90e394f8a7c0430854"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "payload": {
+        "rewrite": {
+          "host": "orders.internal.test",
+          "port": 9443,
+          "path_prefix": "/v2/"
+        }
+      },
+      "yaml": "rewrite:\n  host: orders.internal.test\n  port: 9443\n  path_prefix: /v2/\n",
+      "yaml_sha256": "e2ff0eee1aac5240610149c14e68bd8f09166ba12057386cac0f203f1cc2060b",
+      "edit_points": [
+        {
+          "payload_path": "/rewrite/host",
+          "configuration_path": "/virtual_hosts/*/routes/*/rewrite/host",
+          "title": "Rewritten host",
+          "summary": "The normalized upstream host used after this rewrite.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1,
+            "max_length": 253,
+            "pattern": "^[0-9a-z:.\\[\\]-]+$"
+          }
+        },
+        {
+          "payload_path": "/rewrite/path_prefix",
+          "configuration_path": "/virtual_hosts/*/routes/*/rewrite/path_prefix",
+          "title": "Rewritten path prefix",
+          "summary": "The absolute prefix that replaces the matched route prefix while preserving the suffix.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1,
+            "max_length": 4096,
+            "pattern": "^/(?!/)"
+          }
+        },
+        {
+          "payload_path": "/rewrite/port",
+          "configuration_path": "/virtual_hosts/*/routes/*/rewrite/port",
+          "title": "Rewritten port",
+          "summary": "The optional upstream authority port used with a rewritten host.",
+          "secret_reference": false,
+          "value": {
+            "kind": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          }
+        }
+      ]
+    },
+    {
+      "id": "route-static-redirect",
+      "title": "Static redirect",
+      "summary": "Return a bounded redirect status and location components without contacting an upstream.",
+      "category": "routing",
+      "source": {
+        "path": "tests/fixtures/phase3-redirect.yaml",
+        "pointer": "/virtual_hosts/0/routes/0/redirect",
+        "sha256": "e32f20d6b7e9f526050f22e6a40c58e704904e0b6475a8ed7e97906a7a570897"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "payload": {
+        "redirect": {
+          "status_code": 307,
+          "path": "/v2/orders",
+          "query": "source=legacy"
+        }
+      },
+      "yaml": "redirect:\n  status_code: 307\n  path: /v2/orders\n  query: source=legacy\n",
+      "yaml_sha256": "37ad24e66074329f5ae962951810814020cdd2062e0caa62f396ac6068eca82e",
+      "edit_points": [
+        {
+          "payload_path": "/redirect/path",
+          "configuration_path": "/virtual_hosts/*/routes/*/redirect/path",
+          "title": "Redirect path",
+          "summary": "The absolute non-network-path redirect target path.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1,
+            "max_length": 4096,
+            "pattern": "^/(?!/)"
+          }
+        },
+        {
+          "payload_path": "/redirect/query",
+          "configuration_path": "/virtual_hosts/*/routes/*/redirect/query",
+          "title": "Redirect query",
+          "summary": "The optional query component appended to the redirect target without a leading question mark.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "max_length": 4096,
+            "pattern": "^(?:$|[^?])"
+          }
+        },
+        {
+          "payload_path": "/redirect/status_code",
+          "configuration_path": "/virtual_hosts/*/routes/*/redirect/status_code",
+          "title": "Redirect status",
+          "summary": "The supported 3xx HTTP status returned by this redirect action.",
+          "secret_reference": false,
+          "value": {
+            "kind": "integer",
+            "enum_values": [
+              301,
+              302,
+              303,
+              307,
+              308
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "route-upstream",
+      "title": "Proxied upstream route",
+      "summary": "Append a prefix route that forwards matching requests to a named cluster.",
+      "category": "routing",
+      "source": {
+        "path": "config/examples/local.yaml",
+        "pointer": "/virtual_hosts/0/routes/1",
+        "sha256": "f8fd66340d769ee505e4135e0cabd713e338b9fc8323ba1d9c21e28ecc03e4a8"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes",
+        "mode": "append-array-item"
+      },
+      "payload": [
+        {
+          "name": "default-route",
+          "match": {
+            "path_prefix": "/"
+          },
+          "cluster": "local-upstream"
+        }
+      ],
+      "yaml": "- name: default-route\n  match:\n    path_prefix: /\n  cluster: local-upstream\n",
+      "yaml_sha256": "6cef1c89f44a2457b8ae864a87a5d0b17fdfd4ef08eac396dd7eb46b25258bd7",
+      "edit_points": [
+        {
+          "payload_path": "/0/cluster",
+          "configuration_path": "/virtual_hosts/*/routes/*/cluster",
+          "title": "Route cluster",
+          "summary": "The single named upstream cluster selected by this route.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1
+          }
+        },
+        {
+          "payload_path": "/0/match/path_prefix",
+          "configuration_path": "/virtual_hosts/*/routes/*/match/path_prefix",
+          "title": "Path-prefix match",
+          "summary": "An absolute request-path prefix used to select this route.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1,
+            "max_length": 4096,
+            "pattern": "^/"
+          }
+        },
+        {
+          "payload_path": "/0/name",
+          "configuration_path": "/virtual_hosts/*/routes/*/name",
+          "title": "Route name",
+          "summary": "The unique stable route name within its virtual host.",
+          "secret_reference": false,
+          "value": {
+            "kind": "string",
+            "min_length": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "route-weighted-clusters",
+      "title": "Weighted upstream clusters",
+      "summary": "Distribute one route deterministically across named clusters using positive integer weights.",
+      "category": "traffic-policy",
+      "source": {
+        "path": "tests/fixtures/phase3-weighted-traffic-splitting.yaml",
+        "pointer": "/virtual_hosts/0/routes/0/weighted_clusters",
+        "sha256": "d82913c24f15cc674ea0a07f7ce726fae0fdc6929fd91afbeaf79ae1f262c421"
+      },
+      "insertion": {
+        "container_path": "/virtual_hosts/*/routes/*",
+        "mode": "merge-object"
+      },
+      "payload": {
+        "weighted_clusters": [
+          {
+            "cluster": "stable",
+            "weight": 3
+          },
+          {
+            "cluster": "canary",
+            "weight": 1
+          }
+        ]
+      },
+      "yaml": "weighted_clusters:\n  - cluster: stable\n    weight: 3\n  - cluster: canary\n    weight: 1\n",
+      "yaml_sha256": "73a8c6fa0a5cc8d5248cae438c917644eb8ce38ca3c4ecfbc28e0953b4aa87d2",
+      "edit_points": [
+        {
+          "payload_path": "/weighted_clusters",
+          "configuration_path": "/virtual_hosts/*/routes/*/weighted_clusters",
+          "title": "Weighted clusters",
+          "summary": "The bounded set of named clusters and relative weights used for deterministic traffic distribution.",
+          "secret_reference": false,
+          "value": {
+            "kind": "array",
+            "min_items": 2,
+            "max_items": 16,
+            "item": {
+              "kind": "object"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

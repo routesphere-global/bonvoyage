@@ -1,0 +1,49 @@
+#!/usr/bin/env bpftrace
+
+BEGIN
+{
+  printf("BONVOYAGE_SOCKET_OUTPUT_READY\n");
+}
+
+kprobe:tcp_sendmsg
+/pid == $1 && ((struct sock *)arg0)->__sk_common.skc_num == $2/
+{
+  if (@active[tid] == 1) {
+    @entry_collisions = count();
+  }
+  @active[tid] = 1;
+  @requested[tid] = arg2;
+  @calls = count();
+  @requested_bytes = sum(arg2);
+}
+
+kretprobe:tcp_sendmsg
+/@active[tid] == 1/
+{
+  $result = (int64)retval;
+  $requested_bytes = (int64)@requested[tid];
+  if ($result > 0) {
+    @completed_bytes = sum($result);
+    if ($result < $requested_bytes) {
+      @partial_writes = count();
+    }
+    if ($result > $requested_bytes) {
+      @oversized_returns = count();
+    }
+  } else if ($result == -11) {
+    @would_block = count();
+  } else if ($result < 0) {
+    @fatal_errors = count();
+  } else {
+    @zero_returns = count();
+  }
+  delete(@requested[tid]);
+  delete(@active[tid]);
+}
+
+END
+{
+  printf("BONVOYAGE_SOCKET_OUTPUT_END inflight=%llu\n", len(@active));
+  clear(@requested);
+  clear(@active);
+}

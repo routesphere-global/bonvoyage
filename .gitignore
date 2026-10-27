@@ -1,0 +1,49 @@
+node_modules/
+build/
+.docusaurus/
+.astro/
+.DS_Store
+
+*.log
+*.tmp
+*.out
+# Vetted benchmark logs are checksum-bound evidence, not transient app logs.
+!benchmarks/results/**/*.log
+
+coverage/
+dist/
+.cache/
+test-results/
+playwright-report/
+
+.env
+.env.*
+!.env.example
+*.pem
+# Public, expired fixture certificates required by an unchanged evidence manifest.
+!benchmarks/results/exploratory/local-tls-proxy-comparison-20260907T055154Z/ephemeral-ca.pem
+!benchmarks/results/exploratory/local-tls-proxy-comparison-20260907T055154Z/ephemeral-server-chain.pem
+!benchmarks/results/verification/http2-allocation-20260828T143415Z/ephemeral-ca.pem
+!benchmarks/results/verification/http2-allocation-20260828T143415Z/ephemeral-server-chain.pem
+!benchmarks/results/verification/http2-cost-20260828T094136Z/ephemeral-ca.pem
+!benchmarks/results/verification/http2-cost-20260828T094136Z/ephemeral-server-chain.pem
+*.key
+*.p12
+*.pfx
+
+cmake-build-*/
+build-*/
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+
+bin/
+vendor/
+
+# Raw perf recordings are large, host-specific, and retained outside source
+# history. Commit decoded reports, folded stacks, and checksummed summaries.
+benchmarks/results/**/perf.data
+
+# Full long-run archives can contain hundreds of megabytes of request logs.
+# Keep them beside the project locally; commit compact, checksummed audit sets.
+benchmarks/results/local-archives/

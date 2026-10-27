@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "name": "opentelemetry-proto",
+  "component": "OpenTelemetry Protocol Protobuf schemas",
+  "version": "1.11.0",
+  "scope": "vendored minimal stable trace schema closure used to encode and validate OTLP/HTTP Protobuf batches; no OpenTelemetry SDK or gRPC runtime is linked",
+  "source": {
+    "release_url": "https://github.com/open-telemetry/opentelemetry-proto/releases/tag/v1.11.0",
+    "repository_url": "https://github.com/open-telemetry/opentelemetry-proto.git",
+    "tag": "v1.11.0",
+    "commit": "790608c4d51e6ffc12210b541e8514cbed9e91a4",
+    "files": {
+      "opentelemetry/proto/collector/trace/v1/trace_service.proto": "03c8cc4e3e101087d884392d6eda32152ad5cd696e6344f50deaa59804a75c7a",
+      "opentelemetry/proto/trace/v1/trace.proto": "c3fb1385c90b8bc08a2a462e28b5d0c422c7b524a839f75f75e3cd9f64f36956",
+      "opentelemetry/proto/resource/v1/resource.proto": "e0a7cdc0ffcfeffaa2606e8611839735ebffaa2d6acdf33e9356f2c48ae692d3",
+      "opentelemetry/proto/common/v1/common.proto": "620560f3ad4c45d606f8a9c455f2b98089f0d511c5859c3eadd3ee630ae0d4d8"
+    }
+  },
+  "license": {
+    "spdx": "Apache-2.0",
+    "source_file": "third_party/opentelemetry-proto/LICENSE",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "installed_file": "/usr/share/licenses/opentelemetry-proto/LICENSE"
+  },
+  "build": {
+    "linkage": "generated C++ messages linked into the dataplane",
+    "grpc_codegen": false,
+    "sdk": false,
+    "vendored_files": 4
+  },
+  "review": {
+    "date": "2026-09-01",
+    "decision": "accepted for bounded shard-local OTLP/HTTP trace export",
+    "security_sources": [
+      "https://github.com/open-telemetry/opentelemetry-proto/security",
+      "https://opentelemetry.io/docs/specs/otlp/"
+    ]
+  },
+  "acceptance": {
+    "adr": "docs/architecture/decisions/0034-bounded-shard-local-otlp-tracing.md",
+    "status": "local functional qualification accepted; dedicated cost and hardening pending"
+  }
+}

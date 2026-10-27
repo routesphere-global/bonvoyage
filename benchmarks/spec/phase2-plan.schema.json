@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://routesphere.local/schemas/benchmark-phase2-plan.schema.json",
+  "title": "BonVoyage Phase 2 randomized execution plan",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "plan_id",
+    "seed",
+    "products",
+    "settings",
+    "groups"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "plan_id": { "type": "string", "pattern": "^phase2-[a-f0-9]{16}$" },
+    "seed": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "products": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": { "enum": ["bonvoyage", "envoy", "nginx", "haproxy"] }
+    },
+    "settings": {
+      "type": "object",
+      "required": [
+        "repetitions",
+        "resilience_repetitions",
+        "utilization_targets"
+      ],
+      "properties": {
+        "repetitions": { "type": "integer", "minimum": 5 },
+        "resilience_repetitions": { "type": "integer", "minimum": 1 },
+        "utilization_targets": {
+          "type": "array",
+          "const": [0.5, 0.7, 0.8, 0.9, 0.95]
+        }
+      },
+      "additionalProperties": false
+    },
+    "groups": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/group" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "group": {
+      "type": "object",
+      "required": [
+        "key",
+        "stage",
+        "gateway_cores",
+        "repetition",
+        "product_order"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]*$"
+        },
+        "stage": {
+          "enum": [
+            "capacity-discovery",
+            "capacity-confirmation",
+            "operating-curve",
+            "resilience"
+          ]
+        },
+        "gateway_cores": { "type": "integer", "enum": [1, 2] },
+        "repetition": { "type": "integer", "minimum": 1 },
+        "utilization_targets": {
+          "type": "array",
+          "const": [0.5, 0.7, 0.8, 0.9, 0.95]
+        },
+        "product_order": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "enum": ["bonvoyage", "envoy", "nginx", "haproxy"] }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "stage": { "const": "operating-curve" } },
+            "required": ["stage"]
+          },
+          "then": {
+            "type": "object",
+            "required": ["utilization_targets"],
+            "properties": { "utilization_targets": {} }
+          },
+          "else": { "not": { "required": ["utilization_targets"] } }
+        }
+      ],
+      "additionalProperties": false
+    }
+  }
+}

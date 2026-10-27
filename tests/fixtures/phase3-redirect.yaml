@@ -1,0 +1,133 @@
+server:
+  node_id: redirect-node
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-static-redirect
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: redirect-http1
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [api]
+  - name: redirect-http2
+    address: 0.0.0.0
+    port: 8443
+    protocol: http2
+    virtual_hosts: [api]
+    downstream_tls:
+      certificate_chain_secret: server-chain.pem
+      private_key_secret: server-key.pem
+
+virtual_hosts:
+  - name: api
+    domains: [api.example.test]
+    routes:
+      - name: relative-redirect
+        match:
+          path_exact: /redirect/relative
+          methods: [POST]
+        request_content:
+          max_body_bytes: 8
+          allowed_content_types: [application/json]
+        redirect:
+          status_code: 307
+          path: /v2/orders
+          query: source=legacy
+      - name: dns-redirect
+        match:
+          path_exact: /redirect/dns
+          methods: [GET]
+        redirect:
+          status_code: 308
+          scheme: https
+          host: api-v2.example.test
+          port: 9443
+          path: /v2/orders
+          query: source=legacy
+      - name: ipv4-redirect
+        match:
+          path_exact: /redirect/ipv4
+          methods: [GET]
+        redirect:
+          status_code: 302
+          scheme: http
+          host: 192.0.2.10
+          port: 8080
+          path: /moved
+      - name: ipv6-redirect
+        match:
+          path_exact: /redirect/ipv6
+          methods: [GET]
+        redirect:
+          status_code: 301
+          scheme: https
+          host: "2001:db8::10"
+          port: 9443
+          path: /moved/%7Eowner
+      - name: see-other-redirect
+        match:
+          path_exact: /redirect/see-other
+          methods: [POST]
+        redirect:
+          status_code: 303
+          path: /result
+      - name: cors-redirect
+        match:
+          path_exact: /redirect/cors
+          methods: [GET]
+        cors:
+          allowed_origins: [https://app.example.com]
+          allowed_methods: [GET]
+          max_age_seconds: 600
+        redirect:
+          status_code: 307
+          path: /v2/browser
+      - name: authenticated-redirect
+        match:
+          path_exact: /redirect/auth
+          methods: [GET]
+        api_key_auth:
+          credentials_secret: phase3-redirect-api-keys.txt
+        redirect:
+          status_code: 308
+          path: /v2/private
+      - name: fixed-301-regression
+        match:
+          path_exact: /fixed/301
+          methods: [GET]
+        fixed_response:
+          status_code: 301
+          body: "fixed three hundred\n"
+          content_type: text/plain
+      - name: public-upstream
+        match:
+          path_exact: /identity
+          methods: [GET]
+        cluster: upstream
+
+clusters:
+  - name: upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 1000
+    max_connections_per_shard: 16
+    max_pending_requests_per_shard: 16
+    endpoints:
+      - name: upstream-1
+        address: upstream
+        port: 8081
+        weight: 1
+
+runtime_limits:
+  max_downstream_connections_per_shard: 256
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 64
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 5000
+  downstream_idle_timeout_ms: 5000

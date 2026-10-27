@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "name": "libjwt",
+  "component": "LibJWT",
+  "version": "3.6.1",
+  "scope": "bounded local-JWKS parsing and compact asymmetric JWT verification for the shard-local route authentication path",
+  "source": {
+    "release_url": "https://github.com/benmcollins/libjwt/releases/tag/v3.6.1",
+    "archive_url": "https://github.com/benmcollins/libjwt/archive/refs/tags/v3.6.1.tar.gz",
+    "tag": "v3.6.1",
+    "tag_object": "e0eb26862e2965c406b20b91dd4984d96ca27c32",
+    "commit": "f4edfe5b2c44ac57edf00342550e81017f5329eb",
+    "archive_sha256": "b483a5f77e548964553f54a0ec5f0c810cc6c0629c5ac5a03610bcced150e7be"
+  },
+  "license": {
+    "spdx": "MPL-2.0",
+    "source_file": "LICENSE",
+    "installed_file": "/opt/libjwt/share/licenses/libjwt/LICENSE"
+  },
+  "build": {
+    "linkage": "static",
+    "json_backend": "Jansson",
+    "crypto_backend": "OpenSSL",
+    "patches": [
+      {
+        "file": "deploy/docker/bonvoyage/patches/libjwt-jwks-reject-duplicates.patch",
+        "sha256": "7a554ca5ad4cd330a875d9c0fb2c91c77f7d34eab2c3bddf3c008b5c24d37190",
+        "purpose": "Reject duplicate JWKS object members and embedded-NUL JSON strings before JOSE comparison or key lookup"
+      }
+    ],
+    "sanitizer_compiler_note": {
+      "diagnostic": "-Wstringop-truncation",
+      "treatment": "retained as a warning, but not promoted to an error, for the instrumented LibJWT build only",
+      "reason": "LibJWT's bounded error-copy macro copies at most sizeof(error_msg)-1 bytes and explicitly terminates the destination; GCC 13 emits the warning only in the optimized sanitizer build"
+    },
+    "excluded_components": [
+      "remote JWKS retrieval and libcurl",
+      "GnuTLS backend",
+      "MbedTLS backend",
+      "json-c backend",
+      "experimental ML-DSA",
+      "deprecated API",
+      "dependency tests"
+    ]
+  },
+  "review": {
+    "date": "2026-08-30",
+    "decision": "accepted for the Phase 3 bounded local-JWKS checkpoint after correctness, sanitizer, static-analysis, SBOM, and vulnerability qualification",
+    "security_sources": [
+      "https://github.com/benmcollins/libjwt/security",
+      "https://github.com/benmcollins/libjwt/security/advisories/GHSA-q843-6q5f-w55g",
+      "https://github.com/benmcollins/libjwt/releases/tag/v3.6.1"
+    ],
+    "automated_vulnerability_scan": {
+      "status": "passed",
+      "scanner": "Grype 0.116.1",
+      "database_built_at": "2026-08-30T06:27:52Z",
+      "threshold": "High",
+      "counts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0
+      },
+      "evidence_record": "docs/implementation/phase-3-jwt-validation.md"
+    },
+    "release_sbom": {
+      "status": "generated",
+      "formats": [
+        "CycloneDX JSON",
+        "SPDX JSON"
+      ],
+      "generator": "Syft 1.44.0",
+      "evidence_record": "docs/implementation/phase-3-jwt-validation.md"
+    },
+    "local_qualification": {
+      "status": "passed",
+      "evidence_record": "docs/implementation/phase-3-jwt-validation.md",
+      "note": "The accepted boundary uses bounded file-backed public JWKS material and performs no request-time network access; remote retrieval and live atomic key rotation remain separate Phase 4 work."
+    }
+  },
+  "acceptance": {
+    "adr": "docs/architecture/decisions/0019-shard-local-jwt-validation.md",
+    "status": "accepted",
+    "remaining_gates": [
+      "measure JWT feature cost on dedicated native hardware before performance publication",
+      "remote JWKS retrieval and atomic key rotation remain Phase 4 control-plane work"
+    ]
+  }
+}

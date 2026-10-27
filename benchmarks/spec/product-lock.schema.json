@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://routesphere.local/schemas/benchmark-product-lock.schema.json",
+  "title": "BonVoyage benchmark product lock",
+  "type": "object",
+  "required": ["schema_version", "updated_at", "products", "load_generator"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "updated_at": { "type": "string", "format": "date" },
+    "products": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/product" }
+    },
+    "load_generator": { "$ref": "#/$defs/image" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "image": {
+      "type": "object",
+      "required": [
+        "repository",
+        "version",
+        "index_digest",
+        "manifests"
+      ],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "index_digest": { "$ref": "#/$defs/digest" },
+        "manifests": {
+          "type": "object",
+          "required": ["linux_amd64", "linux_arm64"],
+          "properties": {
+            "linux_amd64": { "$ref": "#/$defs/digest" },
+            "linux_arm64": { "$ref": "#/$defs/digest" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "product": {
+      "type": "object",
+      "required": [
+        "name",
+        "repository",
+        "version",
+        "index_digest",
+        "manifests",
+        "config",
+        "config_sha256",
+        "listener_port",
+        "readiness_path",
+        "executable"
+      ],
+      "properties": {
+        "name": { "enum": ["envoy", "nginx", "haproxy"] },
+        "repository": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "index_digest": { "$ref": "#/$defs/digest" },
+        "manifests": {
+          "type": "object",
+          "required": ["linux_amd64", "linux_arm64"],
+          "properties": {
+            "linux_amd64": { "$ref": "#/$defs/digest" },
+            "linux_arm64": { "$ref": "#/$defs/digest" }
+          },
+          "additionalProperties": false
+        },
+        "config": { "type": "string", "pattern": "^benchmarks/products/" },
+        "config_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "listener_port": { "const": 8080 },
+        "readiness_path": { "type": "string", "pattern": "^/" },
+        "executable": { "type": "string", "pattern": "^/" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

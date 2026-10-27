@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.routesphere.global/schemas/bonvoyage-authoring-claude-capture-v1.schema.json",
+  "title": "RouteSphere BonVoyage Claude Code evaluation capture v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "classification",
+    "assistant",
+    "wrapper_version",
+    "model_id",
+    "claude_cli_version",
+    "claude_cli_sha256",
+    "capture_started_at",
+    "capture_completed_at",
+    "wrapper_manifest_sha256",
+    "skill_contract_sha256",
+    "evaluation_manifest_sha256",
+    "command_sha256",
+    "execution",
+    "cases"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://docs.routesphere.global/schemas/bonvoyage-authoring-claude-capture-v1.schema.json"
+    },
+    "schema_version": {"const": 1},
+    "classification": {
+      "const": "routesphere-bonvoyage-claude-code-evaluation-capture"
+    },
+    "assistant": {"const": "claude"},
+    "wrapper_version": {"const": "bonvoyage.claude-code-skill.v1"},
+    "model_id": {"$ref": "#/$defs/boundedLine"},
+    "claude_cli_version": {"$ref": "#/$defs/boundedLine"},
+    "claude_cli_sha256": {"$ref": "#/$defs/sha256"},
+    "capture_started_at": {"$ref": "#/$defs/utcTimestamp"},
+    "capture_completed_at": {"$ref": "#/$defs/utcTimestamp"},
+    "wrapper_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "skill_contract_sha256": {"$ref": "#/$defs/sha256"},
+    "evaluation_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "command_sha256": {"$ref": "#/$defs/sha256"},
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bare_mode",
+        "restricted_mode",
+        "built_in_tools",
+        "mcp_server_count",
+        "tool_event_policy",
+        "permission_mode",
+        "permission_prompts",
+        "settings_sources",
+        "slash_commands_enabled",
+        "session_persistence",
+        "isolated_home_per_case",
+        "nonessential_traffic_disabled",
+        "automatic_updates_disabled",
+        "provider_transport",
+        "host_network_isolation",
+        "expected_answers_exposed",
+        "embedded_reference_paths",
+        "automatic_retry",
+        "working_tree"
+      ],
+      "properties": {
+        "bare_mode": {"const": true},
+        "restricted_mode": {"const": true},
+        "built_in_tools": {"type": "array", "maxItems": 0},
+        "mcp_server_count": {"const": 0},
+        "tool_event_policy": {"const": "reject"},
+        "permission_mode": {"const": "dontAsk"},
+        "permission_prompts": {"const": "none"},
+        "settings_sources": {"type": "array", "maxItems": 0},
+        "slash_commands_enabled": {"const": false},
+        "session_persistence": {"const": false},
+        "isolated_home_per_case": {"const": true},
+        "nonessential_traffic_disabled": {"const": true},
+        "automatic_updates_disabled": {"const": true},
+        "provider_transport": {"const": "anthropic-api-key"},
+        "host_network_isolation": {"const": "not-established-by-adapter"},
+        "expected_answers_exposed": {"const": false},
+        "embedded_reference_paths": {
+          "const": [
+            "skills/claude/bonvoyage-config-authoring/references/command-surface.md",
+            "skills/claude/bonvoyage-config-authoring/references/completion.json",
+            "skills/claude/bonvoyage-config-authoring/references/configuration-schema.json",
+            "skills/claude/bonvoyage-config-authoring/references/snippets.json"
+          ]
+        },
+        "automatic_retry": {"const": false},
+        "working_tree": {"const": "sanitized-no-git-oss-export"}
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "items": {"$ref": "#/$defs/caseCapture"}
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "boundedLine": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[^\\r\\n]+$"
+    },
+    "utcTimestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{3})?Z$"
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[^\\r\\n\\\\]+$"
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_tokens",
+        "cache_creation_input_tokens",
+        "cache_read_input_tokens",
+        "output_tokens"
+      ],
+      "properties": {
+        "input_tokens": {"type": "integer", "minimum": 0},
+        "cache_creation_input_tokens": {"type": "integer", "minimum": 0},
+        "cache_read_input_tokens": {"type": "integer", "minimum": 0},
+        "output_tokens": {"type": "integer", "minimum": 0}
+      }
+    },
+    "caseCapture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "prompt_path",
+        "prompt_sha256",
+        "transcript_path",
+        "transcript_sha256",
+        "provider_event_log_path",
+        "provider_event_log_sha256",
+        "action_log_path",
+        "action_log_sha256",
+        "provider_stderr_path",
+        "provider_stderr_sha256",
+        "session_id",
+        "exit_code",
+        "event_count",
+        "total_cost_usd",
+        "usage"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "maxLength": 96
+        },
+        "prompt_path": {"$ref": "#/$defs/relativePath"},
+        "prompt_sha256": {"$ref": "#/$defs/sha256"},
+        "transcript_path": {"$ref": "#/$defs/relativePath"},
+        "transcript_sha256": {"$ref": "#/$defs/sha256"},
+        "provider_event_log_path": {"$ref": "#/$defs/relativePath"},
+        "provider_event_log_sha256": {"$ref": "#/$defs/sha256"},
+        "action_log_path": {"$ref": "#/$defs/relativePath"},
+        "action_log_sha256": {"$ref": "#/$defs/sha256"},
+        "provider_stderr_path": {"$ref": "#/$defs/relativePath"},
+        "provider_stderr_sha256": {"$ref": "#/$defs/sha256"},
+        "session_id": {"$ref": "#/$defs/boundedLine"},
+        "exit_code": {"const": 0},
+        "event_count": {"type": "integer", "minimum": 3},
+        "total_cost_usd": {"type": "number", "minimum": 0},
+        "usage": {"$ref": "#/$defs/usage"}
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "fixture": true,
+  "run_id": "schema-validation-only",
+  "workload_id": "http1-keepalive-baseline",
+  "environment_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "product": {
+    "name": "bonvoyage",
+    "version": "fixture",
+    "image_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "config_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "execution": {
+    "started_at": "2026-08-13T00:00:00Z",
+    "gateway_cores": 1,
+    "repetition": 1,
+    "offered_rps": 0
+  },
+  "metrics": {
+    "successful_rps": 0,
+    "error_rate": 0,
+    "latency_ms": {
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "p999": 0
+    },
+    "gateway_cpu_percent": 0,
+    "gateway_rss_bytes": 0,
+    "connections": 0
+  },
+  "raw_artifacts": ["fixture-only-no-performance-claim"]
+}

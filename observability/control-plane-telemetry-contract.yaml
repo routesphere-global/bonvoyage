@@ -1,0 +1,91 @@
+contract_version: 1
+status: phase4_checkpoint11
+scope: standalone_control_plane
+purpose: rollout_operations_and_recovery
+
+collection:
+  transport: prometheus_pull
+  path: /metrics
+  listener: authenticated_admin_tls13_mtls
+  minimum_role: viewer
+  default_scrape_interval_seconds: 10
+  affects_dataplane_request_path: false
+  prometheus_job: bonvoyage-control-plane
+
+metric_families:
+  - bonvoyage_control_plane_ready
+  - bonvoyage_control_plane_process_start_time_seconds
+  - bonvoyage_control_plane_runtime_authority_match
+  - bonvoyage_control_plane_selected_rollout_sequence
+  - bonvoyage_control_plane_rollout_phase
+  - bonvoyage_control_plane_rollout_kind
+  - bonvoyage_control_plane_rollout_policy
+  - bonvoyage_control_plane_rollout_policy_enabled
+  - bonvoyage_control_plane_automatic_rollback_enabled
+  - bonvoyage_control_plane_target_nodes
+  - bonvoyage_control_plane_connected_nodes
+  - bonvoyage_control_plane_reconciled_nodes
+  - bonvoyage_control_plane_unreconciled_nodes
+  - bonvoyage_control_plane_pending_commands
+  - bonvoyage_control_plane_node_phase
+  - bonvoyage_control_plane_journal_events
+  - bonvoyage_control_plane_journal_event_kind
+  - bonvoyage_control_plane_journal_transition_errors
+  - bonvoyage_control_plane_rollout_reports
+  - bonvoyage_control_plane_policy_decisions
+  - bonvoyage_control_plane_last_journal_event_timestamp_seconds
+  - bonvoyage_control_plane_recovery_required
+
+cardinality:
+  permitted_labels:
+    - decision
+    - kind
+    - operation
+    - phase
+    - result
+    - strategy
+  forbidden_labels:
+    - actor
+    - artifact
+    - digest
+    - node
+    - node_id
+    - request_id
+    - rollout_id
+    - sequence
+    - source_revision
+    - tenant
+    - user
+  configured_or_request_derived_labels: forbidden
+
+audit:
+  endpoint: /api/v1/rollouts/{sequence}/audit
+  manifest_version: bonvoyage.rollout.audit.v1
+  digest: sha256
+  source: immutable_rollout_header_and_replay_verified_journal
+  default_page_size: 100
+  maximum_page_size: 250
+  diagnostics_recent_event_limit: 500
+  raw_desired_state_returned: false
+  raw_snapshot_bytes_returned: false
+
+durability:
+  metrics_billing_grade: false
+  metrics_reason: prometheus_gauges_can_reset_or_be_missed
+  audit_restart_stable: true
+  audit_append_only_projection: true
+  long_term_regulated_retention: deferred_to_enterprise
+
+alerts:
+  rules: observability/prometheus/rules/bonvoyage-control-plane-alerts.yml
+  tests: observability/prometheus/tests/bonvoyage-control-plane-rules.test.yml
+  decisions:
+    - restore_control_plane
+    - halt_mutations_and_reconcile_authority
+    - reconcile_or_rollback
+    - restore_node_reconciliation
+
+ownership:
+  infrastructure_metrics: sre_and_platform
+  audit_schema: security_and_architecture
+  commercial_usage_metering: future_durable_enterprise_pipeline

@@ -1,0 +1,2348 @@
+{
+  "$schema": "../../../schemas/bonvoyage-authoring-completion-v1.schema.json",
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-configuration-completion-metadata",
+  "completion_version": "bonvoyage.configuration-completion.v1",
+  "contract_version": "bonvoyage.configuration-authoring.v1",
+  "compiler_version": "bonvoyage-control-plane-phase4-admin-v1",
+  "configuration_schema_version": 1,
+  "authority": {
+    "semantic_validation": "snapshot.Compile",
+    "configuration_schema_role": "structural-assistance-only",
+    "completion_scope": "direct-structural-and-literal-hints-only",
+    "field_help": "reviewed-release-asset",
+    "network_access": false,
+    "live_mutation": false
+  },
+  "security_boundary": {
+    "offline": true,
+    "document_values_included": false,
+    "secret_values_included": false,
+    "environment_secret_reads": false
+  },
+  "sources": {
+    "authoring_contract": {
+      "path": "config/authoring/bonvoyage-authoring-v1.json",
+      "sha256": "098b41f7a57ac3eadff59137b358df8aaf5e6bd5759639f2beaa5b81b39dcebf"
+    },
+    "configuration_schema": {
+      "path": "config/schemas/bonvoyage-config.schema.json",
+      "sha256": "692bdf2e832d009906bc026f524df474ebde15999e09e0c75b31da2cd43365b0"
+    },
+    "field_explanations": {
+      "path": "control-plane/internal/configauthoring/catalog/bonvoyage-field-explanations-v1.json",
+      "sha256": "fb9efa08d09532dce993b26cee829066081c7db2db5b2980954904e52138bef5"
+    }
+  },
+  "entry_count": 160,
+  "entries": [
+    {
+      "path": "",
+      "parent_path": null,
+      "key": null,
+      "title": "BonVoyage configuration",
+      "summary": "The complete declarative desired state compiled into one immutable BonVoyage snapshot.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/clusters",
+      "parent_path": "",
+      "key": "clusters",
+      "title": "Clusters",
+      "summary": "The non-empty set of named upstream service pools available to routes.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 1,
+        "item": {
+          "kind": "object"
+        }
+      }
+    },
+    {
+      "path": "/clusters/*/active_health",
+      "parent_path": "/clusters/*",
+      "key": "active_health",
+      "title": "Active health checks",
+      "summary": "Optional periodic HTTP health probing for endpoints in this cluster.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/clusters/*/active_health/expected_status_max",
+      "parent_path": "/clusters/*/active_health",
+      "key": "expected_status_max",
+      "title": "Maximum healthy status",
+      "summary": "The inclusive highest HTTP response status considered healthy by an active probe.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 200,
+        "maximum": 599
+      }
+    },
+    {
+      "path": "/clusters/*/active_health/expected_status_min",
+      "parent_path": "/clusters/*/active_health",
+      "key": "expected_status_min",
+      "title": "Minimum healthy status",
+      "summary": "The inclusive lowest HTTP response status considered healthy by an active probe.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 200,
+        "maximum": 599
+      }
+    },
+    {
+      "path": "/clusters/*/active_health/healthy_threshold",
+      "parent_path": "/clusters/*/active_health",
+      "key": "healthy_threshold",
+      "title": "Healthy threshold",
+      "summary": "The consecutive successful probes required before an endpoint becomes healthy.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 100
+      }
+    },
+    {
+      "path": "/clusters/*/active_health/host",
+      "parent_path": "/clusters/*/active_health",
+      "key": "host",
+      "title": "Health-check host",
+      "summary": "The HTTP Host or authority value used by active health-check requests.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 253
+      }
+    },
+    {
+      "path": "/clusters/*/active_health/interval_ms",
+      "parent_path": "/clusters/*/active_health",
+      "key": "interval_ms",
+      "title": "Health-check interval",
+      "summary": "The delay in milliseconds between scheduled active health probes.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1000,
+        "maximum": 300000
+      }
+    },
+    {
+      "path": "/clusters/*/active_health/path",
+      "parent_path": "/clusters/*/active_health",
+      "key": "path",
+      "title": "Health-check path",
+      "summary": "The absolute HTTP request path used for active health probes.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 4096,
+        "pattern": "^/[^#\\u0000-\\u0020\\u007F]*$"
+      }
+    },
+    {
+      "path": "/clusters/*/active_health/timeout_ms",
+      "parent_path": "/clusters/*/active_health",
+      "key": "timeout_ms",
+      "title": "Health-check timeout",
+      "summary": "The maximum time in milliseconds allowed for one active health probe.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 100,
+        "maximum": 10000
+      }
+    },
+    {
+      "path": "/clusters/*/active_health/unhealthy_threshold",
+      "parent_path": "/clusters/*/active_health",
+      "key": "unhealthy_threshold",
+      "title": "Unhealthy threshold",
+      "summary": "The consecutive failed probes required before an endpoint becomes unhealthy.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 100
+      }
+    },
+    {
+      "path": "/clusters/*/connect_timeout_ms",
+      "parent_path": "/clusters/*",
+      "key": "connect_timeout_ms",
+      "title": "Connect timeout",
+      "summary": "The maximum time in milliseconds allowed to establish an upstream connection.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 60000
+      }
+    },
+    {
+      "path": "/clusters/*/dns_refresh",
+      "parent_path": "/clusters/*",
+      "key": "dns_refresh",
+      "title": "DNS refresh",
+      "summary": "Optional bounded asynchronous hostname-resolution policy for cluster endpoints.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/clusters/*/dns_refresh/refresh_interval_ms",
+      "parent_path": "/clusters/*/dns_refresh",
+      "key": "refresh_interval_ms",
+      "title": "DNS refresh interval",
+      "summary": "The interval in milliseconds between accepted endpoint hostname refreshes.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1000,
+        "maximum": 3600000
+      }
+    },
+    {
+      "path": "/clusters/*/dns_refresh/resolve_timeout_ms",
+      "parent_path": "/clusters/*/dns_refresh",
+      "key": "resolve_timeout_ms",
+      "title": "DNS resolution timeout",
+      "summary": "The maximum time in milliseconds allowed for one endpoint hostname resolution.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 100,
+        "maximum": 10000
+      }
+    },
+    {
+      "path": "/clusters/*/endpoints",
+      "parent_path": "/clusters/*",
+      "key": "endpoints",
+      "title": "Endpoints",
+      "summary": "The non-empty set of upstream network destinations owned by this cluster.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 1,
+        "max_items": 4096,
+        "item": {
+          "kind": "object"
+        }
+      }
+    },
+    {
+      "path": "/clusters/*/endpoints/*/address",
+      "parent_path": "/clusters/*/endpoints/*",
+      "key": "address",
+      "title": "Endpoint address",
+      "summary": "The IP address or hostname used to connect to this upstream endpoint.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "/clusters/*/endpoints/*/name",
+      "parent_path": "/clusters/*/endpoints/*",
+      "key": "name",
+      "title": "Endpoint name",
+      "summary": "The unique stable name of this endpoint within its cluster.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "/clusters/*/endpoints/*/port",
+      "parent_path": "/clusters/*/endpoints/*",
+      "key": "port",
+      "title": "Endpoint port",
+      "summary": "The TCP port used to connect to this upstream endpoint.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 65535
+      }
+    },
+    {
+      "path": "/clusters/*/endpoints/*/weight",
+      "parent_path": "/clusters/*/endpoints/*",
+      "key": "weight",
+      "title": "Endpoint weight",
+      "summary": "The relative endpoint selection weight used by a compatible load-balancing policy.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 4096
+      }
+    },
+    {
+      "path": "/clusters/*/load_balancing_policy",
+      "parent_path": "/clusters/*",
+      "key": "load_balancing_policy",
+      "title": "Load-balancing policy",
+      "summary": "The reviewed algorithm used to select an eligible endpoint for each request.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "enum_values": [
+          "round_robin",
+          "least_request",
+          "random"
+        ]
+      }
+    },
+    {
+      "path": "/clusters/*/max_concurrent_requests_per_endpoint",
+      "parent_path": "/clusters/*",
+      "key": "max_concurrent_requests_per_endpoint",
+      "title": "Endpoint request limit",
+      "summary": "The maximum concurrent requests admitted to one endpoint before bounded rejection or alternate selection.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 2000000
+      }
+    },
+    {
+      "path": "/clusters/*/max_connections_per_shard",
+      "parent_path": "/clusters/*",
+      "key": "max_connections_per_shard",
+      "title": "Connections per shard",
+      "summary": "The maximum shard-local upstream connections retained for this cluster.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 1000000
+      }
+    },
+    {
+      "path": "/clusters/*/max_http2_streams_per_connection",
+      "parent_path": "/clusters/*",
+      "key": "max_http2_streams_per_connection",
+      "title": "HTTP/2 streams per connection",
+      "summary": "The maximum concurrent HTTP/2 streams admitted on one upstream connection.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 1000
+      }
+    },
+    {
+      "path": "/clusters/*/max_pending_requests_per_shard",
+      "parent_path": "/clusters/*",
+      "key": "max_pending_requests_per_shard",
+      "title": "Pending requests per shard",
+      "summary": "The maximum shard-local requests allowed to wait for upstream capacity.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 1000000
+      }
+    },
+    {
+      "path": "/clusters/*/name",
+      "parent_path": "/clusters/*",
+      "key": "name",
+      "title": "Cluster name",
+      "summary": "The unique stable cluster name referenced by routes and weighted-cluster entries.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "/clusters/*/passive_health",
+      "parent_path": "/clusters/*",
+      "key": "passive_health",
+      "title": "Passive health",
+      "summary": "Optional endpoint ejection and recovery policy driven by proxied request outcomes.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/clusters/*/passive_health/consecutive_failures",
+      "parent_path": "/clusters/*/passive_health",
+      "key": "consecutive_failures",
+      "title": "Failure threshold",
+      "summary": "The consecutive qualifying failures required before passive endpoint ejection.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 100
+      }
+    },
+    {
+      "path": "/clusters/*/passive_health/consecutive_successes",
+      "parent_path": "/clusters/*/passive_health",
+      "key": "consecutive_successes",
+      "title": "Recovery threshold",
+      "summary": "The consecutive successful observations required before passive recovery.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 100
+      }
+    },
+    {
+      "path": "/clusters/*/passive_health/ejection_time_ms",
+      "parent_path": "/clusters/*/passive_health",
+      "key": "ejection_time_ms",
+      "title": "Ejection duration",
+      "summary": "The bounded time in milliseconds an unhealthy endpoint remains passively ejected.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 100,
+        "maximum": 300000
+      }
+    },
+    {
+      "path": "/clusters/*/passive_health/max_ejection_percent",
+      "parent_path": "/clusters/*/passive_health",
+      "key": "max_ejection_percent",
+      "title": "Maximum ejection percentage",
+      "summary": "The maximum percentage of cluster endpoints that passive health may eject at once.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 100
+      }
+    },
+    {
+      "path": "/clusters/*/protocol",
+      "parent_path": "/clusters/*",
+      "key": "protocol",
+      "title": "Upstream protocol",
+      "summary": "The application protocol BonVoyage uses when forwarding requests to this cluster.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "enum_values": [
+          "http1",
+          "http2"
+        ]
+      }
+    },
+    {
+      "path": "/clusters/*/retry",
+      "parent_path": "/clusters/*",
+      "key": "retry",
+      "title": "Retry policy",
+      "summary": "Optional bounded retry behavior for eligible failures and request methods.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/clusters/*/retry/budget",
+      "parent_path": "/clusters/*/retry",
+      "key": "budget",
+      "title": "Retry budget",
+      "summary": "Shard-local token and concurrency limits that contain retry amplification.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/clusters/*/retry/budget/capacity",
+      "parent_path": "/clusters/*/retry/budget",
+      "key": "capacity",
+      "title": "Retry budget capacity",
+      "summary": "The maximum number of retry tokens retained by the shard-local budget.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 1000000
+      }
+    },
+    {
+      "path": "/clusters/*/retry/budget/max_concurrent_retries_per_shard",
+      "parent_path": "/clusters/*/retry/budget",
+      "key": "max_concurrent_retries_per_shard",
+      "title": "Concurrent retries per shard",
+      "summary": "The maximum retries executing concurrently on one data-plane shard.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 1000000
+      }
+    },
+    {
+      "path": "/clusters/*/retry/budget/refill_tokens_per_second",
+      "parent_path": "/clusters/*/retry/budget",
+      "key": "refill_tokens_per_second",
+      "title": "Retry token refill",
+      "summary": "The number of retry-budget tokens replenished per second on each shard.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 1000000
+      }
+    },
+    {
+      "path": "/clusters/*/retry/max_attempts",
+      "parent_path": "/clusters/*/retry",
+      "key": "max_attempts",
+      "title": "Maximum attempts",
+      "summary": "The total bounded upstream attempts permitted for one eligible request.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 2,
+        "maximum": 5
+      }
+    },
+    {
+      "path": "/clusters/*/retry/per_try_timeout_ms",
+      "parent_path": "/clusters/*/retry",
+      "key": "per_try_timeout_ms",
+      "title": "Per-try timeout",
+      "summary": "The maximum time in milliseconds allowed for each individual upstream attempt.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 10,
+        "maximum": 60000
+      }
+    },
+    {
+      "path": "/clusters/*/retry/retryable_methods",
+      "parent_path": "/clusters/*/retry",
+      "key": "retryable_methods",
+      "title": "Retryable methods",
+      "summary": "The explicit HTTP methods eligible for this cluster retry policy.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 1,
+        "max_items": 5,
+        "unique_items": true,
+        "item": {
+          "kind": "string",
+          "enum_values": [
+            "DELETE",
+            "GET",
+            "HEAD",
+            "OPTIONS",
+            "PUT"
+          ]
+        }
+      }
+    },
+    {
+      "path": "/clusters/*/upstream_tls",
+      "parent_path": "/clusters/*",
+      "key": "upstream_tls",
+      "title": "Upstream TLS",
+      "summary": "TLS server verification and optional client-certificate settings for this cluster.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/clusters/*/upstream_tls/certificate_chain_secret",
+      "parent_path": "/clusters/*/upstream_tls",
+      "key": "certificate_chain_secret",
+      "title": "Client certificate secret",
+      "summary": "The deployment-secret filename containing the client certificate chain used for upstream mTLS.",
+      "required_in_parent": false,
+      "secret_reference": true,
+      "value": {
+        "kind": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+      }
+    },
+    {
+      "path": "/clusters/*/upstream_tls/private_key_secret",
+      "parent_path": "/clusters/*/upstream_tls",
+      "key": "private_key_secret",
+      "title": "Client private-key secret",
+      "summary": "The deployment-secret filename containing the private key used for upstream mTLS.",
+      "required_in_parent": false,
+      "secret_reference": true,
+      "value": {
+        "kind": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+      }
+    },
+    {
+      "path": "/clusters/*/upstream_tls/server_name",
+      "parent_path": "/clusters/*/upstream_tls",
+      "key": "server_name",
+      "title": "TLS server name",
+      "summary": "The expected upstream server identity used for SNI and certificate verification.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 253,
+        "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$"
+      }
+    },
+    {
+      "path": "/clusters/*/upstream_tls/trust_bundle_secret",
+      "parent_path": "/clusters/*/upstream_tls",
+      "key": "trust_bundle_secret",
+      "title": "Upstream trust-bundle secret",
+      "summary": "The deployment-secret filename containing trusted certificate authorities for the upstream server.",
+      "required_in_parent": true,
+      "secret_reference": true,
+      "value": {
+        "kind": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+      }
+    },
+    {
+      "path": "/listeners",
+      "parent_path": "",
+      "key": "listeners",
+      "title": "Listeners",
+      "summary": "The non-empty set of downstream network listeners exposed by the gateway.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 1,
+        "item": {
+          "kind": "object"
+        }
+      }
+    },
+    {
+      "path": "/listeners/*/address",
+      "parent_path": "/listeners/*",
+      "key": "address",
+      "title": "Listener address",
+      "summary": "The local network address on which this listener accepts downstream connections.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "/listeners/*/downstream_tls",
+      "parent_path": "/listeners/*",
+      "key": "downstream_tls",
+      "title": "Downstream TLS",
+      "summary": "TLS certificate and optional client-authentication settings for this listener.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/listeners/*/downstream_tls/certificate_chain_secret",
+      "parent_path": "/listeners/*/downstream_tls",
+      "key": "certificate_chain_secret",
+      "title": "Server certificate secret",
+      "summary": "The deployment-secret filename containing the listener certificate chain.",
+      "required_in_parent": true,
+      "secret_reference": true,
+      "value": {
+        "kind": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+      }
+    },
+    {
+      "path": "/listeners/*/downstream_tls/private_key_secret",
+      "parent_path": "/listeners/*/downstream_tls",
+      "key": "private_key_secret",
+      "title": "Server private-key secret",
+      "summary": "The deployment-secret filename containing the listener private key.",
+      "required_in_parent": true,
+      "secret_reference": true,
+      "value": {
+        "kind": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+      }
+    },
+    {
+      "path": "/listeners/*/downstream_tls/require_client_certificate",
+      "parent_path": "/listeners/*/downstream_tls",
+      "key": "require_client_certificate",
+      "title": "Require client certificate",
+      "summary": "Whether the listener requires and verifies a downstream client certificate.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "path": "/listeners/*/downstream_tls/trust_bundle_secret",
+      "parent_path": "/listeners/*/downstream_tls",
+      "key": "trust_bundle_secret",
+      "title": "Client trust-bundle secret",
+      "summary": "The deployment-secret filename containing authorities trusted for downstream client certificates.",
+      "required_in_parent": false,
+      "secret_reference": true,
+      "value": {
+        "kind": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+      }
+    },
+    {
+      "path": "/listeners/*/name",
+      "parent_path": "/listeners/*",
+      "key": "name",
+      "title": "Listener name",
+      "summary": "The unique stable name of this listener within the snapshot.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "/listeners/*/port",
+      "parent_path": "/listeners/*",
+      "key": "port",
+      "title": "Listener port",
+      "summary": "The TCP port on which this listener accepts downstream connections.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 65535
+      }
+    },
+    {
+      "path": "/listeners/*/protocol",
+      "parent_path": "/listeners/*",
+      "key": "protocol",
+      "title": "Listener protocol",
+      "summary": "The downstream HTTP protocol accepted by this listener.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "enum_values": [
+          "http1",
+          "http2",
+          "http3"
+        ]
+      }
+    },
+    {
+      "path": "/listeners/*/trusted_proxy",
+      "parent_path": "/listeners/*",
+      "key": "trusted_proxy",
+      "title": "Trusted proxy policy",
+      "summary": "The explicit proxy-network boundary allowed to supply trusted forwarded client identity.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/listeners/*/trusted_proxy/trusted_cidrs",
+      "parent_path": "/listeners/*/trusted_proxy",
+      "key": "trusted_cidrs",
+      "title": "Trusted proxy networks",
+      "summary": "The bounded CIDR set whose forwarded client-address metadata may be trusted.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 1,
+        "max_items": 64,
+        "unique_items": true,
+        "item": {
+          "kind": "string",
+          "min_length": 3,
+          "max_length": 64
+        }
+      }
+    },
+    {
+      "path": "/listeners/*/virtual_hosts",
+      "parent_path": "/listeners/*",
+      "key": "virtual_hosts",
+      "title": "Listener virtual hosts",
+      "summary": "The names of virtual hosts bound to this listener.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 1,
+        "item": {
+          "kind": "string",
+          "min_length": 1
+        }
+      }
+    },
+    {
+      "path": "/runtime_limits",
+      "parent_path": "",
+      "key": "runtime_limits",
+      "title": "Runtime limits",
+      "summary": "Optional global safety ceilings applied by the data plane for this snapshot.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/runtime_limits/downstream_idle_timeout_ms",
+      "parent_path": "/runtime_limits",
+      "key": "downstream_idle_timeout_ms",
+      "title": "Downstream idle timeout",
+      "summary": "The maximum downstream connection idle period in milliseconds.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 3600000
+      }
+    },
+    {
+      "path": "/runtime_limits/max_downstream_connections_per_shard",
+      "parent_path": "/runtime_limits",
+      "key": "max_downstream_connections_per_shard",
+      "title": "Downstream connections per shard",
+      "summary": "The maximum downstream connections admitted by one data-plane shard.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 1000000
+      }
+    },
+    {
+      "path": "/runtime_limits/max_request_body_bytes",
+      "parent_path": "/runtime_limits",
+      "key": "max_request_body_bytes",
+      "title": "Maximum request body",
+      "summary": "The global maximum accepted downstream request-body size in bytes.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 1073741824
+      }
+    },
+    {
+      "path": "/runtime_limits/max_request_header_bytes",
+      "parent_path": "/runtime_limits",
+      "key": "max_request_header_bytes",
+      "title": "Maximum request headers",
+      "summary": "The global maximum accepted downstream request-header size in bytes.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1024,
+        "maximum": 1048576
+      }
+    },
+    {
+      "path": "/runtime_limits/max_upstream_chunk_metadata_bytes",
+      "parent_path": "/runtime_limits",
+      "key": "max_upstream_chunk_metadata_bytes",
+      "title": "Maximum chunk metadata",
+      "summary": "The maximum upstream chunk-metadata bytes retained while processing a response.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1024,
+        "maximum": 1048576
+      }
+    },
+    {
+      "path": "/runtime_limits/max_upstream_response_header_bytes",
+      "parent_path": "/runtime_limits",
+      "key": "max_upstream_response_header_bytes",
+      "title": "Maximum response headers",
+      "summary": "The maximum accepted upstream response-header size in bytes.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1024,
+        "maximum": 1048576
+      }
+    },
+    {
+      "path": "/runtime_limits/request_timeout_ms",
+      "parent_path": "/runtime_limits",
+      "key": "request_timeout_ms",
+      "title": "Request timeout",
+      "summary": "The global maximum request lifetime in milliseconds unless a stricter boundary applies.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 300000
+      }
+    },
+    {
+      "path": "/server",
+      "parent_path": "",
+      "key": "server",
+      "title": "Server identity",
+      "summary": "Local node identity and administrative bind addresses for this gateway process.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/server/admin_addr",
+      "parent_path": "/server",
+      "key": "admin_addr",
+      "title": "Admin address",
+      "summary": "The local address used by the gateway administrative endpoint.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "/server/metrics_addr",
+      "parent_path": "/server",
+      "key": "metrics_addr",
+      "title": "Metrics address",
+      "summary": "The local address used to expose Prometheus metrics.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "/server/node_id",
+      "parent_path": "/server",
+      "key": "node_id",
+      "title": "Node ID",
+      "summary": "The stable identity reported by this gateway node to management and observability surfaces.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "/snapshot",
+      "parent_path": "",
+      "key": "snapshot",
+      "title": "Snapshot metadata",
+      "summary": "Version and identity metadata bound to the compiled immutable configuration artifact.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/snapshot/generation",
+      "parent_path": "/snapshot",
+      "key": "generation",
+      "title": "Snapshot generation",
+      "summary": "A positive operator-controlled generation used to order desired-state revisions.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1
+      }
+    },
+    {
+      "path": "/snapshot/minimum_dataplane_version",
+      "parent_path": "/snapshot",
+      "key": "minimum_dataplane_version",
+      "title": "Minimum data-plane version",
+      "summary": "The minimum BonVoyage data-plane version declared compatible with this snapshot.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "/snapshot/schema_version",
+      "parent_path": "/snapshot",
+      "key": "schema_version",
+      "title": "Configuration schema version",
+      "summary": "The configuration schema version interpreted by the installed compiler; contract v1 supports version 1.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "const_value": 1
+      }
+    },
+    {
+      "path": "/snapshot/snapshot_id",
+      "parent_path": "/snapshot",
+      "key": "snapshot_id",
+      "title": "Snapshot ID",
+      "summary": "The stable operator-visible identifier assigned to this desired-state snapshot.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "/virtual_hosts",
+      "parent_path": "",
+      "key": "virtual_hosts",
+      "title": "Virtual hosts",
+      "summary": "The non-empty set of domain-routing tables available to listeners.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 1,
+        "item": {
+          "kind": "object"
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/domains",
+      "parent_path": "/virtual_hosts/*",
+      "key": "domains",
+      "title": "Virtual-host domains",
+      "summary": "The domain patterns matched by this virtual host.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 1,
+        "item": {
+          "kind": "string",
+          "min_length": 1
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/name",
+      "parent_path": "/virtual_hosts/*",
+      "key": "name",
+      "title": "Virtual-host name",
+      "summary": "The unique stable virtual-host name referenced by listeners.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes",
+      "parent_path": "/virtual_hosts/*",
+      "key": "routes",
+      "title": "Routes",
+      "summary": "The ordered non-empty route table evaluated within this virtual host.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 1,
+        "item": {
+          "kind": "object"
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/api_key_auth",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "api_key_auth",
+      "title": "API-key authentication",
+      "summary": "Optional API-key admission policy evaluated before an upstream request is sent.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/api_key_auth/credentials_secret",
+      "parent_path": "/virtual_hosts/*/routes/*/api_key_auth",
+      "key": "credentials_secret",
+      "title": "API-key credentials secret",
+      "summary": "The deployment-secret filename containing the accepted API-key credential set.",
+      "required_in_parent": true,
+      "secret_reference": true,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 128,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/api_key_auth/header_name",
+      "parent_path": "/virtual_hosts/*/routes/*/api_key_auth",
+      "key": "header_name",
+      "title": "API-key header",
+      "summary": "The downstream HTTP header from which the API key is read.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 128,
+        "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/cluster",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "cluster",
+      "title": "Route cluster",
+      "summary": "The single named upstream cluster selected by this route.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/cors",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "cors",
+      "title": "CORS policy",
+      "summary": "Optional cross-origin request and response policy for this route.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/cors/allow_any_origin",
+      "parent_path": "/virtual_hosts/*/routes/*/cors",
+      "key": "allow_any_origin",
+      "title": "Allow any origin",
+      "summary": "Whether any syntactically valid origin is accepted by this CORS policy.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/cors/allow_credentials",
+      "parent_path": "/virtual_hosts/*/routes/*/cors",
+      "key": "allow_credentials",
+      "title": "Allow credentials",
+      "summary": "Whether CORS responses permit downstream credentials under the configured origin policy.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/cors/allowed_headers",
+      "parent_path": "/virtual_hosts/*/routes/*/cors",
+      "key": "allowed_headers",
+      "title": "Allowed request headers",
+      "summary": "The bounded request-header names allowed by CORS preflight handling.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "max_items": 32,
+        "unique_items": true,
+        "item": {
+          "kind": "string",
+          "min_length": 1,
+          "max_length": 128,
+          "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/cors/allowed_methods",
+      "parent_path": "/virtual_hosts/*/routes/*/cors",
+      "key": "allowed_methods",
+      "title": "Allowed CORS methods",
+      "summary": "The HTTP methods allowed by this route's CORS policy.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 1,
+        "max_items": 16,
+        "unique_items": true,
+        "item": {
+          "kind": "string",
+          "min_length": 1,
+          "max_length": 32,
+          "pattern": "^[!#$%&'*+.^_`|~0-9A-Z-]+$"
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/cors/allowed_origins",
+      "parent_path": "/virtual_hosts/*/routes/*/cors",
+      "key": "allowed_origins",
+      "title": "Allowed origins",
+      "summary": "The explicit origin values accepted when any-origin mode is disabled.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 1,
+        "max_items": 32,
+        "unique_items": true,
+        "item": {
+          "kind": "string",
+          "min_length": 8,
+          "max_length": 512
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/cors/exposed_headers",
+      "parent_path": "/virtual_hosts/*/routes/*/cors",
+      "key": "exposed_headers",
+      "title": "Exposed response headers",
+      "summary": "The response-header names exposed to browser clients by CORS.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "max_items": 32,
+        "unique_items": true,
+        "item": {
+          "kind": "string",
+          "min_length": 1,
+          "max_length": 128,
+          "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/cors/max_age_seconds",
+      "parent_path": "/virtual_hosts/*/routes/*/cors",
+      "key": "max_age_seconds",
+      "title": "Preflight maximum age",
+      "summary": "The maximum number of seconds a browser may cache a successful CORS preflight.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 0,
+        "maximum": 86400
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/fixed_response",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "fixed_response",
+      "title": "Fixed response",
+      "summary": "A gateway-generated response action that does not contact an upstream cluster.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/fixed_response/body",
+      "parent_path": "/virtual_hosts/*/routes/*/fixed_response",
+      "key": "body",
+      "title": "Fixed-response body",
+      "summary": "The optional response body returned by this fixed-response action.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/fixed_response/content_type",
+      "parent_path": "/virtual_hosts/*/routes/*/fixed_response",
+      "key": "content_type",
+      "title": "Fixed-response content type",
+      "summary": "The optional media type returned with this fixed response.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/fixed_response/status_code",
+      "parent_path": "/virtual_hosts/*/routes/*/fixed_response",
+      "key": "status_code",
+      "title": "Fixed-response status",
+      "summary": "The HTTP status code returned by this fixed-response action.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 200,
+        "maximum": 599
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/header_transformations",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "header_transformations",
+      "title": "Header transformations",
+      "summary": "Ordered request and response header mutations for an upstream route.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/header_transformations/request",
+      "parent_path": "/virtual_hosts/*/routes/*/header_transformations",
+      "key": "request",
+      "title": "Request header mutations",
+      "summary": "The ordered bounded mutations applied before forwarding an upstream request.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "max_items": 16,
+        "item": {
+          "kind": "object"
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/header_transformations/request/*/name",
+      "parent_path": "/virtual_hosts/*/routes/*/header_transformations/request/*",
+      "key": "name",
+      "title": "Request header name",
+      "summary": "The normalized HTTP field name targeted by this request mutation.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 128,
+        "pattern": "^[!#$%&'*+.^_`|~0-9a-z-]+$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/header_transformations/request/*/operation",
+      "parent_path": "/virtual_hosts/*/routes/*/header_transformations/request/*",
+      "key": "operation",
+      "title": "Request mutation operation",
+      "summary": "Whether this request mutation sets, appends, or removes the selected header.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "enum_values": [
+          "set",
+          "append",
+          "remove"
+        ]
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/header_transformations/request/*/value",
+      "parent_path": "/virtual_hosts/*/routes/*/header_transformations/request/*",
+      "key": "value",
+      "title": "Request header value",
+      "summary": "The bounded value used by a request set or append mutation; remove uses no value.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "max_length": 4096
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/header_transformations/response",
+      "parent_path": "/virtual_hosts/*/routes/*/header_transformations",
+      "key": "response",
+      "title": "Response header mutations",
+      "summary": "The ordered bounded mutations applied before returning an upstream response.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "max_items": 16,
+        "item": {
+          "kind": "object"
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/header_transformations/response/*/name",
+      "parent_path": "/virtual_hosts/*/routes/*/header_transformations/response/*",
+      "key": "name",
+      "title": "Response header name",
+      "summary": "The normalized HTTP field name targeted by this response mutation.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 128,
+        "pattern": "^[!#$%&'*+.^_`|~0-9a-z-]+$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/header_transformations/response/*/operation",
+      "parent_path": "/virtual_hosts/*/routes/*/header_transformations/response/*",
+      "key": "operation",
+      "title": "Response mutation operation",
+      "summary": "Whether this response mutation sets, appends, or removes the selected header.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "enum_values": [
+          "set",
+          "append",
+          "remove"
+        ]
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/header_transformations/response/*/value",
+      "parent_path": "/virtual_hosts/*/routes/*/header_transformations/response/*",
+      "key": "value",
+      "title": "Response header value",
+      "summary": "The bounded value used by a response set or append mutation; remove uses no value.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "max_length": 4096
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/jwt_auth",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "jwt_auth",
+      "title": "JWT authentication",
+      "summary": "Optional signed JWT admission policy evaluated before upstream selection.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/jwt_auth/algorithms",
+      "parent_path": "/virtual_hosts/*/routes/*/jwt_auth",
+      "key": "algorithms",
+      "title": "JWT algorithms",
+      "summary": "The explicit accepted JWT signature algorithms for this route.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 1,
+        "max_items": 3,
+        "unique_items": true,
+        "item": {
+          "kind": "string",
+          "enum_values": [
+            "RS256",
+            "PS256",
+            "ES256"
+          ]
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/jwt_auth/audience",
+      "parent_path": "/virtual_hosts/*/routes/*/jwt_auth",
+      "key": "audience",
+      "title": "JWT audience",
+      "summary": "The required audience claim for tokens admitted by this route.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 256,
+        "pattern": "^(?!\\s)[^\\u0000-\\u001F\\u007F]*[^\\s\\u0000-\\u001F\\u007F]$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/jwt_auth/clock_skew_seconds",
+      "parent_path": "/virtual_hosts/*/routes/*/jwt_auth",
+      "key": "clock_skew_seconds",
+      "title": "JWT clock skew",
+      "summary": "The bounded time tolerance in seconds applied to JWT time claims.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 0,
+        "maximum": 300
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/jwt_auth/issuer",
+      "parent_path": "/virtual_hosts/*/routes/*/jwt_auth",
+      "key": "issuer",
+      "title": "JWT issuer",
+      "summary": "The required HTTPS issuer identity for tokens admitted by this route.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 1024,
+        "pattern": "^[Hh][Tt][Tt][Pp][Ss]://\\S+$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/jwt_auth/jwks_secret",
+      "parent_path": "/virtual_hosts/*/routes/*/jwt_auth",
+      "key": "jwks_secret",
+      "title": "JWKS secret",
+      "summary": "The deployment-secret filename containing the reviewed JSON Web Key Set used for signature verification.",
+      "required_in_parent": true,
+      "secret_reference": true,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 128,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/jwt_auth/max_token_lifetime_seconds",
+      "parent_path": "/virtual_hosts/*/routes/*/jwt_auth",
+      "key": "max_token_lifetime_seconds",
+      "title": "Maximum token lifetime",
+      "summary": "The maximum accepted JWT lifetime in seconds.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 86400
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/jwt_auth/required_claims",
+      "parent_path": "/virtual_hosts/*/routes/*/jwt_auth",
+      "key": "required_claims",
+      "title": "Required JWT claims",
+      "summary": "The bounded set of additional exact claim matches required for admission.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "max_items": 16,
+        "unique_items": true,
+        "item": {
+          "kind": "object"
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/jwt_auth/required_claims/*/exact",
+      "parent_path": "/virtual_hosts/*/routes/*/jwt_auth/required_claims/*",
+      "key": "exact",
+      "title": "Required claim value",
+      "summary": "The exact bounded value required for this additional JWT claim.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 256,
+        "pattern": "^[!-~](?:[ -~]*[!-~])?$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/jwt_auth/required_claims/*/name",
+      "parent_path": "/virtual_hosts/*/routes/*/jwt_auth/required_claims/*",
+      "key": "name",
+      "title": "Required claim name",
+      "summary": "The non-reserved JWT claim name evaluated by this exact match.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 64,
+        "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/jwt_auth/required_scopes",
+      "parent_path": "/virtual_hosts/*/routes/*/jwt_auth",
+      "key": "required_scopes",
+      "title": "Required JWT scopes",
+      "summary": "The bounded set of scopes that an admitted token must contain.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "max_items": 16,
+        "unique_items": true,
+        "item": {
+          "kind": "string",
+          "min_length": 1,
+          "max_length": 128,
+          "pattern": "^[!-~]+$"
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/jwt_auth/required_type",
+      "parent_path": "/virtual_hosts/*/routes/*/jwt_auth",
+      "key": "required_type",
+      "title": "Required JWT type",
+      "summary": "The required token type value accepted by this route.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 64,
+        "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/jwt_auth/verification_rate_limit",
+      "parent_path": "/virtual_hosts/*/routes/*/jwt_auth",
+      "key": "verification_rate_limit",
+      "title": "JWT verification rate limit",
+      "summary": "A shard-local token bucket that bounds cryptographic verification work.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/jwt_auth/verification_rate_limit/capacity",
+      "parent_path": "/virtual_hosts/*/routes/*/jwt_auth/verification_rate_limit",
+      "key": "capacity",
+      "title": "Verification capacity",
+      "summary": "The maximum verification tokens retained by each shard-local bucket.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 1000000
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/jwt_auth/verification_rate_limit/refill_tokens_per_second",
+      "parent_path": "/virtual_hosts/*/routes/*/jwt_auth/verification_rate_limit",
+      "key": "refill_tokens_per_second",
+      "title": "Verification token refill",
+      "summary": "The number of JWT verification tokens replenished per second on each shard.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 1000000
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/local_rate_limit",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "local_rate_limit",
+      "title": "Local rate limit",
+      "summary": "An optional shard-local token bucket applied to this route.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/local_rate_limit/capacity",
+      "parent_path": "/virtual_hosts/*/routes/*/local_rate_limit",
+      "key": "capacity",
+      "title": "Rate-limit capacity",
+      "summary": "The maximum request tokens retained by each shard-local route bucket.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 1000000
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/local_rate_limit/refill_tokens_per_second",
+      "parent_path": "/virtual_hosts/*/routes/*/local_rate_limit",
+      "key": "refill_tokens_per_second",
+      "title": "Rate-limit token refill",
+      "summary": "The number of route-admission tokens replenished per second on each shard.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 1000000
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/match",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "match",
+      "title": "Route match",
+      "summary": "The path and optional method, header, and query conditions that select this route.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/match/headers",
+      "parent_path": "/virtual_hosts/*/routes/*/match",
+      "key": "headers",
+      "title": "Header matchers",
+      "summary": "The bounded set of downstream request-header predicates required by this route.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "max_items": 16,
+        "item": {
+          "kind": "object"
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/match/headers/*/exact",
+      "parent_path": "/virtual_hosts/*/routes/*/match/headers/*",
+      "key": "exact",
+      "title": "Exact header value",
+      "summary": "The exact bounded header value required when this matcher uses value equality.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "max_length": 4096,
+        "pattern": "^[^\\u0000-\\u001F\\u007F]*$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/match/headers/*/name",
+      "parent_path": "/virtual_hosts/*/routes/*/match/headers/*",
+      "key": "name",
+      "title": "Matched header name",
+      "summary": "The HTTP request-header name evaluated by this matcher.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 128,
+        "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/match/headers/*/present",
+      "parent_path": "/virtual_hosts/*/routes/*/match/headers/*",
+      "key": "present",
+      "title": "Header presence",
+      "summary": "Whether the selected request header must be present or absent.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/match/methods",
+      "parent_path": "/virtual_hosts/*/routes/*/match",
+      "key": "methods",
+      "title": "Matched methods",
+      "summary": "The optional explicit HTTP method set accepted by this route.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "max_items": 16,
+        "unique_items": true,
+        "item": {
+          "kind": "string",
+          "min_length": 1,
+          "max_length": 32,
+          "pattern": "^[!#$%&'*+.^_`|~0-9A-Z-]+$"
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/match/path_exact",
+      "parent_path": "/virtual_hosts/*/routes/*/match",
+      "key": "path_exact",
+      "title": "Exact path match",
+      "summary": "An absolute request path that must match exactly.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 4096,
+        "pattern": "^/"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/match/path_prefix",
+      "parent_path": "/virtual_hosts/*/routes/*/match",
+      "key": "path_prefix",
+      "title": "Path-prefix match",
+      "summary": "An absolute request-path prefix used to select this route.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 4096,
+        "pattern": "^/"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/match/query_parameters",
+      "parent_path": "/virtual_hosts/*/routes/*/match",
+      "key": "query_parameters",
+      "title": "Query-parameter matchers",
+      "summary": "The bounded set of query-parameter predicates required by this route.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "max_items": 16,
+        "item": {
+          "kind": "object"
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/match/query_parameters/*/exact",
+      "parent_path": "/virtual_hosts/*/routes/*/match/query_parameters/*",
+      "key": "exact",
+      "title": "Exact query value",
+      "summary": "The exact bounded query-parameter value required by this matcher.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "max_length": 4096,
+        "pattern": "^[^\\u0000-\\u001F\\u007F]*$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/match/query_parameters/*/name",
+      "parent_path": "/virtual_hosts/*/routes/*/match/query_parameters/*",
+      "key": "name",
+      "title": "Matched query name",
+      "summary": "The query-parameter name evaluated by this matcher.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 256,
+        "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/match/query_parameters/*/present",
+      "parent_path": "/virtual_hosts/*/routes/*/match/query_parameters/*",
+      "key": "present",
+      "title": "Query presence",
+      "summary": "Whether the selected query parameter must be present or absent.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "boolean"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/match/safe_regex",
+      "parent_path": "/virtual_hosts/*/routes/*/match",
+      "key": "safe_regex",
+      "title": "Safe regular-expression match",
+      "summary": "A bounded RE2-compatible request-path expression used to select this route.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 1024
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/max_concurrent_requests_per_shard",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "max_concurrent_requests_per_shard",
+      "title": "Route concurrency per shard",
+      "summary": "The maximum requests concurrently admitted to this route on one shard.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 2000000
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/name",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "name",
+      "title": "Route name",
+      "summary": "The unique stable route name within its virtual host.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/redirect",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "redirect",
+      "title": "Redirect response",
+      "summary": "A gateway-generated HTTP redirect action that does not contact an upstream cluster.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/redirect/host",
+      "parent_path": "/virtual_hosts/*/routes/*/redirect",
+      "key": "host",
+      "title": "Redirect host",
+      "summary": "The optional normalized host used to construct the redirect target.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 253,
+        "pattern": "^[0-9a-z:.\\[\\]-]+$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/redirect/path",
+      "parent_path": "/virtual_hosts/*/routes/*/redirect",
+      "key": "path",
+      "title": "Redirect path",
+      "summary": "The absolute non-network-path redirect target path.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 4096,
+        "pattern": "^/(?!/)"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/redirect/port",
+      "parent_path": "/virtual_hosts/*/routes/*/redirect",
+      "key": "port",
+      "title": "Redirect port",
+      "summary": "The optional TCP port included in the redirect authority.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 65535
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/redirect/query",
+      "parent_path": "/virtual_hosts/*/routes/*/redirect",
+      "key": "query",
+      "title": "Redirect query",
+      "summary": "The optional query component appended to the redirect target without a leading question mark.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "max_length": 4096,
+        "pattern": "^(?:$|[^?])"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/redirect/scheme",
+      "parent_path": "/virtual_hosts/*/routes/*/redirect",
+      "key": "scheme",
+      "title": "Redirect scheme",
+      "summary": "The optional HTTP or HTTPS scheme used with an explicit redirect host.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "enum_values": [
+          "http",
+          "https"
+        ]
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/redirect/status_code",
+      "parent_path": "/virtual_hosts/*/routes/*/redirect",
+      "key": "status_code",
+      "title": "Redirect status",
+      "summary": "The supported 3xx HTTP status returned by this redirect action.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "enum_values": [
+          301,
+          302,
+          303,
+          307,
+          308
+        ]
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/request_content",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "request_content",
+      "title": "Request-content policy",
+      "summary": "Optional request media-type and body-size admission rules for this route.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/request_content/allowed_content_types",
+      "parent_path": "/virtual_hosts/*/routes/*/request_content",
+      "key": "allowed_content_types",
+      "title": "Allowed content types",
+      "summary": "The explicit media types accepted by this route's request-content policy.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 1,
+        "max_items": 16,
+        "unique_items": true,
+        "item": {
+          "kind": "string",
+          "min_length": 3,
+          "max_length": 128,
+          "pattern": "^[!#$%&'*+.^_`|~0-9a-z-]+/[!#$%&'*+.^_`|~0-9a-z-]+$"
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/request_content/max_body_bytes",
+      "parent_path": "/virtual_hosts/*/routes/*/request_content",
+      "key": "max_body_bytes",
+      "title": "Route body limit",
+      "summary": "The maximum request-body size in bytes accepted by this route.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 1073741824
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/rewrite",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "rewrite",
+      "title": "Route rewrite",
+      "summary": "Optional upstream authority or path rewriting applied after route selection.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/rewrite/host",
+      "parent_path": "/virtual_hosts/*/routes/*/rewrite",
+      "key": "host",
+      "title": "Rewritten host",
+      "summary": "The normalized upstream host used after this rewrite.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 253,
+        "pattern": "^[0-9a-z:.\\[\\]-]+$"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/rewrite/path",
+      "parent_path": "/virtual_hosts/*/routes/*/rewrite",
+      "key": "path",
+      "title": "Rewritten exact path",
+      "summary": "The absolute path that replaces the complete matched request path.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 4096,
+        "pattern": "^/(?!/)"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/rewrite/path_prefix",
+      "parent_path": "/virtual_hosts/*/routes/*/rewrite",
+      "key": "path_prefix",
+      "title": "Rewritten path prefix",
+      "summary": "The absolute prefix that replaces the matched route prefix while preserving the suffix.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1,
+        "max_length": 4096,
+        "pattern": "^/(?!/)"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/rewrite/port",
+      "parent_path": "/virtual_hosts/*/routes/*/rewrite",
+      "key": "port",
+      "title": "Rewritten port",
+      "summary": "The optional upstream authority port used with a rewritten host.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 65535
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/source_ip_policy",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "source_ip_policy",
+      "title": "Source-IP policy",
+      "summary": "Optional allow or deny CIDR admission based on the resolved downstream client address.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/source_ip_policy/allow_cidrs",
+      "parent_path": "/virtual_hosts/*/routes/*/source_ip_policy",
+      "key": "allow_cidrs",
+      "title": "Allowed source networks",
+      "summary": "The CIDR set from which resolved client addresses are admitted.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 1,
+        "max_items": 64,
+        "unique_items": true,
+        "item": {
+          "kind": "string",
+          "min_length": 3,
+          "max_length": 64
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/source_ip_policy/deny_cidrs",
+      "parent_path": "/virtual_hosts/*/routes/*/source_ip_policy",
+      "key": "deny_cidrs",
+      "title": "Denied source networks",
+      "summary": "The CIDR set from which resolved client addresses are rejected.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 1,
+        "max_items": 64,
+        "unique_items": true,
+        "item": {
+          "kind": "string",
+          "min_length": 3,
+          "max_length": 64
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/websocket",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "websocket",
+      "title": "WebSocket policy",
+      "summary": "Enables bounded WebSocket upgrade and forwarding behavior for an upstream route.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "object"
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/websocket/idle_timeout_ms",
+      "parent_path": "/virtual_hosts/*/routes/*/websocket",
+      "key": "idle_timeout_ms",
+      "title": "WebSocket idle timeout",
+      "summary": "The maximum idle period in milliseconds for an upgraded WebSocket connection.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1000,
+        "maximum": 3600000
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/weighted_clusters",
+      "parent_path": "/virtual_hosts/*/routes/*",
+      "key": "weighted_clusters",
+      "title": "Weighted clusters",
+      "summary": "The bounded set of named clusters and relative weights used for deterministic traffic distribution.",
+      "required_in_parent": false,
+      "secret_reference": false,
+      "value": {
+        "kind": "array",
+        "min_items": 2,
+        "max_items": 16,
+        "item": {
+          "kind": "object"
+        }
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/weighted_clusters/*/cluster",
+      "parent_path": "/virtual_hosts/*/routes/*/weighted_clusters/*",
+      "key": "cluster",
+      "title": "Weighted cluster name",
+      "summary": "The named upstream cluster represented by this weighted entry.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "string",
+        "min_length": 1
+      }
+    },
+    {
+      "path": "/virtual_hosts/*/routes/*/weighted_clusters/*/weight",
+      "parent_path": "/virtual_hosts/*/routes/*/weighted_clusters/*",
+      "key": "weight",
+      "title": "Cluster weight",
+      "summary": "The positive relative traffic weight assigned to this cluster.",
+      "required_in_parent": true,
+      "secret_reference": false,
+      "value": {
+        "kind": "integer",
+        "minimum": 1,
+        "maximum": 4096
+      }
+    }
+  ]
+}

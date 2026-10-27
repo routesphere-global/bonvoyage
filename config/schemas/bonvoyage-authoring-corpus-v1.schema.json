@@ -1,0 +1,300 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docs.routesphere.global/schemas/bonvoyage-authoring-corpus-v1.schema.json",
+  "title": "RouteSphere BonVoyage configuration authoring corpus v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "classification",
+    "corpus_version",
+    "product_version",
+    "contract_version",
+    "configuration_schema_version",
+    "compiler_version",
+    "authority",
+    "cases"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "classification": {
+      "const": "routesphere-bonvoyage-configuration-authoring-corpus"
+    },
+    "corpus_version": {
+      "const": 1
+    },
+    "product_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$"
+    },
+    "contract_version": {
+      "const": "bonvoyage.configuration-authoring.v1"
+    },
+    "configuration_schema_version": {
+      "const": 1
+    },
+    "compiler_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semantic_validation",
+        "result_contract",
+        "network_access",
+        "live_mutation"
+      ],
+      "properties": {
+        "semantic_validation": {
+          "const": "snapshot.Compile"
+        },
+        "result_contract": {
+          "const": "config/schemas/bonvoyage-authoring-result-v1.schema.json"
+        },
+        "network_access": {
+          "const": false
+        },
+        "live_mutation": {
+          "const": false
+        }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/case"
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line", "column", "byte_offset"],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "byte_offset": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "source": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/position"
+        },
+        "end": {
+          "$ref": "#/$defs/position"
+        }
+      }
+    },
+    "artifact": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "bytes",
+        "snapshot_id",
+        "schema_version",
+        "minimum_dataplane_version"
+      ],
+      "properties": {
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "snapshot_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "minimum_dataplane_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    },
+    "diagnostic": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["code", "severity", "path", "source", "redacted"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^BV_CFG_[A-Z0-9_]+$"
+        },
+        "severity": {
+          "const": "error"
+        },
+        "path": {
+          "type": ["string", "null"],
+          "pattern": "^(?:|/.*)$"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "redacted": {
+          "const": true
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "exit_code",
+        "failure_kind",
+        "input_configuration_schema_version",
+        "artifact",
+        "diagnostic"
+      ],
+      "properties": {
+        "status": {
+          "enum": ["accepted", "rejected"]
+        },
+        "exit_code": {
+          "enum": [0, 2]
+        },
+        "failure_kind": {
+          "enum": ["none", "validation"]
+        },
+        "input_configuration_schema_version": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "artifact": {
+          "$ref": "#/$defs/artifact"
+        },
+        "diagnostic": {
+          "$ref": "#/$defs/diagnostic"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "accepted"
+              }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "exit_code": {
+                "const": 0
+              },
+              "failure_kind": {
+                "const": "none"
+              },
+              "artifact": {
+                "type": "object"
+              },
+              "diagnostic": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "exit_code": {
+                "const": 2
+              },
+              "failure_kind": {
+                "const": "validation"
+              },
+              "artifact": {
+                "type": "null"
+              },
+              "diagnostic": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "purpose",
+        "document",
+        "bytes",
+        "sha256",
+        "expected"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "maxLength": 128
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "document": {
+          "type": "string",
+          "pattern": "^(?:[A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+\\.ya?ml$",
+          "maxLength": 512
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "forbidden_output_literals": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        },
+        "expected": {
+          "$ref": "#/$defs/expected"
+        }
+      }
+    }
+  }
+}

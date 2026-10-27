@@ -1,0 +1,47 @@
+server:
+  node_id: upstream-tls-example
+  admin_addr: 127.0.0.1:9901
+  metrics_addr: 127.0.0.1:9090
+snapshot:
+  schema_version: 1
+  snapshot_id: upstream-tls-example
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+listeners:
+  - name: http
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [default]
+virtual_hosts:
+  - name: default
+    domains: [api.example.com]
+    routes:
+      - name: api
+        match:
+          path_prefix: /
+        cluster: secure-backend
+clusters:
+  - name: secure-backend
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 2000
+    max_connections_per_shard: 128
+    max_pending_requests_per_shard: 256
+    upstream_tls:
+      server_name: backend.internal.example.com
+      trust_bundle_secret: backend-ca.pem
+      certificate_chain_secret: gateway-client.pem
+      private_key_secret: gateway-client-key.pem
+    endpoints:
+      - name: backend-1
+        address: backend.internal.example.com
+        port: 8443
+        weight: 1
+runtime_limits:
+  max_downstream_connections_per_shard: 16384
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 10485760
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 15000
+  downstream_idle_timeout_ms: 60000

@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-oss-bounded-benchmark-contract",
+  "product": "BonVoyage API Gateway",
+  "evidence_class": "single-host-local-engineering",
+  "workload": {
+    "id": "oss-http1-proxy-256b",
+    "protocol": "http1",
+    "method": "GET",
+    "path": "/payload/256",
+    "accepted_status": 200,
+    "response_bytes": 256,
+    "response_sha256": "85e62acd750c4eb56b7b6a1d66dca5bfaac5f062608a1a893410d0288936c09a",
+    "load_model": "closed-loop",
+    "warmup_seconds": 5,
+    "measurement_seconds": 10,
+    "repetitions": 3,
+    "concurrency": 32
+  },
+  "load_generator": {
+    "name": "oha",
+    "image": "ghcr.io/hatoo/oha@sha256:57c2247792c1466c88ecc83ddb9253aa0b58dcb852b1d7f2026a0acf7744c965",
+    "output_format": "json",
+    "wait_ongoing_requests_after_deadline": true,
+    "deadline_end_cancellations_limited_by_concurrency": true
+  },
+  "runner": {
+    "compose_file": "deploy/compose/local.yml",
+    "compose_project": "bonvoyage-local",
+    "gateway_service": "bonvoyage",
+    "upstream_service": "upstream",
+    "gateway_probe_host": "127.0.0.1",
+    "gateway_probe_port": 8080,
+    "metrics_url": "http://127.0.0.1:9090/metrics",
+    "resource_sample_interval_ms": 500,
+    "maximum_command_seconds": 120,
+    "container_prefix": "bonvoyage-oss-benchmark"
+  },
+  "evidence": {
+    "summary": "summary.json",
+    "environment": "environment.json",
+    "roles": "roles.json",
+    "command_journal": "raw/commands.jsonl",
+    "response_probe": "raw/response-probe.http",
+    "checksum_manifest": "checksums.sha256",
+    "repetition_files": {
+      "warmup": "raw/repetition-%02d.warmup.oha.json",
+      "oha": "raw/repetition-%02d.oha.json",
+      "metrics_before": "raw/repetition-%02d.metrics-before.prom",
+      "metrics_after": "raw/repetition-%02d.metrics-after.prom",
+      "resources": "raw/repetition-%02d.resources.jsonl",
+      "runtime": "raw/repetition-%02d.runtime.json"
+    }
+  },
+  "acceptance": {
+    "minimum_valid_repetitions": 3,
+    "maximum_error_rate": 0,
+    "maximum_container_restarts": 0,
+    "minimum_resource_samples_per_role": 3,
+    "required_resource_roles": [
+      "gateway",
+      "load-generator",
+      "upstream"
+    ],
+    "zero_counters": [
+      "bonvoyage_bonvoyage_gateway_responses_4xx_total",
+      "bonvoyage_bonvoyage_gateway_responses_5xx_total",
+      "bonvoyage_bonvoyage_gateway_route_misses_total",
+      "bonvoyage_bonvoyage_gateway_request_timeouts_total",
+      "bonvoyage_bonvoyage_gateway_overload_rejections_total",
+      "bonvoyage_bonvoyage_gateway_upstream_failures_total",
+      "bonvoyage_memory_malloc_failed",
+      "bonvoyage_reactor_abandoned_failed_futures",
+      "bonvoyage_stall_detector_reported"
+    ]
+  },
+  "claim_boundary": {
+    "capacity_qualified": false,
+    "competitive_comparison_qualified": false,
+    "dedicated_hardware_qualified": false,
+    "publication_qualified": false
+  },
+  "qualifications": {
+    "verifier_foundation_qualified": true,
+    "runner_foundation_qualified": true,
+    "benchmark_reproduction_qualified": true,
+    "release_admitted": false,
+    "publishable": false
+  }
+}

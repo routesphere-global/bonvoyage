@@ -1,0 +1,122 @@
+server:
+  node_id: phase3-upstream-tls
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-upstream-tls
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+listeners:
+  - name: http
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [tls-client, mtls-client, wrong-name, missing-client, tls-timeout]
+virtual_hosts:
+  - name: tls-client
+    domains: [tls.client.example.test]
+    routes:
+      - name: tls
+        match:
+          path_prefix: /
+        cluster: tls-upstream
+  - name: mtls-client
+    domains: [mtls.client.example.test]
+    routes:
+      - name: mtls
+        match:
+          path_prefix: /
+        cluster: mtls-upstream
+  - name: wrong-name
+    domains: [wrong-name.client.example.test]
+    routes:
+      - name: wrong-name
+        match:
+          path_prefix: /
+        cluster: wrong-name-upstream
+  - name: missing-client
+    domains: [missing-client.client.example.test]
+    routes:
+      - name: missing-client
+        match:
+          path_prefix: /
+        cluster: missing-client-upstream
+  - name: tls-timeout
+    domains: [timeout.client.example.test]
+    routes:
+      - name: tls-timeout
+        match:
+          path_prefix: /
+        cluster: timeout-upstream
+clusters:
+  - name: tls-upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 2000
+    max_connections_per_shard: 8
+    max_pending_requests_per_shard: 16
+    upstream_tls:
+      server_name: upstream-tls.example.test
+      trust_bundle_secret: upstream-ca.pem
+    endpoints:
+      - name: tls-1
+        address: upstream-tls.example.test
+        port: 8081
+  - name: mtls-upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 2000
+    max_connections_per_shard: 8
+    max_pending_requests_per_shard: 16
+    upstream_tls:
+      server_name: upstream-mtls.example.test
+      trust_bundle_secret: upstream-ca.pem
+      certificate_chain_secret: gateway-client.pem
+      private_key_secret: gateway-client-key.pem
+    endpoints:
+      - name: mtls-1
+        address: upstream-mtls.example.test
+        port: 8081
+  - name: wrong-name-upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 2000
+    max_connections_per_shard: 2
+    max_pending_requests_per_shard: 4
+    upstream_tls:
+      server_name: wrong.identity.example.test
+      trust_bundle_secret: upstream-ca.pem
+    endpoints:
+      - name: wrong-name-1
+        address: upstream-tls.example.test
+        port: 8081
+  - name: missing-client-upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 2000
+    max_connections_per_shard: 2
+    max_pending_requests_per_shard: 4
+    upstream_tls:
+      server_name: upstream-mtls.example.test
+      trust_bundle_secret: upstream-ca.pem
+    endpoints:
+      - name: missing-client-1
+        address: upstream-mtls.example.test
+        port: 8081
+  - name: timeout-upstream
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 500
+    max_connections_per_shard: 2
+    max_pending_requests_per_shard: 4
+    upstream_tls:
+      server_name: timeout.upstream.example.test
+      trust_bundle_secret: upstream-ca.pem
+    endpoints:
+      - name: timeout-1
+        address: upstream-stall.example.test
+        port: 8081
+runtime_limits:
+  max_downstream_connections_per_shard: 1024
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 5000
+  downstream_idle_timeout_ms: 10000

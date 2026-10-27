@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-windows-config-large-input-contract",
+  "gate_version": "bonvoyage.configuration-windows-large-input.v1",
+  "activation": {
+    "state": "blocked-pending-public-repository",
+    "template_path": "packaging/release/windows/config-authoring-large-input.workflow.yml",
+    "active_workflow_path": ".github/workflows/config-authoring-windows-large-input.yml",
+    "public_repository_created": false,
+    "repository_settings_verified": false
+  },
+  "source": {
+    "repository": "https://github.com/routesphere-global/bonvoyage",
+    "event": "workflow_dispatch",
+    "ref_type": "tag",
+    "tag_pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$",
+    "protected_tag_required": true,
+    "pushed_commit_required": true,
+    "clean_checkout_required": true
+  },
+  "execution": {
+    "environment": "release",
+    "runner": "windows-2025",
+    "platform": "windows/amd64",
+    "permissions": {
+      "contents": "read"
+    },
+    "timeout_minutes": 15,
+    "command_timeout_seconds": 30,
+    "artifact_retention_days": 3,
+    "maximum_billable_job_minutes": 15,
+    "manual_only": true,
+    "scheduled_runs": false,
+    "self_hosted_runners": false,
+    "cancel_in_progress": false
+  },
+  "toolchain": {
+    "go_version": "1.23.0",
+    "node_version": "22.12.0"
+  },
+  "fixture": {
+    "filename": "windows-large-input.yaml",
+    "bytes": 1048577,
+    "observed_bytes": 1048576,
+    "marker": "BONVOYAGE_WINDOWS_LARGE_INPUT_DO_NOT_ECHO",
+    "sha256": "acb75257f4038985ef6c29072293dbf4a5a7e361b6c9e16a858c464761c0c326",
+    "observed_sha256": "de584597a26f0ab33dbd868f01ae1a85c9a1642de9537255b9b4d7c1431d742a"
+  },
+  "expected_result": {
+    "contract_version": "bonvoyage.configuration-authoring.v1",
+    "operation": "validate",
+    "status": "rejected",
+    "exit_code": 2,
+    "failure_kind": "validation",
+    "diagnostic_code": "BV_CFG_INPUT_TOO_LARGE",
+    "diagnostic_severity": "error",
+    "diagnostic_redacted": false,
+    "normalized_projection_sha256": "e15b1d8e8c7b46abef0fbc802847280b42f47e4887f0128e546aea124213c4cf"
+  },
+  "actions": {
+    "checkout": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+    "setup_go": "actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff",
+    "setup_node": "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+    "upload_artifact": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"
+  },
+  "evidence": {
+    "schema_path": "config/schemas/bonvoyage-windows-large-input-evidence-v1.schema.json",
+    "artifact_name": "config-authoring-windows-large-input",
+    "files": [
+      "acceptance.json",
+      "checksums.sha256"
+    ],
+    "raw_configuration_retained": false,
+    "raw_command_output_retained": false
+  },
+  "authority": {
+    "release_admitted": false,
+    "publishable": false,
+    "github_release_created": false,
+    "artifact_uploaded_to_release": false,
+    "live_configuration_applied": false
+  }
+}

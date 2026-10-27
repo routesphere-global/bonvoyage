@@ -1,0 +1,34 @@
+schema_version: 1
+id: http1-upstream-mtls-phase3-baseline
+description: Phase 3 HTTP/1.1 keep-alive with mutual TLS on the upstream hop.
+protocol: http1
+request:
+  method: GET
+  path: /payload/256
+  body_bytes: 0
+  headers:
+    accept: application/octet-stream
+response:
+  status: 200
+  body_bytes: 256
+  sha256: 85e62acd750c4eb56b7b6a1d66dca5bfaac5f062608a1a893410d0288936c09a
+connection:
+  keep_alive: true
+  pipeline_depth: 1
+  tls_version: none
+  upstream_tls:
+    tls_version: TLSv1.3
+    verify_server_name: true
+    mutual_tls: true
+topology:
+  route_count: 1
+  endpoint_count: 1
+execution:
+  warmup_seconds: 30
+  measurement_seconds: 30
+  repetitions: 5
+  gateway_cores: [1, 2, 8]
+  load_model: open-loop
+  concurrency: [64, 128]
+  utilization_targets: [0.5, 0.7, 0.8, 0.9, 0.95]
+  latency_ceiling_ms: 6.0

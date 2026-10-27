@@ -1,0 +1,86 @@
+server:
+  node_id: phase3-upstream-http2
+  admin_addr: 0.0.0.0:9901
+  metrics_addr: 0.0.0.0:9090
+
+snapshot:
+  schema_version: 1
+  snapshot_id: phase3-upstream-http2
+  generation: 1
+  minimum_dataplane_version: 0.2.0
+
+listeners:
+  - name: cleartext-http1
+    address: 0.0.0.0
+    port: 8080
+    protocol: http1
+    virtual_hosts: [api, wrong-alpn]
+  - name: tls-http2
+    address: 0.0.0.0
+    port: 8443
+    protocol: http2
+    virtual_hosts: [api, wrong-alpn]
+    downstream_tls:
+      certificate_chain_secret: server-chain.pem
+      private_key_secret: server-key.pem
+
+virtual_hosts:
+  - name: api
+    domains: [api.example.test]
+    routes:
+      - name: upstream-http2
+        match:
+          path_prefix: /
+        cluster: upstream-http2
+  - name: wrong-alpn
+    domains: [wrong-alpn.example.test]
+    routes:
+      - name: reject-http1-alpn
+        match:
+          path_prefix: /
+        cluster: wrong-alpn-upstream
+
+clusters:
+  - name: upstream-http2
+    protocol: http2
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 2000
+    max_connections_per_shard: 1
+    max_pending_requests_per_shard: 64
+    max_http2_streams_per_connection: 32
+    upstream_tls:
+      server_name: upstream-h2.example.test
+      trust_bundle_secret: upstream-ca.pem
+    endpoints:
+      - name: upstream-h2-1
+        address: upstream-h2.example.test
+        port: 8443
+    active_health:
+      path: /healthz
+      interval_ms: 1000
+      timeout_ms: 500
+      healthy_threshold: 1
+      unhealthy_threshold: 2
+  - name: wrong-alpn-upstream
+    protocol: http2
+    load_balancing_policy: round_robin
+    connect_timeout_ms: 2000
+    max_connections_per_shard: 1
+    max_pending_requests_per_shard: 4
+    max_http2_streams_per_connection: 8
+    upstream_tls:
+      server_name: upstream-h1.example.test
+      trust_bundle_secret: upstream-ca.pem
+    endpoints:
+      - name: upstream-h1-1
+        address: upstream-h1.example.test
+        port: 8081
+
+runtime_limits:
+  max_downstream_connections_per_shard: 1024
+  max_request_header_bytes: 32768
+  max_request_body_bytes: 1048576
+  max_upstream_response_header_bytes: 32768
+  max_upstream_chunk_metadata_bytes: 32768
+  request_timeout_ms: 10000
+  downstream_idle_timeout_ms: 30000
