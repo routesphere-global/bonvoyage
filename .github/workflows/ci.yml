@@ -36,7 +36,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22.12.0
+          node-version: 22.19.0
       - name: Install pinned public tooling without lifecycle scripts
         run: npm ci --ignore-scripts
       - name: Run the portable public test surface
