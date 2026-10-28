@@ -53,6 +53,12 @@
   margin: 0 0 1rem;
 }
 
+.sl-markdown-content img:not(.bonvoyage-doc-mark) {
+  background: #ffffff;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 6px;
+}
+
 /* Technical reference tables need more room than Starlight's prose default. */
 @media (min-width: 72rem) {
   :root {

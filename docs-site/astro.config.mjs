@@ -44,6 +44,15 @@ export default defineConfig({
           ],
         },
         {
+          label: 'Console Free',
+          items: [
+            { label: 'Console overview', slug: 'console' },
+            { label: 'Sign in and inspect', slug: 'console/sign-in-and-inspect' },
+            { label: 'Apply a configuration', slug: 'console/apply-configuration' },
+            { label: 'Recover a rejected rollout', slug: 'console/recover-rejected-rollout' },
+          ],
+        },
+        {
           label: 'Reference',
           items: [
             { label: 'YAML parameter reference', slug: 'reference/configuration-parameters' },
