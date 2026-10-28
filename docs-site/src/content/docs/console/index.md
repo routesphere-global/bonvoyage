@@ -47,9 +47,10 @@ already signed in.
 
 ## Start here
 
-1. [Sign in and inspect the installation](sign-in-and-inspect/).
-2. [Apply a configuration safely](apply-configuration/).
-3. [Recover a rejected rollout](recover-rejected-rollout/).
+1. [Create the first administrator](create-first-administrator/).
+2. [Sign in and inspect the installation](sign-in-and-inspect/).
+3. [Apply a configuration safely](apply-configuration/).
+4. [Recover a rejected rollout](recover-rejected-rollout/).
 
 Use the **Documentation** entry in the Console sidebar to open this
 release-matched section in a separate browser tab.

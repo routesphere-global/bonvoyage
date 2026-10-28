@@ -8,8 +8,12 @@ Use this tutorial before proposing a configuration change.
 ## Prerequisites
 
 - The management plane, Console, and at least one gateway node are running.
-- You have the Console URL and a named installation account.
+- The installation owner has [created a named Console account](../create-first-administrator/).
+- You have the Console URL, account ID, and password for that account.
 - The account has the role required for the work you intend to perform.
+
+Console Free ships no default account, password, or hidden recovery credential.
+Do not try example credentials from development fixtures on an installed system.
 
 Do not share an account or put its password in YAML, shell history, screenshots,
 or issue reports.
