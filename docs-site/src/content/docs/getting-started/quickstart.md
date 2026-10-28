@@ -11,6 +11,12 @@ Run this command from the repository root:
 docker compose -f deploy/compose/local.yml up --build --detach --wait
 ```
 
+On a first clean checkout, allow several minutes for this command. The image
+build compiles the C++ dependencies and runs the compiled component test suite
+before producing the minimal runtime image. Build progress during those steps
+is expected; do not start the verification commands until Compose reports that
+the gateway and upstream are running.
+
 The profile builds and starts three roles:
 
 1. `upstream` returns controlled responses.
@@ -85,8 +91,13 @@ curl --fail --show-error http://127.0.0.1:9901/health/ready
 Prometheus metrics are exposed on the metrics listener:
 
 ```bash
-curl --fail --show-error http://127.0.0.1:9090/metrics
+curl --fail --show-error --silent http://127.0.0.1:9090/metrics \
+  | grep -E 'gateway_(configured_routes|requests_total)'
 ```
+
+The local snapshot has two configured routes. The request counter should be
+nonzero after the preceding traffic checks; its exact value depends on earlier
+probes.
 
 These three checks answer different questions: the route check proves request
 handling, the admin check proves process readiness, and the metrics check proves
@@ -108,6 +119,7 @@ reusing an older compiled snapshot.
 
 | Symptom | Check |
 | --- | --- |
+| First clean build takes several minutes | Keep the build running while the C++ dependencies compile and the component tests execute. A later cached build is normally faster. |
 | Build stops during dependency compilation | Confirm Docker has sufficient memory and free disk space. |
 | Gateway never becomes ready | Inspect the snapshot compiler result before the gateway logs. Invalid configuration must not activate. |
 | Port is already allocated | Stop the conflicting local service or change the host-side mapping for the evaluation. |

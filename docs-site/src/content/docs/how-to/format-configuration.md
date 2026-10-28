@@ -38,13 +38,23 @@ cat ../config/examples/local.yaml | \
 
 ## Replace a file explicitly
 
-Use `--in-place` only with a selected file:
+Use `--in-place` only with a selected file. For a first evaluation, copy the
+shipped example to a disposable working file so the repository remains clean:
 
 ```bash
+cp ../config/examples/local.yaml /tmp/bonvoyage-formatted.yaml
+
 go run ./cmd/bonvoyage-config format \
-  --input ../config/examples/local.yaml \
+  --input /tmp/bonvoyage-formatted.yaml \
   --in-place
+
+go run ./cmd/bonvoyage-config validate \
+  --input /tmp/bonvoyage-formatted.yaml
 ```
+
+The final validation must be accepted. Use `--in-place` on a source-controlled
+configuration only when you intentionally want to review and commit its
+formatting change.
 
 The command first completes every validation and preservation check. If the
 result changed, it writes a temporary regular file in the same directory,
