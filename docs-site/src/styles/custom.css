@@ -73,6 +73,14 @@
     width: calc(100% - var(--bonvoyage-toc-width));
   }
 
+  /* Starlight otherwise pins the article to the right on wide displays. */
+  [data-has-sidebar][data-has-toc]
+    .main-pane
+    .content-panel
+    > .sl-container {
+    margin-inline: auto !important;
+  }
+
   .right-sidebar-panel .sl-container {
     width: auto;
     max-width: none;
