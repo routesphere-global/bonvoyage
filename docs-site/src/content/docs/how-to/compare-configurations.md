@@ -14,16 +14,20 @@ public release remains pending. `migrate` and immutable-artifact `preview` are
 implemented as separate source operations.
 :::
 
-## Compare two files
+## Compare the shipped examples
 
-From the repository's `control-plane/` directory, select two complete YAML
-documents that you created or reviewed:
+From the repository's `control-plane/` directory, compare the release-matched
+plain HTTP and downstream-TLS examples:
 
 ```bash
 go run ./cmd/bonvoyage-config diff \
-  --baseline baseline.yaml \
-  --proposed proposed.yaml
+  --baseline ../config/examples/local.yaml \
+  --proposed ../config/examples/tls.yaml
 ```
+
+This is a read-only comparison. It does not require the referenced TLS secret
+files because it compiles the declarative secret references rather than
+starting a listener.
 
 An accepted result identifies both bounded inputs, both deterministic compiled
 artifacts, and a sorted change list:
@@ -52,15 +56,16 @@ SHA-256 value.
 Exactly one side may come from explicit standard input:
 
 ```bash
-cat baseline.yaml | go run ./cmd/bonvoyage-config diff \
+cat ../config/examples/local.yaml | go run ./cmd/bonvoyage-config diff \
   --baseline-stdin \
-  --baseline-source-id baseline.yaml \
-  --proposed proposed.yaml
+  --baseline-source-id local.yaml \
+  --proposed ../config/examples/tls.yaml
 ```
 
-Reverse the direction with `--baseline baseline.yaml`, `--proposed-stdin`, and
-`--proposed-source-id proposed.yaml`. Both sides cannot use the same standard
-input stream.
+For your own files, replace these paths with two complete configurations that
+you created or reviewed. Reverse the standard-input direction with
+`--baseline PATH`, `--proposed-stdin`, and `--proposed-source-id NAME`. Both
+sides cannot use the same standard input stream.
 
 ## Interpret paths and changes
 
@@ -103,8 +108,8 @@ Automation may bind the comparison to exact installed identities:
 
 ```bash
 go run ./cmd/bonvoyage-config diff \
-  --baseline baseline.yaml \
-  --proposed proposed.yaml \
+  --baseline ../config/examples/local.yaml \
+  --proposed ../config/examples/tls.yaml \
   --require-product-version 0.2.0 \
   --require-compiler-version bonvoyage-control-plane-phase4-admin-v1 \
   --require-configuration-schema-version 1

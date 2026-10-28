@@ -46,6 +46,7 @@ and troubleshooting checks.
 | Compare two accepted configurations without exposing values | [Compare configurations](how-to/compare-configurations/) |
 | Check or migrate an explicit configuration-schema pair | [Migrate a configuration](how-to/migrate-configuration/) |
 | Preview an immutable artifact and local changes | [Preview a configuration](how-to/preview-configuration/) |
+| Operate a standalone installation visually | [Console Free](console/) |
 | Understand the runtime | [System model](concepts/system-model/) |
 | Understand safe changes | [Configuration lifecycle](concepts/configuration-lifecycle/) |
 | Look up every YAML parameter, constraint, and example | [YAML parameter reference](reference/configuration-parameters/) |

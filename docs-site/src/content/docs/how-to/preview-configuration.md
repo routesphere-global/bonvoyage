@@ -59,13 +59,14 @@ duplicate compiler semantics in a second detector.
 
 ## Compare with a local baseline
 
-Select one reviewed local baseline to add the same redacted semantic change set
-used by `bonvoyage-config diff`:
+Use the shipped plain HTTP example as a reviewed baseline for the downstream
+TLS example. This adds the same redacted semantic change set used by
+`bonvoyage-config diff`:
 
 ```bash
 go run ./cmd/bonvoyage-config preview \
-  --input proposed.yaml \
-  --baseline baseline.yaml
+  --input ../config/examples/tls.yaml \
+  --baseline ../config/examples/local.yaml
 ```
 
 The result then includes `baseline_artifact_sha256`. `changes` contains only
@@ -82,10 +83,10 @@ The proposal may come from explicitly selected standard input while the
 optional baseline remains a local path:
 
 ```bash
-cat proposed.yaml | go run ./cmd/bonvoyage-config preview \
+cat ../config/examples/tls.yaml | go run ./cmd/bonvoyage-config preview \
   --stdin \
-  --source-id proposed.yaml \
-  --baseline baseline.yaml
+  --source-id tls.yaml \
+  --baseline ../config/examples/local.yaml
 ```
 
 Omit `--baseline` for an artifact-only preview. `--source-id` is reporting
@@ -109,7 +110,7 @@ Automation may bind preview to the exact installed authority:
 
 ```bash
 go run ./cmd/bonvoyage-config preview \
-  --input proposed.yaml \
+  --input ../config/examples/tls.yaml \
   --require-product-version 0.2.0 \
   --require-compiler-version bonvoyage-control-plane-phase4-admin-v1 \
   --require-configuration-schema-version 1

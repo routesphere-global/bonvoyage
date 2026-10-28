@@ -52,9 +52,9 @@ no-change pair it equals the input SHA-256 identity.
 Standard input must be selected deliberately and given a bounded source name:
 
 ```bash
-cat legacy.yaml | go run ./cmd/bonvoyage-config migrate \
+cat ../config/examples/local.yaml | go run ./cmd/bonvoyage-config migrate \
   --stdin \
-  --source-id legacy.yaml \
+  --source-id local.yaml \
   --from-schema-version 1 \
   --to-schema-version 1
 ```
@@ -63,21 +63,34 @@ The source document must declare `snapshot.schema_version: 1`; the declaration
 must match `--from-schema-version`. A mismatch is refused with
 `BV_CFG_VERSION_MISMATCH`.
 
-## Validate the returned document
+## Migrate and validate a working copy
 
 Migration proves only that the selected version pair exists and that the input
 is safely parseable. It deliberately does not require the old document to pass
 the current semantic compiler, because a future old schema may contain fields
 that the current schema no longer accepts.
 
-Always write the returned `result.document` to a separate reviewed file and
-validate it with the same installed release before considering deployment:
+For a complete first-run sequence, create a disposable working copy, migrate
+that copy explicitly, and validate the resulting file with the same installed
+release:
 
 ```bash
+cp ../config/examples/local.yaml /tmp/bonvoyage-migrated.yaml
+
+go run ./cmd/bonvoyage-config migrate \
+  --input /tmp/bonvoyage-migrated.yaml \
+  --from-schema-version 1 \
+  --to-schema-version 1 \
+  --in-place
+
 go run ./cmd/bonvoyage-config validate \
-  --input migrated.yaml \
+  --input /tmp/bonvoyage-migrated.yaml \
   --require-configuration-schema-version 1
 ```
+
+The current `1` to `1` pair leaves the working copy unchanged. The sequence is
+still useful because it demonstrates the required review boundary for a future
+transforming migration without modifying a tracked example.
 
 An accepted migration is **not** an accepted configuration, deployment, ACK,
 activation, or traffic result.
@@ -86,15 +99,7 @@ activation, or traffic result.
 
 `--in-place` requires `--input` and rejects symlinks. For the current no-change
 pair, BonVoyage verifies the regular-file boundary but does not replace or
-modify the file:
-
-```bash
-go run ./cmd/bonvoyage-config migrate \
-  --input legacy.yaml \
-  --from-schema-version 1 \
-  --to-schema-version 1 \
-  --in-place
-```
+modify the file. Use a working copy as shown above before evaluating this mode.
 
 Prefer separate output and review even after a future transforming migration is
 shipped. Read-only migration may follow a symlink that resolves to a regular
