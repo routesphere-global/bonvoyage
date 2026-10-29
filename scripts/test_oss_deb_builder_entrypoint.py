@@ -38,6 +38,15 @@ class OssDebBuilderEntrypointTests(unittest.TestCase):
         (source / "README.md").write_text("fixture\n", encoding="utf-8")
         if license_file:
             (source / "LICENSE").write_text("reviewed fixture license\n" * 8, encoding="utf-8")
+        license_root = source / "packaging/release/licenses"
+        license_root.mkdir(parents=True)
+        (license_root / "THIRD_PARTY_NOTICES.md").write_text(
+            "third-party notices\n" * 8, encoding="utf-8")
+        (license_root / "THIRD_PARTY_SOURCE.md").write_text(
+            "libjwt Mozilla Public License source\n" * 8, encoding="utf-8")
+        otel = source / "third_party/opentelemetry-proto"
+        otel.mkdir(parents=True)
+        (otel / "LICENSE").write_text("OpenTelemetry fixture license\n" * 8, encoding="utf-8")
         self.git(source, "add", ".")
         self.git(source, "commit", "-q", "-m", "fixture")
         self.git(source, "tag", "v1.2.3-rc.1")
@@ -140,6 +149,30 @@ class OssDebBuilderEntrypointTests(unittest.TestCase):
         data = destination.read_bytes()
         self.assertTrue(data.startswith(b"[earlier output omitted]"))
         self.assertLessEqual(len(data), 96)
+
+    def test_dependency_license_bundle_is_deterministic_and_complete(self):
+        source, _ = self.repository()
+        installed = []
+        for name in ("seastar", "libjwt"):
+            path = self.root / f"{name}.LICENSE"
+            path.write_text(f"{name} fixture license\n" * 8, encoding="utf-8")
+            installed.append((name, path))
+        with mock.patch.object(ENTRYPOINT, "INSTALLED_LICENSES", tuple(installed)):
+            first = ENTRYPOINT.third_party_license_bundle(source)
+            second = ENTRYPOINT.third_party_license_bundle(source)
+        self.assertEqual(first, second)
+        text = first.decode("utf-8")
+        for name in ("libjwt", "opentelemetry-proto", "seastar"):
+            self.assertIn(name, text)
+
+    def test_builder_image_preserves_seastar_license_before_source_cleanup(self):
+        dockerfile = Path(__file__).resolve().parent.parent / "deploy/docker/bonvoyage/Dockerfile"
+        stage = dockerfile.read_text().split(
+            "FROM seastar-build AS oss-deb-builder", 1)[1].split("\nFROM ", 1)[0]
+        preserve = "install -D -m 0644 /usr/src/seastar/LICENSE"
+        cleanup = "rm -rf /usr/src/seastar"
+        self.assertIn(preserve, stage)
+        self.assertLess(stage.index(preserve), stage.index(cleanup))
 
 
 if __name__ == "__main__":

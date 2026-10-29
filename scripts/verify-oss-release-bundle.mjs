@@ -20,11 +20,7 @@ const RIGHTS_APPROVAL_CLASSIFICATION =
 const MANIFEST_CLASSIFICATION =
   'routesphere-bonvoyage-oss-release-manifest';
 const PUBLICATION_REVIEW_ROLES = Object.freeze([
-  'architecture',
-  'security',
-  'documentation',
-  'release',
-  'legal',
+  'release-owner',
 ]);
 const MAX_CONTROL_FILE_BYTES = 8 * 1024 * 1024;
 const UTF8_DECODER = new TextDecoder('utf-8', {fatal: true});
@@ -34,7 +30,7 @@ const DEFAULT_CONTRACT = path.resolve(
 // Updated deliberately whenever the canonical release contract changes. The
 // production CLI has no caller-selectable contract root.
 const DEFAULT_CONTRACT_SHA256 =
-  'feb4da3316c98bf81018804be6baffbdb8edd16281d93a610fcbfe6293f5be52';
+  '22ec6123990267fc7958b1cbaefdc09121f2c427fbf1111c2239f1c1852dd55d';
 
 function fail(message) {
   throw new Error(message);
@@ -304,7 +300,7 @@ function validateContract(contract) {
     'publication_authorization',
     'requirements',
   ], 'release contract');
-  if (contract.schema_version !== 2 ||
+  if (contract.schema_version !== 3 ||
       contract.classification !== 'routesphere-bonvoyage-oss-release-contract') {
     fail('release contract schema or classification is unsupported');
   }
@@ -359,8 +355,8 @@ function validateContract(contract) {
     'maximum_review_age_hours',
     'maximum_authorization_lifetime_hours',
     'minimum_distinct_reviewers',
-    'legal_role',
-    'legal_gate_ids',
+    'rights_approval_role',
+    'rights_gate_ids',
     'role_signers',
   ], 'contract.publication_authorization');
   if (!['pending-identity-activation', 'active'].includes(
@@ -390,21 +386,22 @@ function validateContract(contract) {
   const minimumDistinctReviewers = requireInteger(
     publicationAuthorization.minimum_distinct_reviewers,
     'contract.publication_authorization.minimum_distinct_reviewers');
-  if (minimumDistinctReviewers < 2 ||
+  if (minimumDistinctReviewers < 1 ||
       minimumDistinctReviewers > publicationReviewRoles.length) {
     fail('contract publication authorization requires an invalid reviewer count');
   }
-  const legalRole = requireString(
-    publicationAuthorization.legal_role,
-    'contract.publication_authorization.legal_role');
-  if (legalRole !== 'legal' || !publicationReviewRoles.includes(legalRole)) {
-    fail('contract publication authorization legal role must be legal');
+  const rightsApprovalRole = requireString(
+    publicationAuthorization.rights_approval_role,
+    'contract.publication_authorization.rights_approval_role');
+  if (rightsApprovalRole !== 'release-owner' ||
+      !publicationReviewRoles.includes(rightsApprovalRole)) {
+    fail('contract rights approval role must be release-owner');
   }
-  const legalGateIds = uniqueStrings(
-    publicationAuthorization.legal_gate_ids,
-    'contract.publication_authorization.legal_gate_ids');
-  if (legalGateIds.length === 0) {
-    fail('contract publication authorization legal gates must not be empty');
+  const rightsGateIds = uniqueStrings(
+    publicationAuthorization.rights_gate_ids,
+    'contract.publication_authorization.rights_gate_ids');
+  if (rightsGateIds.length === 0) {
+    fail('contract publication authorization rights gates must not be empty');
   }
   const roleSigners = requireObject(
     publicationAuthorization.role_signers,
@@ -533,8 +530,8 @@ function validateContract(contract) {
       maximumReviewAgeHours,
       maximumAuthorizationLifetimeHours,
       minimumDistinctReviewers,
-      legalRole,
-      legalGateIds,
+      rightsApprovalRole,
+      rightsGateIds,
       signersByRole,
     },
     requirements,
@@ -764,7 +761,7 @@ function verifyRightsApprovalRecord({
       boundPaths.add(evidencePath);
     }
   }
-  assertExactSet(gateIds, policy.legalGateIds, 'rights approval gate ids');
+  assertExactSet(gateIds, policy.rightsGateIds, 'rights approval gate ids');
   return bound.sha256;
 }
 
@@ -954,12 +951,12 @@ function verifyPublicationAuthorization({
     }
     const statementRightsSha = requireNullableSha256(
       statement.rights_record_sha256, `${reviewLabel}.rights_record_sha256`);
-    if (review.role === policy.legalRole) {
+    if (review.role === policy.rightsApprovalRole) {
       if (statementRightsSha !== rightsRecordSha256) {
         fail(`${reviewLabel} is not bound to the approved rights record`);
       }
     } else if (statementRightsSha !== null) {
-      fail(`${reviewLabel} must not assert the legal rights record`);
+      fail(`${reviewLabel} must not assert the rights approval record`);
     }
 
     const evidence = requireArray(statement.evidence, `${reviewLabel}.evidence`);

@@ -70,6 +70,8 @@ Git can add the trailer with `git commit --signoff`. A sign-off certifies the
 DCO; it is not a copyright assignment and is not replaced by an AI-generated
 summary, tool attribution, or pull-request checkbox. If a pull request contains
 multiple commits, every contributed commit must carry an appropriate sign-off.
+Pull-request CI verifies the trailer against each non-merge commit's author;
+the pull-request checkbox is only a reminder and cannot replace the trailer.
 
 Maintainers may request provenance details, split or rewritten commits, added
 tests, independent review, or a narrower change before considering a merge.

@@ -36,7 +36,8 @@ def file_record(base, path, maximum):
 
 
 def create(source_root, release_version, package_revision, maintainer,
-           dataplane, copyright_path, toolchain_lock, output):
+           dataplane, copyright_path, third_party_notices, third_party_source,
+           third_party_licenses, toolchain_lock, output):
     BUILDER.semver_to_debian(release_version, package_revision)
     BUILDER.require(BUILDER.MAINTAINER.fullmatch(maintainer) is not None,
                     "explicit single-line maintainer required")
@@ -62,6 +63,12 @@ def create(source_root, release_version, package_revision, maintainer,
         "files": {
             "dataplane": file_record(output.parent, dataplane, 512 * 1024 * 1024),
             "copyright": file_record(output.parent, copyright_path, 2 * 1024 * 1024),
+            "third_party_notices": file_record(
+                output.parent, third_party_notices, 2 * 1024 * 1024),
+            "third_party_source": file_record(
+                output.parent, third_party_source, 2 * 1024 * 1024),
+            "third_party_licenses": file_record(
+                output.parent, third_party_licenses, 8 * 1024 * 1024),
             "toolchain_lock": file_record(output.parent, toolchain_lock, 4 * 1024 * 1024),
         },
     }
@@ -83,6 +90,9 @@ if __name__ == "__main__":
     parser.add_argument("--maintainer", required=True)
     parser.add_argument("--dataplane", required=True, type=Path)
     parser.add_argument("--copyright", required=True, type=Path)
+    parser.add_argument("--third-party-notices", required=True, type=Path)
+    parser.add_argument("--third-party-source", required=True, type=Path)
+    parser.add_argument("--third-party-licenses", required=True, type=Path)
     parser.add_argument("--toolchain-lock", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     arguments = parser.parse_args()
@@ -92,6 +102,9 @@ if __name__ == "__main__":
             arguments.source_root.absolute(), arguments.release_version,
             arguments.package_revision, arguments.maintainer,
             arguments.dataplane.absolute(), arguments.copyright.absolute(),
+            arguments.third_party_notices.absolute(),
+            arguments.third_party_source.absolute(),
+            arguments.third_party_licenses.absolute(),
             arguments.toolchain_lock.absolute(), arguments.output.absolute(),
         )
     except (OSError, subprocess.SubprocessError, ValueError) as error:

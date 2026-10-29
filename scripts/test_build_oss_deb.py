@@ -50,6 +50,19 @@ class OssDebBuilderTests(unittest.TestCase):
             "Test-only license fixture with no publication or redistribution authority.\n",
             encoding="utf-8",
         )
+        (self.inputs / "THIRD_PARTY_NOTICES.md").write_text(
+            "# Third-party notices\n\nlibjwt is distributed under MPL-2.0.\n" + "n" * 80,
+            encoding="utf-8",
+        )
+        (self.inputs / "THIRD_PARTY_SOURCE.md").write_text(
+            "# Third-party source availability\n\nlibjwt source is available under the "
+            "Mozilla Public License 2.0.\n" + "s" * 80,
+            encoding="utf-8",
+        )
+        (self.inputs / "THIRD_PARTY_LICENSES.txt").write_text(
+            "Bundled licenses\n\nlibjwt\nMozilla Public License Version 2.0\n" + "l" * 80,
+            encoding="utf-8",
+        )
         self.toolchain = self.valid_toolchain()
         (self.inputs / "toolchain.json").write_text(
             json.dumps(self.toolchain, sort_keys=True) + "\n", encoding="utf-8",
@@ -70,6 +83,9 @@ class OssDebBuilderTests(unittest.TestCase):
             "files": {
                 "dataplane": self.record("bonvoyage-dataplane"),
                 "copyright": self.record("LICENSE"),
+                "third_party_notices": self.record("THIRD_PARTY_NOTICES.md"),
+                "third_party_source": self.record("THIRD_PARTY_SOURCE.md"),
+                "third_party_licenses": self.record("THIRD_PARTY_LICENSES.txt"),
                 "toolchain_lock": self.record("toolchain.json"),
             },
         }
@@ -243,6 +259,8 @@ class OssDebBuilderTests(unittest.TestCase):
         self.assertEqual(binding["input_manifest_sha256"], self.anchor)
         self.assertEqual((output / "toolchain-lock.json").read_bytes(),
                          (self.inputs / "toolchain.json").read_bytes())
+        self.assertEqual((output / "work/input/THIRD_PARTY_SOURCE.md").read_bytes(),
+                         (self.inputs / "THIRD_PARTY_SOURCE.md").read_bytes())
 
     def test_prepare_never_overwrites_or_writes_inside_source(self):
         output = self.root / "output"
@@ -313,6 +331,9 @@ class OssDebBuilderTests(unittest.TestCase):
             repository, "1.0.0-rc.1", 1,
             "RouteSphere Release <release@routesphere.global>",
             self.inputs / "bonvoyage-dataplane", self.inputs / "LICENSE",
+            self.inputs / "THIRD_PARTY_NOTICES.md",
+            self.inputs / "THIRD_PARTY_SOURCE.md",
+            self.inputs / "THIRD_PARTY_LICENSES.txt",
             self.inputs / "toolchain.json", output,
         )
         self.assertEqual(document["source_commit"], specification["source_commit"])
@@ -329,6 +350,9 @@ class OssDebBuilderTests(unittest.TestCase):
                 repository, "1.0.0-rc.1", 1,
                 "RouteSphere Release <release@routesphere.global>",
                 self.inputs / "bonvoyage-dataplane", outside,
+                self.inputs / "THIRD_PARTY_NOTICES.md",
+                self.inputs / "THIRD_PARTY_SOURCE.md",
+                self.inputs / "THIRD_PARTY_LICENSES.txt",
                 self.inputs / "toolchain.json", self.inputs / "generated-input.json",
             )
 
@@ -337,6 +361,12 @@ class OssDebBuilderTests(unittest.TestCase):
             "usr/bin/bonvoyage-dataplane": (self.inputs / "bonvoyage-dataplane").read_bytes(),
             "usr/lib/systemd/system/bonvoyage.service": unit,
             "usr/share/doc/bonvoyage-gateway/copyright": (self.inputs / "LICENSE").read_bytes(),
+            "usr/share/doc/bonvoyage-gateway/THIRD_PARTY_NOTICES.md":
+                (self.inputs / "THIRD_PARTY_NOTICES.md").read_bytes(),
+            "usr/share/doc/bonvoyage-gateway/THIRD_PARTY_SOURCE.md":
+                (self.inputs / "THIRD_PARTY_SOURCE.md").read_bytes(),
+            "usr/share/doc/bonvoyage-gateway/THIRD_PARTY_LICENSES.txt":
+                (self.inputs / "THIRD_PARTY_LICENSES.txt").read_bytes(),
             "usr/share/doc/bonvoyage-gateway/README.Debian": readme,
             "usr/share/doc/bonvoyage-gateway/changelog.Debian.gz": gzip.compress(changelog, mtime=0),
         }
@@ -371,7 +401,7 @@ class OssDebBuilderTests(unittest.TestCase):
             self.data_tar(specification, unit, readme, changelog),
             specification, unit, readme, changelog,
         )
-        self.assertEqual(len(verified), 5)
+        self.assertEqual(len(verified), 8)
         with self.assertRaises(ValueError):
             builder.verify_payload_tar(
                 self.data_tar(specification, unit, readme, changelog, extra="etc/secret"),

@@ -179,8 +179,10 @@ diagnostics or a suspected vulnerability.
 
 BonVoyage-owned source and public documentation in this repository are
 licensed under the [Apache License 2.0](LICENSE). Third-party material remains
-under its identified upstream terms; consult `third_party/`, the dependency
-records, and release notices before redistribution.
+under its identified upstream terms; consult the
+[third-party notices](packaging/release/licenses/THIRD_PARTY_NOTICES.md),
+[source-availability notice](packaging/release/licenses/THIRD_PARTY_SOURCE.md),
+`third_party/`, dependency records and release artifacts before redistribution.
 
 Contributions use [Developer Certificate of Origin 1.1](DCO) sign-off as
 described in [CONTRIBUTING.md](CONTRIBUTING.md). The Apache license does not
@@ -194,6 +196,8 @@ grant general rights to RouteSphere or BonVoyage names and logos; see the
 - [Developer Certificate of Origin](DCO)
 - [Contributing](CONTRIBUTING.md)
 - [Dependency policy](DEPENDENCY_POLICY.md)
+- [Third-party notices](packaging/release/licenses/THIRD_PARTY_NOTICES.md)
+- [Third-party source availability](packaging/release/licenses/THIRD_PARTY_SOURCE.md)
 - [Release bundle verification](packaging/release/README.md)
 - [Governance](GOVERNANCE.md)
 - [Security](SECURITY.md)

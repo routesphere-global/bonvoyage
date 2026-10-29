@@ -666,6 +666,8 @@ RUN test "${UBUNTU_SNAPSHOT}" = "20261006T000000Z" \
     && command -v protoc \
     && command -v python3 \
     && test -f /opt/seastar/lib/cmake/Seastar/SeastarConfig.cmake \
+    && install -D -m 0644 /usr/src/seastar/LICENSE \
+      /opt/seastar/share/licenses/seastar/LICENSE \
     && rm -rf /usr/src/seastar /var/lib/apt/lists/* /tmp/*
 
 COPY scripts/oss-deb-builder-entrypoint.py \

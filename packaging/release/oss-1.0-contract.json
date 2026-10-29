@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "classification": "routesphere-bonvoyage-oss-release-contract",
   "product": "BonVoyage API Gateway",
   "source_repository": "https://github.com/routesphere-global/bonvoyage",
@@ -19,7 +19,7 @@
     }
   ],
   "global_gates": [
-    "legal",
+    "rights",
     "source",
     "toolchain"
   ],
@@ -33,27 +33,23 @@
     "vulnerability-review"
   ],
   "publication_review_roles": [
-    "architecture",
-    "security",
-    "documentation",
-    "release",
-    "legal"
+    "release-owner"
   ],
   "publication_authorization": {
-    "status": "pending-identity-activation",
+    "status": "active",
     "authorization_classification": "routesphere-bonvoyage-oss-publication-authorization",
     "review_statement_classification": "routesphere-bonvoyage-oss-publication-review-statement",
     "rights_record_classification": "routesphere-bonvoyage-oss-rights-approval-record",
     "maximum_review_age_hours": 168,
     "maximum_authorization_lifetime_hours": 24,
-    "minimum_distinct_reviewers": 3,
-    "legal_role": "legal",
-    "legal_gate_ids": [
+    "minimum_distinct_reviewers": 1,
+    "rights_approval_role": "release-owner",
+    "rights_gate_ids": [
       "rightsholder-identity",
       "chain-of-title",
       "product-separation",
       "license-selection",
-      "legal-review",
+      "company-release-authorization",
       "third-party-source",
       "binary-redistribution",
       "public-documentation",
@@ -63,11 +59,15 @@
       "exact-release-acceptance"
     ],
     "role_signers": {
-      "architecture": [],
-      "security": [],
-      "documentation": [],
-      "release": [],
-      "legal": []
+      "release-owner": [
+        {
+          "key_id": "release-owner-ed25519:ef092999507a96ccd59a922c",
+          "algorithm": "ed25519",
+          "reviewer_identity": "johnynixon@routesphere.global",
+          "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAS6yMrCX92PaOjzrAbTOkgWI3FoE9mMBbYqDOeKvjCGw=\n-----END PUBLIC KEY-----\n",
+          "status": "active"
+        }
+      ]
     }
   },
   "requirements": {

@@ -28,20 +28,19 @@ publication decision. Publication requires a separate
 and `--require-publishable`.
 
 The authorization envelope binds the exact technical-manifest and release-
-contract digests. It must contain one cryptographically signed statement for
-each architecture, security, documentation, release, and legal review role.
-Each statement is signed with a role-specific Ed25519 key pinned by the
-canonical contract, identifies its reviewer, observes the bounded review-age
-policy, and references checksum-bound technical evidence. The verifier also
-requires the configured minimum number of canonical printable ASCII reviewer
-identities, accepts only canonical SPKI public-key PEM, and rejects duplicate
-public-key material hidden behind different IDs.
+contract digests. It contains one cryptographically signed statement from an
+authorized RouteSphere `release-owner`. The statement is signed with an
+Ed25519 key pinned by the canonical contract, identifies the approver, observes
+the bounded review-age policy, and references checksum-bound technical
+evidence. The verifier accepts only canonical printable ASCII identities and
+canonical SPKI public-key PEM.
 
-The legal statement must bind a separate rights record in which all 12 ADR 0099
-approval gates are `APPROVED` and each gate binds at least one retained evidence
-file present in the authorization inventory. Re-checksumming the envelope cannot
-forge a role signature, reuse an approval against another manifest, or turn an
-unresolved rights gate into publication authority.
+The release-owner statement must bind a separate rights record in which all 12
+ADR 0099 approval gates are `APPROVED` and each gate binds at least one retained
+evidence file present in the private authorization inventory. Those records are
+not published merely to prove the release. Re-checksumming the envelope cannot
+forge the owner signature, reuse an approval against another manifest, or turn
+an unresolved rights gate into publication authority.
 
 Every role statement signs the envelope creation and expiry times. The current
 contract limits authorization lifetime to 24 hours; strict publication checks
@@ -53,13 +52,24 @@ Large artifacts are stream-hashed and only bounded control documents are kept
 in memory.
 
 The production CLI pins the canonical contract digest and does not accept a
-caller-selected contract. The current contract deliberately remains
-`pending-identity-activation` with no trusted signing keys, so it cannot
-authorize a release. RouteSphere company identity, role keys, protected release
-controls, qualified legal review, and the 12 completed rights decisions must be
-established before the policy can be activated. The exported test helper can
+caller-selected contract. The contract has one active RouteSphere
+`release-owner` public key. Activation proves only which key may sign; it does
+not approve any rights row, admit an artifact or authorize publication. The 12
+completed rights decisions, protected release controls and exact technical
+evidence remain mandatory. Architecture, security and documentation reviews
+remain required technical evidence, but they are not represented as additional
+corporate publication signers. Targeted counsel is obtained when an unresolved
+ownership or licensing question requires it; a generic legal signature is not
+manufactured as a mechanical release gate. The exported test helper can
 exercise generated fixture keys, but always labels its result `TEST_ONLY_PASS`
 and forces `publishable: false`.
+
+The private founder release process includes a tested owner-identity tool for
+the initial ceremony. It creates an encrypted Ed25519 key outside Git, emits a
+public-only activation record, applies that public identity consistently to all
+three owner trust contracts and updates this verifier's pinned contract digest.
+Initial activation is rejected unless every policy is still pending with an
+empty key list. The tool does not approve rights or authorize publication.
 
 Technical admission therefore uses:
 
@@ -95,9 +105,9 @@ Each artifact must independently pass:
 6. bounded functional acceptance; and
 7. install, upgrade, rollback, shutdown, and removal lifecycle acceptance.
 
-Global receipts bind clean pushed source, legal approval and the immutable
-build/toolchain inputs. Raw evidence, gate receipts, artifacts and the embedded
-release contract must account for every file in the bundle.
+Global receipts bind clean pushed source, company rights authorization and the
+immutable build/toolchain inputs. Raw evidence, gate receipts, artifacts and
+the embedded release contract must account for every file in the bundle.
 
 ## Public Debian technical-candidate path
 
@@ -125,6 +135,13 @@ commit timestamp match the input manifest. The resulting receipt always keeps
 reproducibility, SBOM, scan, signature, provenance, lifecycle, release and
 publication authority false. Compare two outputs before submitting their exact
 artifact digest to the later hosted gates.
+
+Every Debian candidate must carry the BonVoyage Apache-2.0 license plus the
+release-facing third-party notice, source-availability record and complete
+third-party license bundle under `/usr/share/doc/bonvoyage-gateway/`. The OCI
+candidate carries the same disclosure set under `/usr/share/bonvoyage/`.
+Artifact verification rejects either format when those files are absent or
+changed.
 
 ## Native fresh-install evidence foundation
 

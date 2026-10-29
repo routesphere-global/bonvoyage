@@ -192,7 +192,9 @@ for variant in bodyless content-length chunked; do
   sleep 1
   h2_debug_request "delayed-recovery-$variant.txt" "/healthz"
   test "$(h2_response_status "$recovery")" = "200"
-  ! grep -Fiq 'x-bonvoyage-forged' "$recovery"
+  if grep -Fiq 'x-bonvoyage-forged' "$recovery"; then
+    exit 1
+  fi
   next_upstream="$(h2_upstream_connection "$recovery")"
   test -n "$next_upstream"
   test "$next_upstream" != "$first_upstream"

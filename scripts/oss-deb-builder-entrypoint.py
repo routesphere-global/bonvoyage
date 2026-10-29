@@ -49,6 +49,15 @@ REQUIRED_DEPENDENCIES = (
     "/opt/re2/lib/libre2.a",
     "/opt/seastar/lib/cmake/Seastar/SeastarConfig.cmake",
 )
+INSTALLED_LICENSES = (
+    ("abseil", Path("/opt/abseil/share/licenses/abseil/LICENSE")),
+    ("c-ares", Path("/opt/c-ares/share/licenses/c-ares/LICENSE.md")),
+    ("libjwt", Path("/opt/libjwt/share/licenses/libjwt/LICENSE")),
+    ("llhttp", Path("/opt/llhttp/share/licenses/llhttp/LICENSE-MIT")),
+    ("nghttp2", Path("/opt/nghttp2/share/licenses/nghttp2/COPYING")),
+    ("re2", Path("/opt/re2/share/licenses/re2/LICENSE")),
+    ("seastar", Path("/opt/seastar/share/licenses/seastar/LICENSE")),
+)
 MAINTAINER = "RouteSphere Release <release@routesphere.global>"
 
 
@@ -136,6 +145,8 @@ def self_check(builder_image):
     for name in REQUIRED_DEPENDENCIES:
         path = Path(name)
         require(path.is_file() and not path.is_symlink(), f"missing pinned dependency: {name}")
+    for name, path in INSTALLED_LICENSES:
+        require(path.is_file() and not path.is_symlink(), f"missing {name} license text")
     os_release = Path("/etc/os-release").read_bytes()
     fields = dict(
         line.split("=", 1) for line in os_release.decode("utf-8").splitlines() if "=" in line
@@ -155,6 +166,23 @@ def self_check(builder_image):
         "release_admitted": False,
         "publishable": False,
     }
+
+
+def third_party_license_bundle(source_root):
+    sources = list(INSTALLED_LICENSES)
+    sources.append(("opentelemetry-proto", source_root / "third_party/opentelemetry-proto/LICENSE"))
+    sections = ["BonVoyage bundled third-party license texts\n"]
+    for name, path in sorted(sources, key=lambda item: item[0]):
+        require(path.is_file() and not path.is_symlink(), f"missing {name} license text")
+        data = path.read_bytes()
+        require(0 < len(data) <= 2 * 1024 * 1024, f"invalid {name} license size")
+        try:
+            body = data.decode("utf-8").strip()
+        except UnicodeDecodeError as error:
+            raise ValueError(f"{name} license text must be UTF-8") from error
+        require(body, f"empty {name} license text")
+        sections.append("=" * 80 + f"\n{name}\n" + "=" * 80 + f"\n{body}\n")
+    return "\n".join(sections).encode("utf-8")
 
 
 def command_record(command):
@@ -210,6 +238,11 @@ def build():
     license_path = SOURCE_ROOT / "LICENSE"
     require(license_path.is_file() and not license_path.is_symlink(),
             "reviewed public LICENSE file required")
+    third_party_notices = SOURCE_ROOT / "packaging/release/licenses/THIRD_PARTY_NOTICES.md"
+    third_party_source = SOURCE_ROOT / "packaging/release/licenses/THIRD_PARTY_SOURCE.md"
+    for label, path in (("third-party notices", third_party_notices),
+                        ("third-party source instructions", third_party_source)):
+        require(path.is_file() and not path.is_symlink(), f"reviewed {label} required")
 
     build_root = WORK_ROOT / "build"
     install_root = WORK_ROOT / "install"
@@ -287,6 +320,10 @@ def build():
         shutil.copyfile(dataplane, inputs_root / "bonvoyage-dataplane")
         (inputs_root / "bonvoyage-dataplane").chmod(0o700)
         shutil.copyfile(license_path, inputs_root / "LICENSE")
+        shutil.copyfile(third_party_notices, inputs_root / "THIRD_PARTY_NOTICES.md")
+        shutil.copyfile(third_party_source, inputs_root / "THIRD_PARTY_SOURCE.md")
+        (inputs_root / "THIRD_PARTY_LICENSES.txt").write_bytes(
+            third_party_license_bundle(SOURCE_ROOT))
         manifest = inputs_root / "inputs.json"
         input_result = subprocess.run([
             "python3", "-B", str(SOURCE_ROOT / "scripts/create-oss-deb-input.py"),
@@ -296,6 +333,9 @@ def build():
             "--maintainer", MAINTAINER,
             "--dataplane", str(inputs_root / "bonvoyage-dataplane"),
             "--copyright", str(inputs_root / "LICENSE"),
+            "--third-party-notices", str(inputs_root / "THIRD_PARTY_NOTICES.md"),
+            "--third-party-source", str(inputs_root / "THIRD_PARTY_SOURCE.md"),
+            "--third-party-licenses", str(inputs_root / "THIRD_PARTY_LICENSES.txt"),
             "--toolchain-lock", str(toolchain),
             "--output", str(manifest),
         ], check=True, capture_output=True, text=True, env=environment, timeout=60)

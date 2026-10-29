@@ -257,6 +257,10 @@ def assemble_runtime_root(binary, rootfs, environment, log):
     copy_regular(SOURCE_ROOT / "LICENSE", rootfs / "usr/share/licenses/bonvoyage/LICENSE")
     copy_regular(SOURCE_ROOT / "third_party/opentelemetry-proto/LICENSE",
                  rootfs / "usr/share/licenses/opentelemetry-proto/LICENSE")
+    copy_regular(SOURCE_ROOT / "packaging/release/licenses/THIRD_PARTY_NOTICES.md",
+                 rootfs / "usr/share/bonvoyage/THIRD_PARTY_NOTICES.md")
+    copy_regular(SOURCE_ROOT / "packaging/release/licenses/THIRD_PARTY_SOURCE.md",
+                 rootfs / "usr/share/bonvoyage/THIRD_PARTY_SOURCE.md")
     (rootfs / "var/lib/bonvoyage").mkdir(parents=True, exist_ok=True)
     return libraries
 

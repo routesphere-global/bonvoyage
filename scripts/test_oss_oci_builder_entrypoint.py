@@ -132,6 +132,10 @@ class OssOciBuilderEntrypointTests(unittest.TestCase):
             Path(__file__).resolve().parent.parent /
             "packaging/release/oci/oss-oci-image-contract.json"
         ).read_text())
+        self.assertIn(
+            "usr/share/bonvoyage/THIRD_PARTY_SOURCE.md",
+            contract["rootfs"]["required_files"],
+        )
         self.assertEqual(contract["authority"], {
             "release_admitted": False, "publishable": False,
         })
