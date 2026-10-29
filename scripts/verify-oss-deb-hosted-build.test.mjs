@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -20,6 +21,7 @@ const VERIFICATION_RECEIPT = path.join(ROOT,
   'packaging/release/debian/oss-deb-builder-image-verification.json');
 const ACTIVE_WORKFLOW = path.join(ROOT,
   '.github/workflows/oss-deb-reproducibility.yml');
+const VERIFIER = path.join(ROOT, 'scripts/verify-oss-deb-hosted-build.mjs');
 const IMAGE_DIGEST = 'a'.repeat(64);
 const IMAGE_REFERENCE =
   `ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:${IMAGE_DIGEST}`;
@@ -171,6 +173,60 @@ test('pulled image observation must expose the exact contracted digest', (t) => 
     Architecture: 'amd64',
     Os: 'linux',
   }]), /contracted repository digest/u);
+});
+
+test('CLI accepts the array emitted by docker image inspect', (t) => {
+  const fixture = copyFixture(t);
+  activate(fixture.contractPath, fixture.root);
+  const inspectionPath = path.join(fixture.root, 'builder-image-inspect.json');
+  const observationPath = path.join(fixture.root, 'builder-image-observation.json');
+  fs.writeFileSync(inspectionPath, `${JSON.stringify([{
+    Id: `sha256:${'c'.repeat(64)}`,
+    RepoDigests: [IMAGE_REFERENCE],
+    Architecture: 'amd64',
+    Os: 'linux',
+  }], null, 2)}\n`);
+
+  const result = spawnSync(process.execPath, [
+    VERIFIER,
+    '--contract', fixture.contractPath,
+    '--workflow', fixture.workflowPath,
+    '--require-activatable',
+    '--image-inspection', inspectionPath,
+    '--image-observation', observationPath,
+  ], {encoding: 'utf8'});
+
+  assert.equal(result.status, 0, result.stderr);
+  const observation = JSON.parse(fs.readFileSync(observationPath, 'utf8'));
+  assert.equal(observation.manifest_digest, IMAGE_DIGEST);
+  assert.equal(observation.externally_resolved, true);
+  assert.equal(observation.publishable, false);
+});
+
+test('CLI rejects an object in place of docker image inspect output', (t) => {
+  const fixture = copyFixture(t);
+  activate(fixture.contractPath, fixture.root);
+  const inspectionPath = path.join(fixture.root, 'builder-image-inspect.json');
+  const observationPath = path.join(fixture.root, 'builder-image-observation.json');
+  fs.writeFileSync(inspectionPath, `${JSON.stringify({
+    Id: `sha256:${'c'.repeat(64)}`,
+    RepoDigests: [IMAGE_REFERENCE],
+    Architecture: 'amd64',
+    Os: 'linux',
+  }, null, 2)}\n`);
+
+  const result = spawnSync(process.execPath, [
+    VERIFIER,
+    '--contract', fixture.contractPath,
+    '--workflow', fixture.workflowPath,
+    '--require-activatable',
+    '--image-inspection', inspectionPath,
+    '--image-observation', observationPath,
+  ], {encoding: 'utf8'});
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Docker image inspection must be an array/u);
+  assert.equal(fs.existsSync(observationPath), false);
 });
 
 test('hosted comparison upgrades independence only and retains no release authority', (t) => {

@@ -48,14 +48,18 @@ function exactKeys(value, expected, label) {
   `${label} fields must be exactly [${wanted.join(', ')}]`);
 }
 
-function readJson(filePath, label) {
+function readJsonValue(filePath, label) {
   let value;
   try {
     value = JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch (error) {
     fail(`${label} is not valid JSON: ${error.message}`);
   }
-  return requireObject(value, label);
+  return value;
+}
+
+function readJson(filePath, label) {
+  return requireObject(readJsonValue(filePath, label), label);
 }
 
 function readYaml(filePath, label) {
@@ -510,7 +514,7 @@ if (import.meta.url === new URL(`file://${process.argv[1]}`).href) {
       requireCondition(options.imageInspection && options.imageObservation,
         'both --image-inspection and --image-observation are required');
       const observation = validateImageInspection(contract,
-        readJson(path.resolve(options.imageInspection), 'Docker image inspection'));
+        readJsonValue(path.resolve(options.imageInspection), 'Docker image inspection'));
       writeNewJson(path.resolve(options.imageObservation), observation);
     }
     if (options.technicalReceipt || options.hostedReceipt) {
