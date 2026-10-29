@@ -1,3 +1,7 @@
+> This template is for maintainer-directed repository changes. Community
+> participation is issue-based; external source-code pull requests are not
+> accepted at this stage.
+
 ## Purpose
 
 Describe the user or operator outcome and the smallest change that provides it.
@@ -19,9 +23,9 @@ List the exact tests run and their results. Include controlled before/after evid
 
 Describe protocol, configuration, upgrade, rollback, security, resource, and request-path effects. Write `None` only after considering each category.
 
-## Contributor checklist
+## Maintainer checklist
 
-- [ ] The change is focused and follows the repository contribution terms.
+- [ ] The change is maintainer-directed, focused, and follows repository policy.
 - [ ] Every commit includes a Developer Certificate of Origin sign-off (`git commit -s`).
 - [ ] Tests cover the behavior changed, including rejection paths where relevant.
 - [ ] Documentation and examples match the implemented behavior.

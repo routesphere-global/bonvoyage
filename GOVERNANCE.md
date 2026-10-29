@@ -22,9 +22,12 @@ distribution are reviewable.
 ## Participation
 
 Anyone may submit a well-formed issue after the public repository opens.
-Maintainers may invite or accept focused pull requests, but unsolicited pull
-requests are not guaranteed review or merge. Repository activity does not create
-a support entitlement or transfer release authority.
+Community participation is issue-based: reproducible defects, interoperability
+findings, documentation feedback, deployment experience, and focused test
+evidence are welcome. External source-code fixes and pull requests are not
+accepted at this stage; maintainers own implementation through the project's
+AI-native workflow. Repository activity does not create a support entitlement
+or transfer release authority.
 
 ## AI-native engineering
 

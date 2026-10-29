@@ -184,9 +184,11 @@ under its identified upstream terms; consult the
 [source-availability notice](packaging/release/licenses/THIRD_PARTY_SOURCE.md),
 `third_party/`, dependency records and release artifacts before redistribution.
 
-Contributions use [Developer Certificate of Origin 1.1](DCO) sign-off as
-described in [CONTRIBUTING.md](CONTRIBUTING.md). The Apache license does not
-grant general rights to RouteSphere or BonVoyage names and logos; see the
+Community participation is issue-based as described in
+[CONTRIBUTING.md](CONTRIBUTING.md); external source-code fixes and pull requests
+are not accepted at this stage. Maintainer commits use
+[Developer Certificate of Origin 1.1](DCO) sign-off. The Apache license does
+not grant general rights to RouteSphere or BonVoyage names and logos; see the
 [trademark policy](TRADEMARKS.md).
 
 ## Project policies
