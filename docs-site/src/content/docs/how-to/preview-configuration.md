@@ -124,6 +124,7 @@ go run ./cmd/bonvoyage-config preview \
 | `4` | `failed` | A selected input could not be read or the result could not be written. |
 | `70` | `failed` | An internal invariant failed. |
 
-Use the live Admin API or Console to prove rollout and node state. Offline
-preview intentionally has no credentials, target selector, apply command, or
-runtime authority.
+Use Console Free to prove rollout and node state. Offline preview intentionally
+has no credentials, target selector, apply command, or runtime authority. A
+supported programmatic management contract is not part of the public OSS
+documentation.

@@ -34,6 +34,13 @@ If a release has no Console package, no supported public Console package exists
 for that version. See [Get Console Free](https://docs.routesphere.global/console/get-console-free/)
 for the package and licensing boundary.
 
+The supported public operating surfaces are YAML, the release-matched
+configuration tools, and Console Free. The management service used by the
+Console is not a public compatibility contract: this repository does not ship
+a supported endpoint reference, external automation guide, SDK contract, or
+third-party Console integration guide. Supported programmatic management and
+its documentation are reserved for the Enterprise offer.
+
 ## Capabilities
 
 ### Proxy and traffic management
@@ -63,6 +70,10 @@ for the package and licensing boundary.
   fail-closed `migrate` and immutable-artifact `preview` source commands with
   deterministic machine output.
 - Preview, ACK/NACK discovery, safe rollout, and rollback primitives.
+
+These implementation capabilities do not establish a supported public
+management-API contract. Public operators should use YAML, the documented
+configuration tools, or Console Free.
 
 ### Engineering evidence
 

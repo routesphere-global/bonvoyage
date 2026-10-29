@@ -80,8 +80,8 @@ not be readable by group or other users.
 
 ## 4. Start the Console
 
-Start the service only after its exact HTTPS origin, TLS files, management API
-mTLS identity, and management authorization are configured:
+Start the service only after its exact HTTPS origin, TLS files, management
+service mTLS identity, and management authorization are configured:
 
 ```bash
 sudo systemctl enable --now bonvoyage-console.service

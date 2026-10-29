@@ -26,8 +26,9 @@ Open the Console URL supplied by the installation operator. Enter your
 ![BonVoyage Console Free sign-in page with empty Account ID and Password fields.](../../../assets/screenshots/console/console-sign-in.png)
 
 After authentication, the top bar shows the account, role, and management-plane
-connection state. A green **Connected** badge means the Console can read the
-management API. It is not a gateway traffic-health result.
+connection state. A green **Connected** badge means the Console authenticated
+to its configured management service. It is not a gateway traffic-health
+result or a public management-API compatibility claim.
 
 ## 2. Confirm installation authority
 
