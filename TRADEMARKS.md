@@ -2,7 +2,7 @@
 
 The source code and documentation in this repository are available under the
 licenses stated in [LICENSE](LICENSE) and the relevant third-party files.
-Those licenses do not grant a general right to use RouteSphere Global Pte Ltd's
+Those licenses do not grant a general right to use ROUTESPHERE GLOBAL PTE. LTD.'s
 names, logos, product identity, or other marks.
 
 ## Marks covered
@@ -11,8 +11,8 @@ This policy applies to the names **RouteSphere**, **RouteSphere Global**, and
 **BonVoyage**; the BonVoyage API Gateway product name; the RouteSphere and
 BonVoyage logos; and confusingly similar names, logos, domains, package names,
 or visual identities. Trademark registration is pending. Do not represent any
-of these marks as registered or use a registered-mark symbol unless RouteSphere
-Global Pte Ltd confirms that the relevant registration has been granted.
+of these marks as registered or use a registered-mark symbol unless ROUTESPHERE
+GLOBAL PTE. LTD. confirms that the relevant registration has been granted.
 
 ## Uses that do not require separate permission
 
@@ -31,7 +31,7 @@ or an official RouteSphere release when none exists.
 
 ## Uses that require written permission
 
-Written permission from RouteSphere Global Pte Ltd is required to:
+Written permission from ROUTESPHERE GLOBAL PTE. LTD. is required to:
 
 - use a RouteSphere or BonVoyage logo as your own product, service, company,
   event, community, domain, social-media, or package identity;

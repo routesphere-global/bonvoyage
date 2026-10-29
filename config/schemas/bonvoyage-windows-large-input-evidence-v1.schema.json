@@ -53,7 +53,7 @@
         "os": {"const": "windows"},
         "architecture": {"const": "amd64"},
         "runner": {"const": "windows-2025"},
-        "go_version": {"const": "go1.23.0"},
+        "go_version": {"const": "go1.26.10"},
         "node_version": {"const": "v22.12.0"}
       }
     },
