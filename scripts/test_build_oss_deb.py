@@ -356,7 +356,11 @@ class OssDebBuilderTests(unittest.TestCase):
                 self.inputs / "toolchain.json", self.inputs / "generated-input.json",
             )
 
-    def data_tar(self, specification, unit, readme, changelog, extra=None, bad_mode=False):
+    def data_tar(self, specification, unit, readme, changelog, extra=None, bad_mode=False,
+                 bad_license=False):
+        license_bundle = (self.inputs / "THIRD_PARTY_LICENSES.txt").read_bytes()
+        if bad_license:
+            license_bundle += b"\nmodified\n"
         files = {
             "usr/bin/bonvoyage-dataplane": (self.inputs / "bonvoyage-dataplane").read_bytes(),
             "usr/lib/systemd/system/bonvoyage.service": unit,
@@ -365,8 +369,8 @@ class OssDebBuilderTests(unittest.TestCase):
                 (self.inputs / "THIRD_PARTY_NOTICES.md").read_bytes(),
             "usr/share/doc/bonvoyage-gateway/THIRD_PARTY_SOURCE.md":
                 (self.inputs / "THIRD_PARTY_SOURCE.md").read_bytes(),
-            "usr/share/doc/bonvoyage-gateway/THIRD_PARTY_LICENSES.txt":
-                (self.inputs / "THIRD_PARTY_LICENSES.txt").read_bytes(),
+            "usr/share/doc/bonvoyage-gateway/THIRD_PARTY_LICENSES.txt.gz":
+                gzip.compress(license_bundle, mtime=0),
             "usr/share/doc/bonvoyage-gateway/README.Debian": readme,
             "usr/share/doc/bonvoyage-gateway/changelog.Debian.gz": gzip.compress(changelog, mtime=0),
         }
@@ -410,6 +414,11 @@ class OssDebBuilderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "mode"):
             builder.verify_payload_tar(
                 self.data_tar(specification, unit, readme, changelog, bad_mode=True),
+                specification, unit, readme, changelog,
+            )
+        with self.assertRaisesRegex(ValueError, "license bundle mismatch"):
+            builder.verify_payload_tar(
+                self.data_tar(specification, unit, readme, changelog, bad_license=True),
                 specification, unit, readme, changelog,
             )
 

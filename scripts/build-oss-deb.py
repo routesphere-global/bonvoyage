@@ -445,6 +445,7 @@ def safe_archive_name(member):
 
 
 def verify_payload_tar(data, spec, unit, readme, changelog):
+    compressed_licenses = "usr/share/doc/bonvoyage-gateway/THIRD_PARTY_LICENSES.txt.gz"
     expected = {
         "usr/bin/bonvoyage-dataplane": spec["files"]["dataplane"]["sha256"],
         "usr/share/doc/bonvoyage-gateway/copyright": spec["files"]["copyright"]["sha256"],
@@ -452,8 +453,7 @@ def verify_payload_tar(data, spec, unit, readme, changelog):
             spec["files"]["third_party_notices"]["sha256"],
         "usr/share/doc/bonvoyage-gateway/THIRD_PARTY_SOURCE.md":
             spec["files"]["third_party_source"]["sha256"],
-        "usr/share/doc/bonvoyage-gateway/THIRD_PARTY_LICENSES.txt":
-            spec["files"]["third_party_licenses"]["sha256"],
+        compressed_licenses: None,
         "usr/share/doc/bonvoyage-gateway/README.Debian": digest(readme),
     }
     allowed_directories = {
@@ -488,12 +488,24 @@ def verify_payload_tar(data, spec, unit, readme, changelog):
                         "usr/lib/systemd/system/bonvoyage.service"}:
                 require(body == unit, "packaged service contract mismatch")
                 service_seen += 1
+            elif name == compressed_licenses:
+                expected_body = spec["files"]["third_party_licenses"]
+                require(len(body) <= expected_body["bytes"] + 1024,
+                        "oversized compressed third-party license bundle")
+                try:
+                    with gzip.GzipFile(fileobj=io.BytesIO(body), mode="rb") as stream:
+                        uncompressed = stream.read(expected_body["bytes"] + 1)
+                except (EOFError, OSError) as error:
+                    raise ValueError("invalid compressed third-party license bundle") from error
+                require(len(uncompressed) == expected_body["bytes"] and
+                        digest(uncompressed) == expected_body["sha256"],
+                        "packaged third-party license bundle mismatch")
             elif name == "usr/share/doc/bonvoyage-gateway/changelog.Debian.gz":
                 require(len(body) <= 1024 * 1024 and gzip.decompress(body) == changelog,
                         "packaged changelog mismatch")
             else:
                 require(name in expected and digest(body) == expected[name],
-                        "unexpected or corrupt package file")
+                        "unexpected or corrupt package file: " + name)
             files[name] = {"type": "file", "bytes": len(body), "sha256": digest(body)}
     require(root_seen, "archive root required")
     require(all(name in files for name in expected), "missing package payload")
