@@ -9,7 +9,7 @@ import (
 
 const nativeServiceContractVersion = 3
 const nativeServiceUnit = "/etc/systemd/system/bonvoyage.service"
-const nativeServiceUnitSHA256 = "b3439d9b43e42fed39760b7b05d74239a45b43aeccf9e3219086dab4e0aa083c"
+const nativeServiceUnitSHA256 = "76fc5ed00c71fdebe12b34d914a22266c5e6f2bbe210b45af2fbaf8742967af3"
 const nativeDataplane = "/usr/local/bin/bonvoyage-dataplane"
 const nativeFixedArguments = " --snapshot /etc/bonvoyage/snapshot.pb --admin-address 127.0.0.1 --metrics-address 127.0.0.1 --runtime-log-transport unix --runtime-log-socket /dev/log --log-to-syslog 1 --log-to-stdout 0 --log-with-color 0"
 const nativeRuntimePrefix = "[Service]\nExecStart=\nExecStart=" + nativeDataplane + nativeFixedArguments + " "
