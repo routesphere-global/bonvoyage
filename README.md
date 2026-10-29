@@ -19,6 +19,21 @@ snapshot without a running control-plane process. The included Go control plane
 adds validated distribution, ACK/NACK state, rollout, and rollback primitives;
 it does not sit in the request path.
 
+## Use without registration
+
+The BonVoyage gateway does not require a RouteSphere account, product
+registration, subscription, or connection to a hosted RouteSphere service.
+Users can build and run the Apache-2.0 software directly from this repository.
+
+Console Free is an optional, no-cost proprietary companion distributed as a
+release-matched binary package. It is also intended to run without product
+registration, a RouteSphere account, or a subscription. When an admitted
+Console package is available, it will be attached to the matching
+[BonVoyage GitHub release](https://github.com/routesphere-global/bonvoyage/releases).
+If a release has no Console package, no supported public Console package exists
+for that version. See [Get Console Free](https://docs.routesphere.global/console/get-console-free/)
+for the package and licensing boundary.
+
 ## Capabilities
 
 ### Proxy and traffic management
@@ -68,7 +83,7 @@ founder or commercial records are not part of this repository.
 | Core proxy path | Implemented and under clean-room release validation |
 | Standalone Go control plane | Implemented and under clean-room release validation |
 | Public performance package | Pending sanitized evidence publication |
-| Proprietary Console | Not included |
+| Proprietary Console | Source not included; first public Console Free package pending |
 
 ## Quick start
 
@@ -146,6 +161,7 @@ before interpreting an implementation or performance claim.
 
 - [Requirements](https://docs.routesphere.global/getting-started/requirements/)
 - [Docker quickstart](https://docs.routesphere.global/getting-started/quickstart/)
+- [Get Console Free](https://docs.routesphere.global/console/get-console-free/)
 - [Verify a local deployment](https://docs.routesphere.global/how-to/verify-local-deployment/)
 - [Validate a configuration](https://docs.routesphere.global/how-to/validate-configuration/)
 - [Format a configuration](https://docs.routesphere.global/how-to/format-configuration/)

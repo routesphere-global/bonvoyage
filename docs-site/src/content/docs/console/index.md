@@ -10,9 +10,11 @@ The Console is optional: the OSS gateway, configuration tools, and Admin API do
 not require it.
 
 :::note[Current scope]
-Console Free is distributed separately from the public source repository. These
-pages document supported operator behavior without publishing Console source,
-credentials, or private management internals.
+Console Free is distributed separately from the public source repository as a
+no-cost proprietary binary. Downloading and using it does not require product
+registration, a RouteSphere account, or a subscription. These pages document
+supported operator behavior without publishing Console source, credentials, or
+private management internals. Start with [Get Console Free](get-console-free/).
 :::
 
 ## The operating loop
@@ -47,10 +49,11 @@ already signed in.
 
 ## Start here
 
-1. [Create the first administrator](create-first-administrator/).
-2. [Sign in and inspect the installation](sign-in-and-inspect/).
-3. [Apply a configuration safely](apply-configuration/).
-4. [Recover a rejected rollout](recover-rejected-rollout/).
+1. [Get Console Free](get-console-free/).
+2. [Create the first administrator](create-first-administrator/).
+3. [Sign in and inspect the installation](sign-in-and-inspect/).
+4. [Apply a configuration safely](apply-configuration/).
+5. [Recover a rejected rollout](recover-rejected-rollout/).
 
 Use the **Documentation** entry in the Console sidebar to open this
 release-matched section in a separate browser tab.
