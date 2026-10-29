@@ -79,6 +79,7 @@ test-go:
 
 test-node:
 	@npm test
+	@node --test scripts/go-security-baseline.test.mjs
 	@$(MAKE) config-authoring-contract-test
 	@$(MAKE) config-authoring-cli-test
 	@$(MAKE) config-authoring-corpus-test

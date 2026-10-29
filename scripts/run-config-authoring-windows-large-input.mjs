@@ -216,7 +216,7 @@ function validateContractShape(contract) {
   }, 'contract-execution-invalid');
 
   exactKeys(contract.toolchain, ['go_version', 'node_version'], 'contract-toolchain-invalid');
-  exactValue(contract.toolchain, {go_version: '1.23.0', node_version: '22.12.0'},
+  exactValue(contract.toolchain, {go_version: '1.26.10', node_version: '22.12.0'},
     'contract-toolchain-invalid');
 
   exactKeys(contract.fixture, [

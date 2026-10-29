@@ -300,7 +300,7 @@ test('accepted evidence schema permits only the bounded two-mode receipt', () =>
     },
     platform: {
       os: 'windows', architecture: 'amd64', runner: 'windows-2025',
-      go_version: 'go1.23.0', node_version: 'v22.12.0',
+      go_version: 'go1.26.10', node_version: 'v22.12.0',
     },
     binary: {bytes: 1024, sha256: 'b'.repeat(64)},
     fixture: {

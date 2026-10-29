@@ -25,7 +25,7 @@ tool lines:
 | Tool | Purpose |
 | --- | --- |
 | Node.js 22.19 or newer | Public documentation and JavaScript contract checks |
-| Go 1.23 or newer | Control plane, generated API, and host-tuning utility |
+| Go 1.26.10 or newer | Control plane, generated API, and host-tuning utility |
 | Docker with Compose v2 | Reproducible Linux/Seastar builds and local stack |
 
 Install JavaScript tooling with `make dependencies`, then use `make test` for
