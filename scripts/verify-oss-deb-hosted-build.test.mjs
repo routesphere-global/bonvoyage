@@ -155,6 +155,15 @@ test('automatic trigger, unpinned action, secret and publishing command are reje
   }
 });
 
+test('comparison receipt requires complete GitHub source context', (t) => {
+  const fixture = copyFixture(t);
+  const source = fs.readFileSync(fixture.workflowPath, 'utf8');
+  fs.writeFileSync(fixture.workflowPath,
+    source.replace('            --github-ref-type "$GITHUB_REF_TYPE" \\\n', ''));
+  assert.throws(() => verifyHostedBuildContract(fixture.contractPath,
+    fixture.workflowPath), /complete GitHub source context/u);
+});
+
 test('pulled image observation must expose the exact contracted digest', (t) => {
   const fixture = copyFixture(t);
   const contract = activate(fixture.contractPath, fixture.root);

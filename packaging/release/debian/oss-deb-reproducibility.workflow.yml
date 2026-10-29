@@ -214,6 +214,8 @@ jobs:
             --second-artifact-digest '${{ needs.build-b.outputs.artifact-digest }}' \
             --github-run-id "$GITHUB_RUN_ID" \
             --github-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --github-repository "$GITHUB_REPOSITORY" \
+            --github-ref-type "$GITHUB_REF_TYPE" \
             --github-sha "$GITHUB_SHA" \
             --github-ref-name "$GITHUB_REF_NAME" \
             --hosted-receipt "$RUNNER_TEMP/oss-deb-comparison/hosted-reproducibility-receipt.json"
