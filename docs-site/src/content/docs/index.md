@@ -12,8 +12,9 @@ visible through validation and ACK/NACK outcomes.
 
 :::caution[Pre-release documentation]
 This site describes the staging candidate for the first public release. It is
-not yet a supported production release, and no public-source license is granted
-until the approved `LICENSE` and release notices are published.
+not yet a supported production release. BonVoyage-owned public source and
+documentation are licensed under Apache License 2.0, while signed release
+artifacts, checksums, provenance, SBOMs, and support scope remain pending.
 :::
 
 ## Run the local stack

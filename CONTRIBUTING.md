@@ -54,7 +54,24 @@ evidence.
 
 ## Contribution terms
 
-Do not submit code until the repository publishes its final license and
-contribution terms. The intended policy is contribution under the project
-license with Developer Certificate of Origin sign-off, subject to final rights
-review before public contribution intake opens.
+BonVoyage-owned project material is licensed under Apache License 2.0. By
+submitting a contribution for inclusion, you agree that it is provided under
+the applicable project license and certify the [Developer Certificate of
+Origin 1.1](DCO).
+
+Add a `Signed-off-by` trailer to every commit using your real name and an email
+address you are authorized to use:
+
+```text
+Signed-off-by: Your Name <you@example.com>
+```
+
+Git can add the trailer with `git commit --signoff`. A sign-off certifies the
+DCO; it is not a copyright assignment and is not replaced by an AI-generated
+summary, tool attribution, or pull-request checkbox. If a pull request contains
+multiple commits, every contributed commit must carry an appropriate sign-off.
+
+Maintainers may request provenance details, split or rewritten commits, added
+tests, independent review, or a narrower change before considering a merge.
+Submission does not guarantee review, acceptance, a response time, or inclusion
+in a release.
