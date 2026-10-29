@@ -5,10 +5,11 @@ C++/Seastar data plane and a Go control plane. It is designed around shard-local
 request ownership, immutable configuration snapshots, bounded failure behavior,
 and evidence-led release engineering.
 
-> **Pre-release staging notice:** this tree is being prepared for the first
-> public release. It is not yet a supported production release. Publication is
-> blocked until the final rights and redistribution review adds the approved
-> `LICENSE` and release notices. Until then, no public-source license is granted.
+> **Release-candidate notice:** BonVoyage-owned source and public documentation
+> in this repository are licensed under Apache License 2.0. No signed or
+> supported BonVoyage 1.0 artifact has been published yet. Treat current source
+> builds as evaluation candidates until the release page identifies an exact
+> admitted version, checksums, signatures, provenance, SBOMs, and support scope.
 
 ## What standalone means
 
@@ -61,8 +62,8 @@ founder or commercial records are not part of this repository.
 
 | Area | Status |
 | --- | --- |
-| Release state | Pre-release staging |
-| Public license | Pending final rights and redistribution review |
+| Release state | Licensed source; first signed release pending |
+| Public license | Apache License 2.0 for BonVoyage-owned source and documentation |
 | Production support | Not yet provided |
 | Core proxy path | Implemented and under clean-room release validation |
 | Standalone Go control plane | Implemented and under clean-room release validation |
@@ -167,15 +168,30 @@ before interpreting an implementation or performance claim.
 - Documentation: <https://docs.routesphere.global>
 - Product site: <https://routesphere.global>
 - Community questions and reproducible defects: use this repository's issue
-  tracker after publication.
+  tracker.
 - Verified Release Assurance inquiries: <sales@routesphere.global>
 
 Community issue submission does not include a response or incident-resolution
 SLA. Read [SUPPORT.md](SUPPORT.md) and [SECURITY.md](SECURITY.md) before sharing
 diagnostics or a suspected vulnerability.
 
+## License and trademarks
+
+BonVoyage-owned source and public documentation in this repository are
+licensed under the [Apache License 2.0](LICENSE). Third-party material remains
+under its identified upstream terms; consult `third_party/`, the dependency
+records, and release notices before redistribution.
+
+Contributions use [Developer Certificate of Origin 1.1](DCO) sign-off as
+described in [CONTRIBUTING.md](CONTRIBUTING.md). The Apache license does not
+grant general rights to RouteSphere or BonVoyage names and logos; see the
+[trademark policy](TRADEMARKS.md).
+
 ## Project policies
 
+- [License](LICENSE)
+- [Trademark policy](TRADEMARKS.md)
+- [Developer Certificate of Origin](DCO)
 - [Contributing](CONTRIBUTING.md)
 - [Dependency policy](DEPENDENCY_POLICY.md)
 - [Release bundle verification](packaging/release/README.md)
