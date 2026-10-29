@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-oss-deb-builder-image-verification",
+  "repository": "ghcr.io/routesphere-global/bonvoyage-debian-builder",
+  "reference": "ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:f32465ff914634bcb5bbb2ff9271dd1ba0cbb8838be0ab26c696e64d2a17a225",
+  "digest": "f32465ff914634bcb5bbb2ff9271dd1ba0cbb8838be0ab26c696e64d2a17a225",
+  "platform": "linux/amd64",
+  "registry": "ghcr.io",
+  "verified_at": "2026-10-29T16:37:32Z",
+  "verification_methods": [
+    "registry-manifest",
+    "anonymous-pull",
+    "local-image-inspect"
+  ],
+  "release_admitted": false,
+  "publishable": false
+}

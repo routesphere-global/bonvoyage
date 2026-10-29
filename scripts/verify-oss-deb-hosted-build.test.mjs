@@ -16,6 +16,10 @@ const CONTRACT = path.join(ROOT,
   'packaging/release/debian/oss-deb-hosted-build-contract.json');
 const WORKFLOW = path.join(ROOT,
   'packaging/release/debian/oss-deb-reproducibility.workflow.yml');
+const VERIFICATION_RECEIPT = path.join(ROOT,
+  'packaging/release/debian/oss-deb-builder-image-verification.json');
+const ACTIVE_WORKFLOW = path.join(ROOT,
+  '.github/workflows/oss-deb-reproducibility.yml');
 const IMAGE_DIGEST = 'a'.repeat(64);
 const IMAGE_REFERENCE =
   `ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:${IMAGE_DIGEST}`;
@@ -29,6 +33,11 @@ function copyFixture(t) {
   const workflowPath = path.join(packageRoot, 'oss-deb-reproducibility.workflow.yml');
   fs.copyFileSync(CONTRACT, contractPath);
   fs.copyFileSync(WORKFLOW, workflowPath);
+  fs.copyFileSync(VERIFICATION_RECEIPT,
+    path.join(packageRoot, 'oss-deb-builder-image-verification.json'));
+  const activeWorkflow = path.join(root, '.github/workflows/oss-deb-reproducibility.yml');
+  fs.mkdirSync(path.dirname(activeWorkflow), {recursive: true});
+  fs.copyFileSync(ACTIVE_WORKFLOW, activeWorkflow);
   return {root, contractPath, workflowPath};
 }
 
@@ -63,23 +72,31 @@ function activate(contractPath, root) {
   return contract;
 }
 
-test('committed hosted-build contract is valid, blocked and powerless', () => {
-  const {result} = verifyHostedBuildContract(CONTRACT, WORKFLOW);
-  assert.equal(result.outcome, 'blocked');
-  assert.equal(result.activation_ready, false);
-  assert.equal(result.blockers.length, 3);
+test('committed hosted-build contract is activatable and powerless', () => {
+  const {result} = verifyHostedBuildContract(CONTRACT, WORKFLOW,
+    {requireActivatable: true});
+  assert.equal(result.outcome, 'activatable');
+  assert.equal(result.activation_ready, true);
+  assert.equal(result.blockers.length, 0);
+  assert.equal(result.builder_image_verification.path,
+    'packaging/release/debian/oss-deb-builder-image-verification.json');
   assert.equal(result.release_admitted, false);
   assert.equal(result.publishable, false);
-  assert.throws(() => verifyHostedBuildContract(CONTRACT, WORKFLOW,
-    {requireActivatable: true}), /not activatable/u);
 });
 
 test('blocked contract rejects accidental workflow activation', (t) => {
   const fixture = copyFixture(t);
-  const activeWorkflow = path.join(fixture.root,
-    '.github/workflows/oss-deb-reproducibility.yml');
-  fs.mkdirSync(path.dirname(activeWorkflow), {recursive: true});
-  fs.copyFileSync(fixture.workflowPath, activeWorkflow);
+  const contract = JSON.parse(fs.readFileSync(fixture.contractPath, 'utf8'));
+  contract.activation = {
+    ...contract.activation,
+    state: 'blocked-pending-public-builder-image',
+    public_repository_created: false,
+    builder_image_identity_verified: false,
+    repository_settings_verified: false,
+  };
+  contract.builder_image.reference = null;
+  contract.builder_image.verification_receipt = null;
+  fs.writeFileSync(fixture.contractPath, `${JSON.stringify(contract, null, 2)}\n`);
   assert.throws(() => verifyHostedBuildContract(fixture.contractPath,
     fixture.workflowPath), /must not have an active GitHub workflow/u);
 });
@@ -87,10 +104,6 @@ test('blocked contract rejects accidental workflow activation', (t) => {
 test('activatable fixture requires exact image verification and tagged public source', (t) => {
   const fixture = copyFixture(t);
   activate(fixture.contractPath, fixture.root);
-  const activeWorkflow = path.join(fixture.root,
-    '.github/workflows/oss-deb-reproducibility.yml');
-  fs.mkdirSync(path.dirname(activeWorkflow), {recursive: true});
-  fs.copyFileSync(fixture.workflowPath, activeWorkflow);
   const {result} = verifyHostedBuildContract(fixture.contractPath, fixture.workflowPath, {
     requireActivatable: true,
     githubRepository: 'routesphere-global/bonvoyage',

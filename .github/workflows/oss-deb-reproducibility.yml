@@ -1,0 +1,229 @@
+name: OSS Debian Reproducibility Candidate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oss-deb-reproducibility-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CONTRACT_PATH: packaging/release/debian/oss-deb-hosted-build-contract.json
+  WORKFLOW_TEMPLATE: packaging/release/debian/oss-deb-reproducibility.workflow.yml
+
+jobs:
+  preflight:
+    name: Protected contract preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: release
+    outputs:
+      builder-image: ${{ steps.contract.outputs.builder_image }}
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Install locked contract-verifier dependencies
+        run: npm ci --ignore-scripts
+      - name: Verify protected source and hosted-build activation
+        id: contract
+        run: >-
+          node scripts/verify-oss-deb-hosted-build.mjs
+          --contract "$CONTRACT_PATH"
+          --workflow "$WORKFLOW_TEMPLATE"
+          --require-activatable
+          --github-repository "$GITHUB_REPOSITORY"
+          --github-ref-type "$GITHUB_REF_TYPE"
+          --github-ref-name "$GITHUB_REF_NAME"
+          --github-sha "$GITHUB_SHA"
+          --github-output "$GITHUB_OUTPUT"
+
+  build-a:
+    name: Independent Debian builder A
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: release
+    outputs:
+      artifact-digest: ${{ steps.upload.outputs.artifact-digest }}
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Install locked contract-verifier dependencies
+        run: npm ci --ignore-scripts
+      - name: Pull and verify the immutable public builder image
+        run: |
+          docker pull '${{ needs.preflight.outputs.builder-image }}'
+          docker image inspect '${{ needs.preflight.outputs.builder-image }}' > "$RUNNER_TEMP/builder-image-inspect.json"
+          node scripts/verify-oss-deb-hosted-build.mjs \
+            --contract "$CONTRACT_PATH" \
+            --workflow "$WORKFLOW_TEMPLATE" \
+            --require-activatable \
+            --image-inspection "$RUNNER_TEMP/builder-image-inspect.json" \
+            --image-observation "$RUNNER_TEMP/builder-image-observation.json"
+      - name: Build source and Debian technical candidate without network access
+        run: |
+          mkdir -p "$RUNNER_TEMP/oss-deb-build-a"
+          mkdir -p "$RUNNER_TEMP/oss-deb-work-a"
+          set +e
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=1g \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace/source,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/oss-deb-work-a,target=/workspace/work" \
+            --mount "type=bind,source=$RUNNER_TEMP/oss-deb-build-a,target=/workspace/output" \
+            --env BONVOYAGE_SOURCE_COMMIT="$GITHUB_SHA" \
+            --env BONVOYAGE_SOURCE_TAG="$GITHUB_REF_NAME" \
+            --env BONVOYAGE_BUILDER_IMAGE='${{ needs.preflight.outputs.builder-image }}' \
+            --env BONVOYAGE_BUILDER_ID="github-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-a" \
+            --env BONVOYAGE_BUILD_JOBS=2 \
+            '${{ needs.preflight.outputs.builder-image }}'
+          status=$?
+          set -e
+          cp "$RUNNER_TEMP/builder-image-observation.json" \
+            "$RUNNER_TEMP/oss-deb-build-a/builder-image-observation.json"
+          exit "$status"
+      - name: Upload bounded builder A evidence
+        id: upload
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: oss-deb-build-a
+          path: ${{ runner.temp }}/oss-deb-build-a
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 3
+
+  build-b:
+    name: Independent Debian builder B
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: release
+    outputs:
+      artifact-digest: ${{ steps.upload.outputs.artifact-digest }}
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Install locked contract-verifier dependencies
+        run: npm ci --ignore-scripts
+      - name: Pull and verify the immutable public builder image
+        run: |
+          docker pull '${{ needs.preflight.outputs.builder-image }}'
+          docker image inspect '${{ needs.preflight.outputs.builder-image }}' > "$RUNNER_TEMP/builder-image-inspect.json"
+          node scripts/verify-oss-deb-hosted-build.mjs \
+            --contract "$CONTRACT_PATH" \
+            --workflow "$WORKFLOW_TEMPLATE" \
+            --require-activatable \
+            --image-inspection "$RUNNER_TEMP/builder-image-inspect.json" \
+            --image-observation "$RUNNER_TEMP/builder-image-observation.json"
+      - name: Build source and Debian technical candidate without network access
+        run: |
+          mkdir -p "$RUNNER_TEMP/oss-deb-build-b"
+          mkdir -p "$RUNNER_TEMP/oss-deb-work-b"
+          set +e
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=1g \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace/source,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/oss-deb-work-b,target=/workspace/work" \
+            --mount "type=bind,source=$RUNNER_TEMP/oss-deb-build-b,target=/workspace/output" \
+            --env BONVOYAGE_SOURCE_COMMIT="$GITHUB_SHA" \
+            --env BONVOYAGE_SOURCE_TAG="$GITHUB_REF_NAME" \
+            --env BONVOYAGE_BUILDER_IMAGE='${{ needs.preflight.outputs.builder-image }}' \
+            --env BONVOYAGE_BUILDER_ID="github-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-b" \
+            --env BONVOYAGE_BUILD_JOBS=2 \
+            '${{ needs.preflight.outputs.builder-image }}'
+          status=$?
+          set -e
+          cp "$RUNNER_TEMP/builder-image-observation.json" \
+            "$RUNNER_TEMP/oss-deb-build-b/builder-image-observation.json"
+          exit "$status"
+      - name: Upload bounded builder B evidence
+        id: upload
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: oss-deb-build-b
+          path: ${{ runner.temp }}/oss-deb-build-b
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 3
+
+  compare:
+    name: Compare independent Debian outputs
+    needs:
+      - preflight
+      - build-a
+      - build-b
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Install locked contract-verifier dependencies
+        run: npm ci --ignore-scripts
+      - name: Download builder A evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: oss-deb-build-a
+          path: ${{ runner.temp }}/oss-deb-build-a
+      - name: Download builder B evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: oss-deb-build-b
+          path: ${{ runner.temp }}/oss-deb-build-b
+      - name: Compare exact package and receipt bytes
+        run: |
+          mkdir -p "$RUNNER_TEMP/oss-deb-comparison"
+          python3 -B scripts/verify-oss-deb-reproducibility.py \
+            --first "$RUNNER_TEMP/oss-deb-build-a" \
+            --second "$RUNNER_TEMP/oss-deb-build-b" \
+            --output "$RUNNER_TEMP/oss-deb-comparison/reproducibility-receipt.json"
+          node scripts/verify-oss-deb-hosted-build.mjs \
+            --contract "$CONTRACT_PATH" \
+            --workflow "$WORKFLOW_TEMPLATE" \
+            --require-activatable \
+            --technical-receipt "$RUNNER_TEMP/oss-deb-comparison/reproducibility-receipt.json" \
+            --first-artifact-digest '${{ needs.build-a.outputs.artifact-digest }}' \
+            --second-artifact-digest '${{ needs.build-b.outputs.artifact-digest }}' \
+            --github-run-id "$GITHUB_RUN_ID" \
+            --github-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --github-sha "$GITHUB_SHA" \
+            --github-ref-name "$GITHUB_REF_NAME" \
+            --hosted-receipt "$RUNNER_TEMP/oss-deb-comparison/hosted-reproducibility-receipt.json"
+      - name: Upload non-publishing comparison evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: oss-deb-comparison
+          path: ${{ runner.temp }}/oss-deb-comparison
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 3

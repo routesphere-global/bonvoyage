@@ -2,12 +2,12 @@
   "schema_version": 1,
   "classification": "routesphere-bonvoyage-oss-deb-hosted-build-contract",
   "activation": {
-    "state": "blocked-pending-public-builder-image",
+    "state": "activatable",
     "template_path": "packaging/release/debian/oss-deb-reproducibility.workflow.yml",
     "active_workflow_path": ".github/workflows/oss-deb-reproducibility.yml",
-    "public_repository_created": false,
-    "builder_image_identity_verified": false,
-    "repository_settings_verified": false
+    "public_repository_created": true,
+    "builder_image_identity_verified": true,
+    "repository_settings_verified": true
   },
   "source": {
     "repository": "https://github.com/routesphere-global/bonvoyage",
@@ -48,8 +48,8 @@
   },
   "builder_image": {
     "repository": "ghcr.io/routesphere-global/bonvoyage-debian-builder",
-    "reference": null,
-    "verification_receipt": null,
+    "reference": "ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:f32465ff914634bcb5bbb2ff9271dd1ba0cbb8838be0ab26c696e64d2a17a225",
+    "verification_receipt": "packaging/release/debian/oss-deb-builder-image-verification.json",
     "entrypoint": "/usr/local/bin/bonvoyage-oss-deb-builder",
     "network": "none",
     "read_only_root": true

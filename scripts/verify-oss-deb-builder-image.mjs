@@ -10,10 +10,14 @@ import yaml from 'js-yaml';
 const CLASSIFICATION = 'routesphere-bonvoyage-oss-deb-builder-image-contract';
 const OBSERVATION_CLASSIFICATION =
   'routesphere-bonvoyage-oss-deb-builder-image-local-observation';
-const STATE = 'local-foundation-unpublished';
+const LOCAL_STATE = 'local-foundation-unpublished';
+const PUBLIC_STATE = 'public-foundation-verified';
 const REPOSITORY = 'ghcr.io/routesphere-global/bonvoyage-debian-builder';
 const ENTRYPOINT = '/usr/local/bin/bonvoyage-oss-deb-builder';
 const IMAGE_ID = /^sha256:[a-f0-9]{64}$/u;
+const IMAGE_REFERENCE = /^(ghcr[.]io\/routesphere-global\/bonvoyage-debian-builder)@sha256:([a-f0-9]{64})$/u;
+const RECEIPT_CLASSIFICATION =
+  'routesphere-bonvoyage-oss-deb-builder-image-verification';
 
 function fail(message) {
   throw new Error(message);
@@ -59,7 +63,8 @@ function validateContract(contract) {
     'registry', 'authority',
   ], 'contract');
   requireCondition(contract.schema_version === 1 && contract.classification === CLASSIFICATION &&
-    contract.state === STATE, 'unsupported or activated builder-image contract');
+    [LOCAL_STATE, PUBLIC_STATE].includes(contract.state),
+  'unsupported builder-image contract');
 
   exactKeys(contract.image, [
     'dockerfile', 'target', 'platform', 'ubuntu_base', 'packaging_snapshot',
@@ -111,11 +116,22 @@ function validateContract(contract) {
   exactKeys(contract.registry, [
     'repository', 'reference', 'external_verification_receipt', 'anonymous_pull_verified',
   ], 'contract.registry');
-  requireCondition(contract.registry.repository === REPOSITORY &&
-    contract.registry.reference === null &&
-    contract.registry.external_verification_receipt === null &&
-    contract.registry.anonymous_pull_verified === false,
-  'unpublished builder contract must not assert registry identity');
+  requireCondition(contract.registry.repository === REPOSITORY,
+    'unexpected builder registry repository');
+  const publicVerified = contract.state === PUBLIC_STATE;
+  if (publicVerified) {
+    requireCondition(IMAGE_REFERENCE.test(contract.registry.reference ?? '') &&
+      contract.registry.reference.startsWith(`${REPOSITORY}@sha256:`) &&
+      contract.registry.anonymous_pull_verified === true,
+    'public builder contract requires an immutable anonymously verified registry identity');
+    validateRelativePath(contract.registry.external_verification_receipt,
+      'contract.registry.external_verification_receipt');
+  } else {
+    requireCondition(contract.registry.reference === null &&
+      contract.registry.external_verification_receipt === null &&
+      contract.registry.anonymous_pull_verified === false,
+    'unpublished builder contract must not assert registry identity');
+  }
 
   exactKeys(contract.authority, [
     'release_admitted', 'publishable', 'package_uploaded', 'container_uploaded',
@@ -123,6 +139,30 @@ function validateContract(contract) {
   ], 'contract.authority');
   requireCondition(Object.values(contract.authority).every((value) => value === false),
     'builder image must not grant release or publication authority');
+  return {publicVerified};
+}
+
+function validateVerificationReceipt(contract, repositoryRoot) {
+  if (contract.state !== PUBLIC_STATE) return null;
+  const receiptPath = path.resolve(repositoryRoot,
+    contract.registry.external_verification_receipt);
+  const receipt = requireObject(readJson(receiptPath,
+    'builder-image verification receipt'), 'builder-image verification receipt');
+  exactKeys(receipt, [
+    'schema_version', 'classification', 'repository', 'reference', 'digest', 'platform',
+    'registry', 'verified_at', 'verification_methods', 'release_admitted', 'publishable',
+  ], 'builder-image verification receipt');
+  const match = IMAGE_REFERENCE.exec(contract.registry.reference);
+  requireCondition(receipt.schema_version === 1 &&
+    receipt.classification === RECEIPT_CLASSIFICATION &&
+    receipt.repository === REPOSITORY && receipt.reference === contract.registry.reference &&
+    receipt.digest === match[2] && receipt.platform === contract.image.platform &&
+    receipt.registry === 'ghcr.io' && Number.isFinite(Date.parse(receipt.verified_at)) &&
+    JSON.stringify(receipt.verification_methods) === JSON.stringify([
+      'registry-manifest', 'anonymous-pull', 'local-image-inspect',
+    ]) && receipt.release_admitted === false && receipt.publishable === false,
+  'builder-image verification receipt does not satisfy the public foundation contract');
+  return {path: contract.registry.external_verification_receipt};
 }
 
 function validateDockerfile(contract, source) {
@@ -240,20 +280,30 @@ export function verifyBuilderImageFoundation(contractPath, dockerfilePath, entry
   workflowPath, options = {}) {
   const contract = requireObject(readJson(contractPath, 'builder-image contract'),
     'builder-image contract');
-  validateContract(contract);
+  const state = validateContract(contract);
   validateDockerfile(contract, fs.readFileSync(dockerfilePath, 'utf8'));
   validateEntrypoint(contract, fs.readFileSync(entrypointPath, 'utf8'));
-  validateWorkflow(contract, fs.readFileSync(workflowPath, 'utf8'));
+  const workflowSource = fs.readFileSync(workflowPath, 'utf8');
+  validateWorkflow(contract, workflowSource);
   const repositoryRoot = path.resolve(path.dirname(contractPath), '../../..');
-  requireCondition(!fs.existsSync(path.join(repositoryRoot,
-    '.github/workflows/oss-deb-reproducibility.yml')),
-  'unpublished builder foundation must not activate the hosted workflow');
+  const activeWorkflowPath = path.join(repositoryRoot,
+    '.github/workflows/oss-deb-reproducibility.yml');
+  if (state.publicVerified) {
+    requireCondition(fs.existsSync(activeWorkflowPath) &&
+      fs.readFileSync(activeWorkflowPath, 'utf8') === workflowSource,
+    'public builder foundation requires the exact reviewed hosted workflow');
+  } else {
+    requireCondition(!fs.existsSync(activeWorkflowPath),
+      'unpublished builder foundation must not activate the hosted workflow');
+  }
+  const verificationReceipt = validateVerificationReceipt(contract, repositoryRoot);
   const result = {
     schema_version: 1,
     classification: 'routesphere-bonvoyage-oss-deb-builder-image-contract-result',
-    outcome: 'local-foundation-accepted',
+    outcome: state.publicVerified ? 'public-foundation-accepted' : 'local-foundation-accepted',
     state: contract.state,
-    registry_reference_verified: false,
+    registry_reference_verified: state.publicVerified,
+    verification_receipt: verificationReceipt,
     hosted_execution_qualified: false,
     release_admitted: false,
     publishable: false,

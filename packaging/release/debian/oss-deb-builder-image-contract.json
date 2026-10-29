@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "classification": "routesphere-bonvoyage-oss-deb-builder-image-contract",
-  "state": "local-foundation-unpublished",
+  "state": "public-foundation-verified",
   "image": {
     "dockerfile": "deploy/docker/bonvoyage/Dockerfile",
     "target": "oss-deb-builder",
@@ -51,9 +51,9 @@
   },
   "registry": {
     "repository": "ghcr.io/routesphere-global/bonvoyage-debian-builder",
-    "reference": null,
-    "external_verification_receipt": null,
-    "anonymous_pull_verified": false
+    "reference": "ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:f32465ff914634bcb5bbb2ff9271dd1ba0cbb8838be0ab26c696e64d2a17a225",
+    "external_verification_receipt": "packaging/release/debian/oss-deb-builder-image-verification.json",
+    "anonymous_pull_verified": true
   },
   "authority": {
     "release_admitted": false,

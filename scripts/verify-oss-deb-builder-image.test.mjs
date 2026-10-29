@@ -17,6 +17,10 @@ const DOCKERFILE = path.join(ROOT, 'deploy/docker/bonvoyage/Dockerfile');
 const ENTRYPOINT = path.join(ROOT, 'scripts/oss-deb-builder-entrypoint.py');
 const WORKFLOW = path.join(ROOT,
   'packaging/release/debian/oss-deb-reproducibility.workflow.yml');
+const RECEIPT = path.join(ROOT,
+  'packaging/release/debian/oss-deb-builder-image-verification.json');
+const ACTIVE_WORKFLOW = path.join(ROOT,
+  '.github/workflows/oss-deb-reproducibility.yml');
 
 function copyFixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bonvoyage-builder-image-'));
@@ -26,12 +30,15 @@ function copyFixture(t) {
     dockerfile: 'deploy/docker/bonvoyage/Dockerfile',
     entrypoint: 'scripts/oss-deb-builder-entrypoint.py',
     workflow: 'packaging/release/debian/oss-deb-reproducibility.workflow.yml',
+    receipt: 'packaging/release/debian/oss-deb-builder-image-verification.json',
+    activeWorkflow: '.github/workflows/oss-deb-reproducibility.yml',
   };
   for (const [name, relative] of Object.entries(paths)) {
     const destination = path.join(root, relative);
     fs.mkdirSync(path.dirname(destination), {recursive: true});
     fs.copyFileSync({contract: CONTRACT, dockerfile: DOCKERFILE,
-      entrypoint: ENTRYPOINT, workflow: WORKFLOW}[name], destination);
+      entrypoint: ENTRYPOINT, workflow: WORKFLOW, receipt: RECEIPT,
+      activeWorkflow: ACTIVE_WORKFLOW}[name], destination);
     paths[name] = destination;
   }
   return {root, ...paths};
@@ -61,21 +68,24 @@ function inspection() {
   }];
 }
 
-test('committed builder image foundation is inactive and powerless', () => {
+test('committed builder image foundation is publicly verified and powerless', () => {
   const {result} = verify({contract: CONTRACT, dockerfile: DOCKERFILE,
     entrypoint: ENTRYPOINT, workflow: WORKFLOW});
-  assert.equal(result.outcome, 'local-foundation-accepted');
-  assert.equal(result.registry_reference_verified, false);
+  assert.equal(result.outcome, 'public-foundation-accepted');
+  assert.equal(result.registry_reference_verified, true);
+  assert.equal(result.verification_receipt.path,
+    'packaging/release/debian/oss-deb-builder-image-verification.json');
   assert.equal(result.hosted_execution_qualified, false);
   assert.equal(result.release_admitted, false);
   assert.equal(result.publishable, false);
 });
 
-test('registry identity and authority cannot be asserted by the foundation', (t) => {
+test('public registry identity and authority must remain exact and powerless', (t) => {
   for (const mutation of [
     (value) => { value.state = 'activatable'; },
-    (value) => { value.registry.reference = `ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:${'b'.repeat(64)}`; },
-    (value) => { value.registry.anonymous_pull_verified = true; },
+    (value) => { value.registry.reference = 'ghcr.io/routesphere-global/bonvoyage-debian-builder:latest'; },
+    (value) => { value.registry.external_verification_receipt = null; },
+    (value) => { value.registry.anonymous_pull_verified = false; },
     (value) => { value.authority.publishable = true; },
   ]) {
     const fixture = copyFixture(t);
@@ -84,6 +94,21 @@ test('registry identity and authority cannot be asserted by the foundation', (t)
     fs.writeFileSync(fixture.contract, `${JSON.stringify(contract, null, 2)}\n`);
     assert.throws(() => verify(fixture));
   }
+});
+
+test('unpublished foundation rejects an active hosted workflow', (t) => {
+  const fixture = copyFixture(t);
+  const contract = JSON.parse(fs.readFileSync(fixture.contract, 'utf8'));
+  contract.state = 'local-foundation-unpublished';
+  contract.registry.reference = null;
+  contract.registry.external_verification_receipt = null;
+  contract.registry.anonymous_pull_verified = false;
+  fs.writeFileSync(fixture.contract, `${JSON.stringify(contract, null, 2)}\n`);
+  assert.throws(() => verify(fixture), /must not activate/u);
+  fs.rmSync(fixture.activeWorkflow);
+  const {result} = verify(fixture);
+  assert.equal(result.outcome, 'local-foundation-accepted');
+  assert.equal(result.registry_reference_verified, false);
 });
 
 test('builder stage rejects embedded product source and floating package indexes', (t) => {

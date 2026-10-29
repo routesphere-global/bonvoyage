@@ -43,7 +43,7 @@ help:
 	@echo "  dco-signoff-test  Verify pull-request commit sign-off enforcement"
 	@echo "  oss-release-bundle-test  Verify fail-closed release-bundle admission"
 	@echo "  oss-deb-builder-test  Verify public Debian build and reproducibility contracts"
-	@echo "  oss-deb-hosted-contract-test  Verify the inactive protected hosted-build contract"
+	@echo "  oss-deb-hosted-contract-test  Verify the protected hosted-build contract"
 	@echo "  oss-deb-builder-image-test  Verify the offline public Debian builder-image foundation"
 	@echo "  oss-native-install-verifier-test  Verify native fresh-install evidence admission"
 	@echo "  oss-native-install-collector-test  Verify the fail-closed disposable-host runner"
