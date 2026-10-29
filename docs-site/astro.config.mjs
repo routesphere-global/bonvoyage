@@ -47,6 +47,7 @@ export default defineConfig({
           label: 'Console Free',
           items: [
             { label: 'Console overview', slug: 'console' },
+            { label: 'Get Console Free', slug: 'console/get-console-free' },
             { label: 'Create the first administrator', slug: 'console/create-first-administrator' },
             { label: 'Sign in and inspect', slug: 'console/sign-in-and-inspect' },
             { label: 'Apply a configuration', slug: 'console/apply-configuration' },
