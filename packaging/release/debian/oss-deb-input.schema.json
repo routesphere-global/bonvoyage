@@ -22,7 +22,7 @@
   "properties": {
     "schema_version": {"const": 1},
     "classification": {"const": "routesphere-bonvoyage-oss-deb-input"},
-    "product": {"const": "BonVoyage API Gateway"},
+    "product": {"const": "RouteSphere BonVoyage API Gateway"},
     "source_repository": {"const": "https://github.com/routesphere-global/bonvoyage"},
     "source_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
     "source_tag": {"type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"},

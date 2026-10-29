@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "classification": "routesphere-bonvoyage-oss-native-fresh-install-contract",
-  "product": "BonVoyage API Gateway",
+  "product": "RouteSphere BonVoyage API Gateway",
   "target": {
     "distribution": "ubuntu",
     "version_id": "24.04",

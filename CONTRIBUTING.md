@@ -1,4 +1,4 @@
-# Contributing to BonVoyage API Gateway
+# Contributing to RouteSphere BonVoyage API Gateway
 
 BonVoyage welcomes reproducible defect reports, interoperability findings,
 documentation feedback, deployment experience, and focused test evidence.

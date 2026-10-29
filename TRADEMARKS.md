@@ -8,10 +8,10 @@ names, logos, product identity, or other marks.
 ## Marks covered
 
 This policy applies to the names **RouteSphere**, **RouteSphere Global**, and
-**BonVoyage**; the BonVoyage API Gateway product name; the RouteSphere and
-BonVoyage logos; and confusingly similar names, logos, domains, package names,
-or visual identities. Trademark registration is pending. Do not represent any
-of these marks as registered or use a registered-mark symbol unless ROUTESPHERE
+**BonVoyage**; the RouteSphere BonVoyage API Gateway product name; the
+RouteSphere and BonVoyage logos; and confusingly similar names, logos, domains,
+package names, or visual identities. Trademark registration is pending. Do not
+represent any of these marks as registered or use a registered-mark symbol unless ROUTESPHERE
 GLOBAL PTE. LTD. confirms that the relevant registration has been granted.
 
 ## Uses that do not require separate permission

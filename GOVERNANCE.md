@@ -1,6 +1,7 @@
 # Project Governance
 
-BonVoyage API Gateway is maintained by the RouteSphere project maintainers.
+RouteSphere BonVoyage API Gateway is maintained by the RouteSphere project
+maintainers.
 Maintainers make final decisions on architecture, roadmap, security response,
 release contents, compatibility, and changes accepted into the repository.
 

@@ -1,8 +1,8 @@
 # BonVoyage public documentation
 
 This Astro/Starlight site is the separately authored public documentation for
-BonVoyage API Gateway. It must not import the private Docusaurus corpus or rely
-on files outside the sanitized public repository.
+RouteSphere BonVoyage API Gateway. It must not import the private Docusaurus
+corpus or rely on files outside the sanitized public repository.
 
 ## Local development
 

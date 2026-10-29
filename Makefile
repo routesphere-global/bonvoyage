@@ -20,7 +20,7 @@ export GOCACHE := $(CURDIR)/.cache/go-build
 	native-logging-backpressure-ci up verify-local-deployment verify-kubernetes-deployment run-kubernetes-acceptance run-bounded-benchmark down
 
 help:
-	@echo "BonVoyage API Gateway OSS"
+	@echo "RouteSphere BonVoyage API Gateway OSS"
 	@echo ""
 	@echo "  dependencies   Install pinned JavaScript tooling"
 	@echo "  test           Run portable Go, Node.js, and Python contract tests"

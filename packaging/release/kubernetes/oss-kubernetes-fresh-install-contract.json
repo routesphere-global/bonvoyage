@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "classification": "routesphere-bonvoyage-oss-kubernetes-fresh-install-contract",
-  "product": "BonVoyage API Gateway",
+  "product": "RouteSphere BonVoyage API Gateway",
   "target": {
     "orchestrator": "kubernetes",
     "namespace": "bonvoyage",

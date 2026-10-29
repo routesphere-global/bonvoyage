@@ -1,8 +1,8 @@
 # Third-party notices
 
-BonVoyage API Gateway includes or links the components below. BonVoyage-owned
-material is licensed separately under Apache License 2.0. Each third-party
-component remains governed by its identified upstream license.
+RouteSphere BonVoyage API Gateway includes or links the components below.
+BonVoyage-owned material is licensed separately under Apache License 2.0. Each
+third-party component remains governed by its identified upstream license.
 
 | Component | Version | License | Release record |
 | --- | --- | --- | --- |

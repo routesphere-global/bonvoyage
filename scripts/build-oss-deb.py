@@ -21,7 +21,7 @@ import tarfile
 
 ROOT = Path(__file__).resolve().parent.parent
 PUBLIC_REPOSITORY = "https://github.com/routesphere-global/bonvoyage"
-PRODUCT = "BonVoyage API Gateway"
+PRODUCT = "RouteSphere BonVoyage API Gateway"
 INPUT_CLASS = "routesphere-bonvoyage-oss-deb-input"
 TOOLCHAIN_CLASS = "routesphere-bonvoyage-oss-deb-toolchain"
 BUILD_CLASS = "routesphere-bonvoyage-oss-deb-build"
