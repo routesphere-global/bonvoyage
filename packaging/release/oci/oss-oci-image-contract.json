@@ -49,6 +49,8 @@
       "etc/os-release",
       "etc/ssl/certs/ca-certificates.crt",
       "usr/local/bin/bonvoyage-dataplane",
+      "usr/share/bonvoyage/THIRD_PARTY_NOTICES.md",
+      "usr/share/bonvoyage/THIRD_PARTY_SOURCE.md",
       "usr/share/bonvoyage/runtime-package-ownership.json",
       "usr/share/licenses/abseil/LICENSE",
       "usr/share/licenses/bonvoyage/LICENSE",

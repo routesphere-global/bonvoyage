@@ -37,6 +37,7 @@ SOURCE_INPUTS = (
     "packaging/release/debian/oss-deb-input.schema.json",
     "packaging/release/debian/oss-deb-toolchain.schema.json",
     "scripts/build-oss-deb.py",
+    "scripts/create-oss-deb-input.py",
 )
 SHA256 = re.compile(r"[a-f0-9]{64}")
 COMMIT = re.compile(r"[a-f0-9]{40}")
@@ -276,13 +277,20 @@ def load_inputs(manifest, anchor):
     require(type(spec["source_date_epoch"]) is int and 0 < spec["source_date_epoch"] <= 4102444800,
             "invalid source date epoch")
     require(isinstance(spec["files"], dict) and set(spec["files"]) == {
-        "dataplane", "copyright", "toolchain_lock"}, "invalid payload files")
+        "dataplane", "copyright", "third_party_notices", "third_party_source",
+        "third_party_licenses", "toolchain_lock"}, "invalid payload files")
     records = [json.dumps(spec["files"][name], sort_keys=True) for name in sorted(spec["files"])]
     require(len(set(records)) == len(records), "duplicate payload record")
 
     payload = {
         "dataplane": read_input(manifest.parent, spec["files"]["dataplane"], 512 * 1024 * 1024),
         "copyright": read_input(manifest.parent, spec["files"]["copyright"], 2 * 1024 * 1024),
+        "third_party_notices": read_input(
+            manifest.parent, spec["files"]["third_party_notices"], 2 * 1024 * 1024),
+        "third_party_source": read_input(
+            manifest.parent, spec["files"]["third_party_source"], 2 * 1024 * 1024),
+        "third_party_licenses": read_input(
+            manifest.parent, spec["files"]["third_party_licenses"], 8 * 1024 * 1024),
         "toolchain_lock_raw": read_input(
             manifest.parent, spec["files"]["toolchain_lock"], 4 * 1024 * 1024),
     }
@@ -291,13 +299,21 @@ def load_inputs(manifest, anchor):
             struct.unpack_from("<HH", elf, 16)[0] in (2, 3) and
             struct.unpack_from("<H", elf, 18)[0] == 62 and
             struct.unpack_from("<Q", elf, 24)[0] > 0, "AMD64 executable ELF required")
-    require(b"\x00" not in payload["copyright"], "copyright/license text contains NUL")
-    try:
-        license_text = payload["copyright"].decode("utf-8").strip()
-    except UnicodeDecodeError as error:
-        raise ValueError("copyright/license text must be UTF-8") from error
-    require(len(license_text) >= 80,
-            "substantive explicit copyright/license text required; no automatic OSS license grant")
+    decoded = {}
+    for name in ("copyright", "third_party_notices", "third_party_source",
+                 "third_party_licenses"):
+        require(b"\x00" not in payload[name], f"{name} text contains NUL")
+        try:
+            decoded[name] = payload[name].decode("utf-8").strip()
+        except UnicodeDecodeError as error:
+            raise ValueError(f"{name} text must be UTF-8") from error
+        require(len(decoded[name]) >= 80, f"substantive {name} text required")
+    require("libjwt" in decoded["third_party_source"] and
+            "Mozilla Public License" in decoded["third_party_source"],
+            "MPL source-availability instructions required")
+    require("libjwt" in decoded["third_party_licenses"] and
+            "Mozilla Public License" in decoded["third_party_licenses"],
+            "MPL license text required")
     payload["toolchain_lock"] = load_toolchain_document(payload["toolchain_lock_raw"])
     spec = {**spec, "debian_version": debian_version}
     return spec, payload
@@ -402,6 +418,12 @@ def prepare_tree(manifest, anchor, output, root=ROOT):
     (tree / "debian/bonvoyage-gateway.bonvoyage.service").write_bytes(unit)
     (tree / "input/bonvoyage-dataplane").write_bytes(payload["dataplane"])
     (tree / "input/bonvoyage-dataplane").chmod(0o755)
+    for name, filename in (
+        ("third_party_notices", "THIRD_PARTY_NOTICES.md"),
+        ("third_party_source", "THIRD_PARTY_SOURCE.md"),
+        ("third_party_licenses", "THIRD_PARTY_LICENSES.txt"),
+    ):
+        (tree / "input" / filename).write_bytes(payload[name])
     (tree / "debian/copyright").write_bytes(payload["copyright"])
     (tree / "debian/source/format").write_text("3.0 (quilt)\n", encoding="ascii")
     changelog = expected_changelog(spec)
@@ -426,6 +448,12 @@ def verify_payload_tar(data, spec, unit, readme, changelog):
     expected = {
         "usr/bin/bonvoyage-dataplane": spec["files"]["dataplane"]["sha256"],
         "usr/share/doc/bonvoyage-gateway/copyright": spec["files"]["copyright"]["sha256"],
+        "usr/share/doc/bonvoyage-gateway/THIRD_PARTY_NOTICES.md":
+            spec["files"]["third_party_notices"]["sha256"],
+        "usr/share/doc/bonvoyage-gateway/THIRD_PARTY_SOURCE.md":
+            spec["files"]["third_party_source"]["sha256"],
+        "usr/share/doc/bonvoyage-gateway/THIRD_PARTY_LICENSES.txt":
+            spec["files"]["third_party_licenses"]["sha256"],
         "usr/share/doc/bonvoyage-gateway/README.Debian": digest(readme),
     }
     allowed_directories = {
@@ -588,9 +616,10 @@ def build(manifest, anchor, output, builder_id, root=ROOT):
         require(result.returncode == 0, "Debian package build failed; retained output remains")
 
         second_spec, second_payload = load_inputs(manifest, anchor)
-        require(second_spec == spec and second_payload["dataplane"] == payload["dataplane"] and
-                second_payload["copyright"] == payload["copyright"] and
-                second_payload["toolchain_lock_raw"] == payload["toolchain_lock_raw"],
+        require(second_spec == spec and all(
+                    second_payload[name] == payload[name] for name in (
+                        "dataplane", "copyright", "third_party_notices",
+                        "third_party_source", "third_party_licenses", "toolchain_lock_raw")),
                 "build inputs changed during assembly")
         require(source_state(spec, root) == source, "source identity changed during assembly")
         require(source_bindings(root) == binding["source_files"], "build source changed during assembly")

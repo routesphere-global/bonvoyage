@@ -8,6 +8,9 @@ override_dh_auto_configure override_dh_auto_build override_dh_auto_test:
 
 override_dh_auto_install:
 	install -D -m 0755 input/bonvoyage-dataplane debian/bonvoyage-gateway/usr/bin/bonvoyage-dataplane
+	install -D -m 0644 input/THIRD_PARTY_NOTICES.md debian/bonvoyage-gateway/usr/share/doc/bonvoyage-gateway/THIRD_PARTY_NOTICES.md
+	install -D -m 0644 input/THIRD_PARTY_SOURCE.md debian/bonvoyage-gateway/usr/share/doc/bonvoyage-gateway/THIRD_PARTY_SOURCE.md
+	install -D -m 0644 input/THIRD_PARTY_LICENSES.txt debian/bonvoyage-gateway/usr/share/doc/bonvoyage-gateway/THIRD_PARTY_LICENSES.txt
 
 # Preserve the reviewed executable byte-for-byte; this is not a compilation.
 override_dh_strip override_dh_dwz:

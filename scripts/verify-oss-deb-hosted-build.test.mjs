@@ -129,7 +129,7 @@ test('floating image, partial activation and changed authority are rejected', (t
 test('automatic trigger, unpinned action, secret and publishing command are rejected', (t) => {
   for (const replacement of [
     ['  workflow_dispatch:\n', '  push:\n    branches: [main]\n'],
-    ['actions/checkout@11d5960a326750d5838078e36cf38b85af677262', 'actions/checkout@v4'],
+    ['actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1', 'actions/checkout@v7'],
     ['npm ci --ignore-scripts', 'echo "${{ secrets.RELEASE_TOKEN }}"'],
     ['mkdir -p "$RUNNER_TEMP/oss-deb-comparison"', 'gh release create v1.0.0'],
   ]) {

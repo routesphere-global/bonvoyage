@@ -86,29 +86,22 @@ function gateReceipt(root, {gate, artifactId = null, artifactSha256 = null}) {
 function createActiveTestContract(
     temporaryRoot,
     {
-      sharedReviewers = false,
-      sharedKeyMaterial = false,
       privateKeyInTrustRoot = false,
       unsafeReviewerIdentity = false,
     } = {}) {
   const contract = JSON.parse(fs.readFileSync(CONTRACT_PATH, 'utf8'));
   contract.publication_authorization.status = 'active';
   const privateKeys = new Map();
-  const sharedKeyPair = sharedKeyMaterial
-    ? crypto.generateKeyPairSync('ed25519')
-    : null;
   for (const role of contract.publication_review_roles) {
-    const {privateKey, publicKey} =
-      sharedKeyPair ?? crypto.generateKeyPairSync('ed25519');
+    const {privateKey, publicKey} = crypto.generateKeyPairSync('ed25519');
     const keyId = `fixture-${role}-key`;
-    const reviewerIdentity = sharedReviewers
-      ? 'fixture-reviewer:shared'
-      : `fixture-reviewer:${role}${unsafeReviewerIdentity && role === 'security' ? '\u200b' : ''}`;
+    const reviewerIdentity =
+      `fixture-reviewer:${role}${unsafeReviewerIdentity ? '\u200b' : ''}`;
     contract.publication_authorization.role_signers[role] = [{
       key_id: keyId,
       algorithm: 'ed25519',
       reviewer_identity: reviewerIdentity,
-      public_key_pem: privateKeyInTrustRoot && role === 'security'
+      public_key_pem: privateKeyInTrustRoot
         ? privateKey.export({type: 'pkcs8', format: 'pem'})
         : publicKey.export({type: 'spki', format: 'pem'}),
       status: 'active',
@@ -129,8 +122,6 @@ function createBundle(
     t,
     {
       authorized = false,
-      sharedReviewers = false,
-      sharedKeyMaterial = false,
       privateKeyInTrustRoot = false,
       unsafeReviewerIdentity = false,
     } = {}) {
@@ -142,8 +133,6 @@ function createBundle(
   const activeContract = authorized
     ? createActiveTestContract(
       temporaryRoot, {
-        sharedReviewers,
-        sharedKeyMaterial,
         privateKeyInTrustRoot,
         unsafeReviewerIdentity,
       })
@@ -276,7 +265,7 @@ function createBundle(
 function createAuthorization(fixture, contract) {
   const authorizationRoot = path.join(path.dirname(fixture.root), 'authorization');
   fs.mkdirSync(authorizationRoot);
-  const rightsGates = contract.publication_authorization.legal_gate_ids.map((id) => {
+  const rightsGates = contract.publication_authorization.rights_gate_ids.map((id) => {
     const evidence = writeJson(
       authorizationRoot,
       `evidence/rights/${id}.json`,
@@ -314,7 +303,7 @@ function createAuthorization(fixture, contract) {
       authorization_expires_at: AUTHORIZATION_EXPIRES_AT,
       technical_manifest_sha256: fixture.manifestSha256,
       contract_sha256: fixture.contractSha256,
-      rights_record_sha256: role === 'legal' ? rightsRecord.sha256 : null,
+      rights_record_sha256: role === 'release-owner' ? rightsRecord.sha256 : null,
       evidence: [fixture.manifest.contract],
     };
     const statementRef = writeJson(
@@ -481,7 +470,7 @@ test('validates signed authorization mechanics without reporting publishable', (
   assert.equal(
     result.publication_authorization_sha256,
     fixture.authorizationSha256);
-  assert.equal(result.publication_reviewers, 5);
+  assert.equal(result.publication_reviewers, 1);
 });
 
 test('requires every publication review role exactly once', (t) => {
@@ -493,7 +482,7 @@ test('requires every publication review role exactly once', (t) => {
 
   const duplicate = createBundle(t, {authorized: true});
   rewriteAuthorization(duplicate, (authorization) => {
-    authorization.reviews[1].role = authorization.reviews[0].role;
+    authorization.reviews.push({...authorization.reviews[0]});
   });
   assert.throws(() => verify(duplicate), /authorization review roles must be exactly/u);
 });
@@ -578,8 +567,8 @@ test('generic, unsigned, recursive, or extended publication reviews fail closed'
 
   const recursive = createBundle(t, {authorized: true});
   mutatePublicationReview(recursive, 0, (statement) => {
-    const other = recursive.authorization.reviews[1];
-    statement.evidence = [{path: other.path, sha256: other.sha256}];
+    const rights = recursive.authorization.rights_record;
+    statement.evidence = [{path: rights.path, sha256: rights.sha256}];
   });
   assert.throws(() => verify(recursive), /technical evidence .*missing or changed/u);
 
@@ -590,7 +579,7 @@ test('generic, unsigned, recursive, or extended publication reviews fail closed'
   assert.throws(() => verify(extended), /fields must be exactly/u);
 });
 
-test('legal publication review binds all twelve approved rights gates', (t) => {
+test('company release owner binds all twelve approved rights gates', (t) => {
   const unresolved = createBundle(t, {authorized: true});
   mutateRightsRecord(unresolved, (rights) => {
     rights.gates[0].status = 'OPEN';
@@ -611,20 +600,20 @@ test('legal publication review binds all twelve approved rights gates', (t) => {
   });
   assert.throws(
     () => verify(changedRecord),
-    /legal is not bound to the approved rights record/u);
+    /release-owner is not bound to the approved rights record/u);
 
   const missingBinding = createBundle(t, {authorized: true});
-  const legalIndex = missingBinding.authorization.reviews.findIndex(
-    (review) => review.role === 'legal');
-  mutatePublicationReview(missingBinding, legalIndex, (statement) => {
+  const ownerIndex = missingBinding.authorization.reviews.findIndex(
+    (review) => review.role === 'release-owner');
+  mutatePublicationReview(missingBinding, ownerIndex, (statement) => {
     statement.rights_record_sha256 = null;
   });
   assert.throws(
     () => verify(missingBinding),
-    /legal is not bound to the approved rights record/u);
+    /release-owner is not bound to the approved rights record/u);
 });
 
-test('canonical pending trust policy cannot authorize publication', (t) => {
+test('canonical active trust policy rejects malformed publication authorization', (t) => {
   const fixture = createBundle(t);
   const authorizationRoot = path.join(path.dirname(fixture.root), 'untrusted-authorization');
   fs.mkdirSync(authorizationRoot);
@@ -637,7 +626,7 @@ test('canonical pending trust policy cannot authorize publication', (t) => {
       authorizationSha256: sha256File(authorizationPath),
       requirePublishable: true,
     }),
-    /publication trust policy is not active/u);
+    /publication-authorization\.json fields must be exactly/u);
 });
 
 test('authorization cannot be reused against a changed technical manifest', (t) => {
@@ -650,20 +639,7 @@ test('authorization cannot be reused against a changed technical manifest', (t) 
     /publication authorization is not bound to the exact technical candidate/u);
 });
 
-test('publication authorization enforces reviewer separation of duty', (t) => {
-  const fixture = createBundle(t, {authorized: true, sharedReviewers: true});
-  assert.throws(
-    () => verify(fixture),
-    /requires at least 3 distinct reviewers/u);
-
-  const sharedKey = createBundle(t, {
-    authorized: true,
-    sharedKeyMaterial: true,
-  });
-  assert.throws(
-    () => verify(sharedKey),
-    /signer public-key material is duplicated/u);
-
+test('publication authorization enforces owner signer hygiene', (t) => {
   const privatePem = createBundle(t, {
     authorized: true,
     privateKeyInTrustRoot: true,

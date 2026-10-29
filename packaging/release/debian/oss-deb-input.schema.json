@@ -40,10 +40,20 @@
     "files": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["dataplane", "copyright", "toolchain_lock"],
+      "required": [
+        "dataplane",
+        "copyright",
+        "third_party_notices",
+        "third_party_source",
+        "third_party_licenses",
+        "toolchain_lock"
+      ],
       "properties": {
         "dataplane": {"$ref": "#/$defs/file"},
         "copyright": {"$ref": "#/$defs/file"},
+        "third_party_notices": {"$ref": "#/$defs/file"},
+        "third_party_source": {"$ref": "#/$defs/file"},
+        "third_party_licenses": {"$ref": "#/$defs/file"},
         "toolchain_lock": {"$ref": "#/$defs/file"}
       }
     }

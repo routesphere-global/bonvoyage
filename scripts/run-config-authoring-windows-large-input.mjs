@@ -20,10 +20,10 @@ const RUN_ID_PATTERN = /^[1-9][0-9]*$/u;
 const ACTION_PATTERN = /^[a-z0-9-]+\/[a-z0-9-]+@[0-9a-f]{40}$/u;
 
 const EXPECTED_ACTIONS = Object.freeze({
-  checkout: 'actions/checkout@11d5960a326750d5838078e36cf38b85af677262',
-  setup_go: 'actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff',
-  setup_node: 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020',
-  upload_artifact: 'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02',
+  checkout: 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',
+  setup_go: 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e',
+  setup_node: 'actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1',
+  upload_artifact: 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9',
 });
 
 class AcceptanceError extends Error {
