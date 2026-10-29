@@ -44,8 +44,10 @@ Traffic, administration, and metrics are separate listener roles:
 | Role | Local example | Purpose |
 | --- | --- | --- |
 | Traffic | `:8080` | Client requests governed by routes and policies |
-| Administration | `:9901` | Process readiness and active-state inspection |
+| Data-plane health/admin | `:9901` | Process readiness and active-state inspection |
 | Metrics | `:9090` | Prometheus-format engineering telemetry |
 
 Production deployments should restrict administrative and metrics listeners to
 trusted networks rather than exposing them as public application endpoints.
+See [Network ports and firewall rules](/reference/network-ports/) for the full
+data-plane, control-plane, container, and Kubernetes port matrix.

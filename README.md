@@ -135,6 +135,27 @@ Stop and remove the local stack with:
 docker compose -f deploy/compose/local.yml down --volumes
 ```
 
+## Network ports
+
+BonVoyage does not require a broad firewall range. These are the principal
+defaults and repository examples; traffic and upstream ports remain
+configuration-defined.
+
+| Flow | TCP port | Exposure |
+| --- | ---: | --- |
+| Client to example HTTP listener | `8080` | Application network; configurable |
+| Client to example HTTPS listener | `8443` | Application network; Kubernetes maps service port `443` to it |
+| Prometheus to metrics | `9090` | Monitoring network only; binds to loopback by default |
+| Probe to data-plane health/admin | `9901` | Loopback or restricted management network only |
+| Gateway to optional discovery service | `9443` | Gateway-to-control-plane mutual TLS only |
+| Gateway to upstream application | Configured per endpoint | Outbound only; demo port `8081` is not a product default |
+
+Standalone snapshot compilation opens no control-plane port. Optional
+enrollment and Enterprise management listeners have no fixed default and must
+be assigned distinct, restricted addresses. See the authoritative
+[network ports and firewall rules](https://docs.routesphere.global/reference/network-ports/)
+before changing a firewall, security group, or Kubernetes NetworkPolicy.
+
 ## Development checks
 
 Install the pinned JavaScript tooling and run the portable contract suites:
@@ -187,6 +208,7 @@ before interpreting an implementation or performance claim.
 - [Assistant skill contract](https://docs.routesphere.global/reference/assistant-skill-contract/)
 - [Assistant skill evaluations](https://docs.routesphere.global/reference/assistant-skill-evaluations/)
 - [System model](https://docs.routesphere.global/concepts/system-model/)
+- [Network ports and firewall rules](https://docs.routesphere.global/reference/network-ports/)
 - [Supported capabilities](https://docs.routesphere.global/reference/supported-capabilities/)
 - [Support and security](https://docs.routesphere.global/reference/support-and-security/)
 
