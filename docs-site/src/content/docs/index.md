@@ -1,5 +1,5 @@
 ---
-title: BonVoyage API Gateway
+title: RouteSphere BonVoyage API Gateway
 description: Public documentation for installing, configuring, operating, and verifying the BonVoyage API gateway.
 ---
 

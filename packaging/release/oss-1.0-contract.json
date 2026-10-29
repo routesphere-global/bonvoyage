@@ -1,7 +1,7 @@
 {
   "schema_version": 3,
   "classification": "routesphere-bonvoyage-oss-release-contract",
-  "product": "BonVoyage API Gateway",
+  "product": "RouteSphere BonVoyage API Gateway",
   "source_repository": "https://github.com/routesphere-global/bonvoyage",
   "platforms": [
     "linux/amd64"

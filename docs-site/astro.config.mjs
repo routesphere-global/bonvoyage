@@ -7,7 +7,7 @@ export default defineConfig({
   output: 'static',
   integrations: [
     starlight({
-      title: 'BonVoyage API Gateway',
+      title: 'RouteSphere BonVoyage API Gateway',
       description: 'Install, configure, operate, and verify the BonVoyage API gateway.',
       favicon: '/favicon.svg',
       logo: {

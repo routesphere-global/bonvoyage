@@ -27,7 +27,7 @@ function fixture(overrides = {}) {
 test('8-core package plan is identity-bound and separates the eight IRQ CPUs', () => {
   const {plan, files} = buildPackagePlacement(fixture());
   assert.equal(plan.package_unit_sha256,
-    '81272e8d60c667b03980311d0ebd3d57bd0eb399c66fef9001da1aabc4a98436');
+    '5f46acf80375a023ea06fac38f3b8d75774a41ea1361ed1a2518c880dd7aa6e7');
   assert.equal(plan.expected_fragment_path,
     '/usr/lib/systemd/system/bonvoyage.service');
   assert.equal(plan.install_targets['bonvoyage-runtime.conf'],

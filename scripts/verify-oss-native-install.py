@@ -294,7 +294,7 @@ def validate_contract(contract: dict) -> None:
     require(contract["classification"] ==
             "routesphere-bonvoyage-oss-native-fresh-install-contract",
             "unexpected contract classification")
-    require(contract["product"] == "BonVoyage API Gateway",
+    require(contract["product"] == "RouteSphere BonVoyage API Gateway",
             "unexpected contract product")
     require(strict_json_equal(contract["target"], TARGET),
             "native target contract drift")

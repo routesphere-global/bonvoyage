@@ -1,6 +1,7 @@
 # Community Code of Conduct
 
-BonVoyage API Gateway aims to be a rigorous, welcoming engineering project.
+RouteSphere BonVoyage API Gateway aims to be a rigorous, welcoming engineering
+project.
 Participants must communicate respectfully, critique ideas and evidence rather
 than people, state assumptions clearly, and help others work safely.
 

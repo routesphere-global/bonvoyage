@@ -1,5 +1,5 @@
-BonVoyage API Gateway native packaging
-==================================
+RouteSphere BonVoyage API Gateway native packaging
+==============================================
 
 This package contains the gateway executable and its hardened systemd unit.
 It supplies neither a snapshot, secrets, control-plane process nor tuning.

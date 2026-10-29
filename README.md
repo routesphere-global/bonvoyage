@@ -1,9 +1,9 @@
-# BonVoyage API Gateway
+# RouteSphere BonVoyage API Gateway
 
-BonVoyage API Gateway is a high-performance, standalone API gateway with a
-C++/Seastar data plane and a Go control plane. It is designed around shard-local
-request ownership, immutable configuration snapshots, bounded failure behavior,
-and evidence-led release engineering.
+RouteSphere BonVoyage API Gateway is a high-performance, standalone API gateway
+with a C++/Seastar data plane and a Go control plane. It is designed around
+shard-local request ownership, immutable configuration snapshots, bounded
+failure behavior, and evidence-led release engineering.
 
 > **Release-candidate notice:** BonVoyage-owned source and public documentation
 > in this repository are licensed under Apache License 2.0. No signed or

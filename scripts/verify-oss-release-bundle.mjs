@@ -30,7 +30,7 @@ const DEFAULT_CONTRACT = path.resolve(
 // Updated deliberately whenever the canonical release contract changes. The
 // production CLI has no caller-selectable contract root.
 const DEFAULT_CONTRACT_SHA256 =
-  '22ec6123990267fc7958b1cbaefdc09121f2c427fbf1111c2239f1c1852dd55d';
+  'c03d42181c52d9e2a7ee01343e2d536f0645febb7f03edcb77a189776dbdc97c';
 
 function fail(message) {
   throw new Error(message);

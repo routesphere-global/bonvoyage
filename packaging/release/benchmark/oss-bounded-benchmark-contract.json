@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "classification": "routesphere-bonvoyage-oss-bounded-benchmark-contract",
-  "product": "BonVoyage API Gateway",
+  "product": "RouteSphere BonVoyage API Gateway",
   "evidence_class": "single-host-local-engineering",
   "workload": {
     "id": "oss-http1-proxy-256b",
