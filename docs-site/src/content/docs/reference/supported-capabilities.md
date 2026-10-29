@@ -35,6 +35,7 @@ release claims belong to the exact published release notes and artifacts.
 | SSE | Incremental forwarding is implemented; production-scale concurrent slow-consumer and event-cadence qualification remains release evidence work. |
 | Certificates | One certificate/key pair per TLS listener; no per-domain SNI certificate selector or certificate-upload API. |
 | Fleet operations | The OSS control plane provides standalone primitives; enterprise multi-tenant fleet governance is separate. |
+| Management API | Console Free uses an internal management service, but the public product does not publish a supported endpoint, SDK, external automation, or third-party UI contract. Supported programmatic management documentation is Enterprise scope. |
 | Performance | Results apply only to their recorded source, artifact, configuration, workload, and environment. |
 | Dedicated hardware | Bare-metal NUMA, PCIe, NIC queue, and IRQ advantages require physical-topology qualification. |
 

@@ -6,8 +6,8 @@ description: Understand the optional visual operating surface for a standalone B
 Console Free is the no-cost visual companion for a standalone BonVoyage
 installation. It presents the same desired state, immutable rollout identity,
 node reports, diagnostics, and audit history exposed by the management plane.
-The Console is optional: the OSS gateway, configuration tools, and Admin API do
-not require it.
+The Console is optional: the OSS gateway and release-matched configuration
+tools do not require it.
 
 :::note[Current scope]
 Console Free is distributed separately from the public source repository as a
@@ -15,6 +15,15 @@ no-cost proprietary binary. Downloading and using it does not require product
 registration, a RouteSphere account, or a subscription. These pages document
 supported operator behavior without publishing Console source, credentials, or
 private management internals. Start with [Get Console Free](get-console-free/).
+:::
+
+:::caution[Management API boundary]
+The management service used by Console Free is not a supported public
+integration contract. Public documentation does not include an endpoint
+catalog, SDK, external automation procedure, or third-party Console guide.
+Supported programmatic management and its documentation are Enterprise scope.
+Use YAML, the documented configuration tools, or Console Free for the public
+standalone product.
 :::
 
 ## The operating loop
