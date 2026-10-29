@@ -68,6 +68,7 @@ export default defineConfig({
             { label: 'ChatGPT and Codex skill', slug: 'reference/openai-codex-configuration-skill' },
             { label: 'Claude Code skill', slug: 'reference/claude-configuration-skill' },
             { label: 'Supported capabilities', slug: 'reference/supported-capabilities' },
+            { label: 'Network ports and firewall rules', slug: 'reference/network-ports' },
             { label: 'Support and security', slug: 'reference/support-and-security' },
           ],
         },
