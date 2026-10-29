@@ -5,10 +5,17 @@ import path from 'node:path';
 import process from 'node:process';
 import {fileURLToPath} from 'node:url';
 
+import yaml from 'js-yaml';
+
 const CLASSIFICATION = 'routesphere-bonvoyage-oss-oci-builder-image-contract';
-const STATE = 'local-foundation-unpublished';
+const LOCAL_STATE = 'local-foundation-unpublished';
+const PUBLIC_STATE = 'public-foundation-verified';
+const REPOSITORY = 'ghcr.io/routesphere-global/bonvoyage-oci-builder';
 const ENTRYPOINT = '/usr/local/bin/bonvoyage-oss-oci-builder';
 const IMAGE_ID = /^sha256:[a-f0-9]{64}$/u;
+const IMAGE_REFERENCE = /^(ghcr[.]io\/routesphere-global\/bonvoyage-oci-builder)@sha256:([a-f0-9]{64})$/u;
+const RECEIPT_CLASSIFICATION =
+  'routesphere-bonvoyage-oss-oci-builder-image-verification';
 
 function fail(message) {
   throw new Error(message);
@@ -40,15 +47,28 @@ function readJson(filePath, label) {
   }
 }
 
+function validateRelativePath(value, label) {
+  requireCondition(typeof value === 'string' && value.length > 0 &&
+    !value.includes('\\') && !value.includes('\0') && !path.posix.isAbsolute(value) &&
+    path.posix.normalize(value) === value && !value.startsWith('./') &&
+    !value.split('/').some((part) => part === '' || part === '..'),
+  `${label} must be a normalized POSIX-relative path`);
+}
+
 function validateContract(contract) {
   exactKeys(contract, [
     'schema_version', 'classification', 'state', 'image', 'build', 'runtime',
     'registry', 'authority',
   ], 'contract');
   requireCondition(contract.schema_version === 1 &&
-    contract.classification === CLASSIFICATION && contract.state === STATE,
-  'unsupported or activated OCI builder-image contract');
+    contract.classification === CLASSIFICATION &&
+    [LOCAL_STATE, PUBLIC_STATE].includes(contract.state),
+  'unsupported OCI builder-image contract');
   const image = object(contract.image, 'contract.image');
+  exactKeys(image, [
+    'dockerfile', 'target', 'platform', 'ubuntu_base', 'packaging_snapshot',
+    'entrypoint_source', 'entrypoint', 'default_user', 'working_directory',
+  ], 'contract.image');
   requireCondition(image.dockerfile === 'deploy/docker/bonvoyage/Dockerfile' &&
     image.target === 'oss-oci-builder' && image.platform === 'linux/amd64' &&
     /^ubuntu:24[.]04@sha256:[a-f0-9]{64}$/u.test(image.ubuntu_base) &&
@@ -57,6 +77,11 @@ function validateContract(contract) {
     image.entrypoint === ENTRYPOINT && image.default_user === '65532:65532' &&
     image.working_directory === '/workspace', 'unexpected OCI builder identity');
   const build = object(contract.build, 'contract.build');
+  exactKeys(build, [
+    'source_compiled_at_runtime', 'source_or_binary_embedded', 'build_type',
+    'compiled_tests_required', 'output', 'manifest_count', 'layer_count',
+    'dependency_prefixes',
+  ], 'contract.build');
   requireCondition(build.source_compiled_at_runtime === true &&
     build.source_or_binary_embedded === false && build.build_type === 'RelWithDebInfo' &&
     build.compiled_tests_required === true &&
@@ -67,6 +92,11 @@ function validateContract(contract) {
       '/opt/re2', '/opt/seastar',
     ]), 'unexpected OCI builder policy');
   const runtime = object(contract.runtime, 'contract.runtime');
+  exactKeys(runtime, [
+    'network', 'read_only_root', 'capabilities', 'no_new_privileges', 'run_as_caller',
+    'source_mount', 'source_mount_read_only', 'work_mount', 'output_mount', 'tmp_mount',
+    'tmp_noexec', 'required_environment',
+  ], 'contract.runtime');
   requireCondition(runtime.network === 'none' && runtime.read_only_root === true &&
     JSON.stringify(runtime.capabilities) === '[]' && runtime.no_new_privileges === true &&
     runtime.run_as_caller === true && runtime.source_mount === '/workspace/source' &&
@@ -77,13 +107,57 @@ function validateContract(contract) {
       'BONVOYAGE_SOURCE_COMMIT', 'BONVOYAGE_SOURCE_TAG']),
   'unexpected OCI builder runtime boundary');
   const registry = object(contract.registry, 'contract.registry');
-  requireCondition(registry.repository === 'ghcr.io/routesphere-global/bonvoyage-oci-builder' &&
-    registry.reference === null && registry.external_verification_receipt === null &&
-    registry.anonymous_pull_verified === false,
-  'unpublished OCI builder must not assert registry identity');
-  requireCondition(Object.values(object(contract.authority, 'contract.authority'))
+  exactKeys(registry, [
+    'repository', 'reference', 'external_verification_receipt', 'anonymous_pull_verified',
+  ], 'contract.registry');
+  requireCondition(registry.repository === REPOSITORY,
+    'unexpected OCI builder registry repository');
+  const publicVerified = contract.state === PUBLIC_STATE;
+  if (publicVerified) {
+    requireCondition(IMAGE_REFERENCE.test(registry.reference ?? '') &&
+      registry.reference.startsWith(`${REPOSITORY}@sha256:`) &&
+      registry.anonymous_pull_verified === true,
+    'public OCI builder requires an immutable anonymously verified registry identity');
+    validateRelativePath(registry.external_verification_receipt,
+      'contract.registry.external_verification_receipt');
+  } else {
+    requireCondition(registry.reference === null &&
+      registry.external_verification_receipt === null &&
+      registry.anonymous_pull_verified === false,
+    'unpublished OCI builder must not assert registry identity');
+  }
+  const authority = object(contract.authority, 'contract.authority');
+  exactKeys(authority, [
+    'release_admitted', 'publishable', 'package_uploaded', 'container_uploaded',
+    'signature_created', 'provenance_created',
+  ], 'contract.authority');
+  requireCondition(Object.values(authority)
     .every((value) => value === false),
   'OCI builder must not grant release or publication authority');
+  return {publicVerified};
+}
+
+function validateVerificationReceipt(contract, repositoryRoot) {
+  if (contract.state !== PUBLIC_STATE) return null;
+  const receiptPath = path.resolve(repositoryRoot,
+    contract.registry.external_verification_receipt);
+  const receipt = object(readJson(receiptPath, 'OCI builder-image verification receipt'),
+    'OCI builder-image verification receipt');
+  exactKeys(receipt, [
+    'schema_version', 'classification', 'repository', 'reference', 'digest', 'platform',
+    'registry', 'verified_at', 'verification_methods', 'release_admitted', 'publishable',
+  ], 'OCI builder-image verification receipt');
+  const match = IMAGE_REFERENCE.exec(contract.registry.reference);
+  requireCondition(receipt.schema_version === 1 &&
+    receipt.classification === RECEIPT_CLASSIFICATION &&
+    receipt.repository === REPOSITORY && receipt.reference === contract.registry.reference &&
+    receipt.digest === match[2] && receipt.platform === contract.image.platform &&
+    receipt.registry === 'ghcr.io' && Number.isFinite(Date.parse(receipt.verified_at)) &&
+    JSON.stringify(receipt.verification_methods) === JSON.stringify([
+      'registry-manifest', 'anonymous-pull', 'local-image-inspect',
+    ]) && receipt.release_admitted === false && receipt.publishable === false,
+  'OCI builder-image verification receipt does not satisfy the public foundation contract');
+  return {path: contract.registry.external_verification_receipt};
 }
 
 function validateDockerfile(contract, source) {
@@ -132,6 +206,32 @@ function validateEntrypoint(contract, source) {
     `OCI entrypoint contains forbidden network or authority path ${forbidden}`);
 }
 
+function validateWorkflow(contract, workflowSource) {
+  let workflow;
+  try {
+    workflow = object(yaml.load(workflowSource), 'hosted OCI workflow');
+  } catch (error) {
+    fail(`hosted OCI workflow is not valid YAML: ${error.message}`);
+  }
+  for (const name of ['build-a', 'build-b']) {
+    const job = object(workflow.jobs?.[name], `${name} job`);
+    const runSource = job.steps.filter((step) => typeof step.run === 'string')
+      .map((step) => step.run).join('\n');
+    const suffix = name === 'build-a' ? 'a' : 'b';
+    for (const marker of [
+      'docker run --rm --network none --read-only', '--cap-drop ALL',
+      '--security-opt no-new-privileges', '--tmpfs /tmp:rw,nosuid,nodev,noexec',
+      `source=$RUNNER_TEMP/oss-oci-work-${suffix},target=/workspace/work`,
+      'target=/workspace/source,readonly', 'target=/workspace/output',
+      '--env BONVOYAGE_BUILDER_IMAGE=',
+    ]) requireCondition(runSource.includes(marker),
+      `${name} is missing OCI runtime boundary ${marker}`);
+  }
+  requireCondition(!workflowSource.includes('docker push') &&
+    !workflowSource.includes('packages: write') && !workflowSource.includes('id-token: write'),
+  'hosted OCI candidate must not publish or mint identity');
+}
+
 function localObservation(contract, inspection) {
   requireCondition(Array.isArray(inspection) && inspection.length === 1,
     'exactly one local Docker image inspection is required');
@@ -162,18 +262,33 @@ function localObservation(contract, inspection) {
 }
 
 export function verifyOciBuilderImage(contractPath, dockerfilePath, entrypointPath,
-  options = {}) {
+  workflowPath, options = {}) {
   const contract = object(readJson(contractPath, 'OCI builder-image contract'),
     'OCI builder-image contract');
-  validateContract(contract);
+  const state = validateContract(contract);
   validateDockerfile(contract, fs.readFileSync(dockerfilePath, 'utf8'));
   validateEntrypoint(contract, fs.readFileSync(entrypointPath, 'utf8'));
+  const workflowSource = fs.readFileSync(workflowPath, 'utf8');
+  validateWorkflow(contract, workflowSource);
+  const repositoryRoot = path.resolve(path.dirname(contractPath), '../../..');
+  const activeWorkflowPath = path.join(repositoryRoot,
+    '.github/workflows/oss-oci-reproducibility.yml');
+  if (state.publicVerified) {
+    requireCondition(fs.existsSync(activeWorkflowPath) &&
+      fs.readFileSync(activeWorkflowPath, 'utf8') === workflowSource,
+    'public OCI builder foundation requires the exact reviewed hosted workflow');
+  } else {
+    requireCondition(!fs.existsSync(activeWorkflowPath),
+      'unpublished OCI builder foundation must not activate the hosted workflow');
+  }
+  const verificationReceipt = validateVerificationReceipt(contract, repositoryRoot);
   const result = {
     schema_version: 1,
     classification: 'routesphere-bonvoyage-oss-oci-builder-image-contract-result',
-    outcome: 'local-foundation-accepted',
+    outcome: state.publicVerified ? 'public-foundation-accepted' : 'local-foundation-accepted',
     state: contract.state,
-    registry_reference_verified: false,
+    registry_reference_verified: state.publicVerified,
+    verification_receipt: verificationReceipt,
     hosted_execution_qualified: false,
     release_admitted: false,
     publishable: false,
@@ -188,7 +303,8 @@ export function verifyOciBuilderImage(contractPath, dockerfilePath, entrypointPa
 function parseArguments(argv) {
   const options = {};
   const names = {'--contract': 'contract', '--dockerfile': 'dockerfile',
-    '--entrypoint': 'entrypoint', '--image-inspection': 'imageInspection'};
+    '--entrypoint': 'entrypoint', '--workflow': 'workflow',
+    '--image-inspection': 'imageInspection'};
   for (let index = 0; index < argv.length; index += 1) {
     const name = names[argv[index]];
     requireCondition(name !== undefined && index + 1 < argv.length,
@@ -196,7 +312,7 @@ function parseArguments(argv) {
     options[name] = argv[index + 1];
     index += 1;
   }
-  for (const name of ['contract', 'dockerfile', 'entrypoint']) {
+  for (const name of ['contract', 'dockerfile', 'entrypoint', 'workflow']) {
     requireCondition(typeof options[name] === 'string', `--${name} is required`);
   }
   return options;
@@ -207,7 +323,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) ===
   try {
     const options = parseArguments(process.argv.slice(2));
     const {result} = verifyOciBuilderImage(
-      options.contract, options.dockerfile, options.entrypoint, options,
+      options.contract, options.dockerfile, options.entrypoint, options.workflow, options,
     );
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   } catch (error) {

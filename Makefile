@@ -15,6 +15,7 @@ export GOCACHE := $(CURDIR)/.cache/go-build
 	config-authoring-claude-skill-test \
 		dco-signoff-test oss-release-bundle-test oss-deb-builder-test oss-deb-hosted-contract-test \
 	oss-deb-builder-image-test oss-native-install-verifier-test oss-native-install-collector-test oss-kubernetes-deployment-verifier-test oss-kubernetes-acceptance-runner-test oss-bounded-benchmark-verifier-test oss-bounded-benchmark-runner-test oss-oci-builder-test local-deployment-verifier-test \
+	oss-oci-hosted-contract-test \
 	dataplane-image dataplane-build dataplane-http2-deadline \
 	dataplane-http2-cookie dedicated-preflight-rehearsal \
 	native-logging-backpressure-ci up verify-local-deployment verify-kubernetes-deployment run-kubernetes-acceptance run-bounded-benchmark down
@@ -52,6 +53,7 @@ help:
 	@echo "  oss-bounded-benchmark-verifier-test  Verify bounded benchmark evidence admission"
 	@echo "  oss-bounded-benchmark-runner-test  Verify bounded benchmark execution and cleanup controls"
 	@echo "  oss-oci-builder-test  Verify deterministic OCI assembly and offline builder contracts"
+	@echo "  oss-oci-hosted-contract-test  Verify the protected hosted OCI build contract"
 	@echo "  local-deployment-verifier-test  Verify the fail-closed Docker quickstart checker"
 	@echo "  fmt-check      Check authored Go formatting"
 	@echo "  dataplane-image Build the Linux/Seastar data-plane image"
@@ -105,6 +107,8 @@ test-node:
 	@$(MAKE) oss-bounded-benchmark-runner-test
 	@node --test scripts/verify-oss-deb-builder-image.test.mjs
 	@$(MAKE) oss-deb-hosted-contract-test
+	@node --test scripts/verify-oss-oci-builder-image.test.mjs
+	@$(MAKE) oss-oci-hosted-contract-test
 
 oss-release-bundle-test:
 	@node --test scripts/verify-oss-release-bundle.test.mjs
@@ -198,6 +202,9 @@ oss-oci-builder-test:
 
 oss-deb-hosted-contract-test:
 	@node --test scripts/verify-oss-deb-hosted-build.test.mjs
+
+oss-oci-hosted-contract-test:
+	@node --test scripts/verify-oss-oci-hosted-build.test.mjs
 
 local-deployment-verifier-test:
 	@node --test scripts/verify-local-deployment.test.mjs

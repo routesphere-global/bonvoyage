@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-oss-oci-builder-image-verification",
+  "repository": "ghcr.io/routesphere-global/bonvoyage-oci-builder",
+  "reference": "ghcr.io/routesphere-global/bonvoyage-oci-builder@sha256:51d38192e3bdd43714b77b30b87908030a0424224aacd75747125186624ada9b",
+  "digest": "51d38192e3bdd43714b77b30b87908030a0424224aacd75747125186624ada9b",
+  "platform": "linux/amd64",
+  "registry": "ghcr.io",
+  "verified_at": "2026-10-29T18:36:23Z",
+  "verification_methods": [
+    "registry-manifest",
+    "anonymous-pull",
+    "local-image-inspect"
+  ],
+  "release_admitted": false,
+  "publishable": false
+}

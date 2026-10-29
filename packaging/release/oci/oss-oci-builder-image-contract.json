@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "classification": "routesphere-bonvoyage-oss-oci-builder-image-contract",
-  "state": "local-foundation-unpublished",
+  "state": "public-foundation-verified",
   "image": {
     "dockerfile": "deploy/docker/bonvoyage/Dockerfile",
     "target": "oss-oci-builder",
@@ -52,9 +52,9 @@
   },
   "registry": {
     "repository": "ghcr.io/routesphere-global/bonvoyage-oci-builder",
-    "reference": null,
-    "external_verification_receipt": null,
-    "anonymous_pull_verified": false
+    "reference": "ghcr.io/routesphere-global/bonvoyage-oci-builder@sha256:51d38192e3bdd43714b77b30b87908030a0424224aacd75747125186624ada9b",
+    "external_verification_receipt": "packaging/release/oci/oss-oci-builder-image-verification.json",
+    "anonymous_pull_verified": true
   },
   "authority": {
     "release_admitted": false,
