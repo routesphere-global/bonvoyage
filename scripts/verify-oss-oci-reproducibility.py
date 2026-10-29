@@ -87,6 +87,7 @@ def compare(first_directory, second_directory):
         "classification": REPRO_CLASS,
         "outcome": "byte-identical-technical-candidates",
         "source": first["source"],
+        "builder_image": first["builder_image"],
         "builders": [first["builder_id"], second["builder_id"]],
         "build_receipts": [
             {"builder_id": first["builder_id"], "sha256": first_receipt_sha256},

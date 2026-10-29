@@ -180,19 +180,24 @@ installation evidence.
 
 ## Protected hosted Debian contract
 
-`debian/oss-deb-hosted-build-contract.json` and
-`debian/oss-deb-reproducibility.workflow.yml` define the next hosted boundary.
-The YAML is intentionally stored outside `.github/workflows/`; it cannot run or
-consume Actions minutes in its current location. The contract starts blocked
-and `scripts/verify-oss-deb-hosted-build.mjs` rejects activation until all three
-external facts are evidenced:
+`debian/oss-deb-hosted-build-contract.json`,
+`debian/oss-deb-reproducibility.workflow.yml` and the byte-identical active
+workflow define the protected hosted boundary. The workflow is manual,
+tag-only, environment-gated and limited to the public repository. The contract
+and `scripts/verify-oss-deb-hosted-build.mjs` require all three external facts:
 
 1. the public `routesphere-global/bonvoyage` repository exists;
 2. its protected `release` environment and `v*` tag rules are verified; and
 3. the public Linux AMD64 builder image is anonymously pullable, digest-pinned,
    and matches a separately reviewed registry/pull/inspection receipt.
 
-The candidate permits two independent build jobs and a comparison job only.
+The accepted `v1.0.0-rc.4` replay is GitHub Actions run `40928269331`; both
+independent builders produced the exact Debian package SHA-256
+`0f8c135e78d317b7c8fa10539f52388a73993ec896c21366ab9e5698ddc88554`.
+This is hosted reproducibility evidence for that immutable candidate, not a
+published product release.
+
+The workflow permits two independent build jobs and a comparison job only.
 Each build runs without container network access, with a read-only root,
 dropped capabilities and no new privileges. Evidence expires after three days,
 and the total workflow budget is capped at 200 billable job minutes. Even a
@@ -200,8 +205,8 @@ byte-identical hosted result remains a technical candidate: release admission,
 publication, signing, provenance and package/container upload all stay false.
 
 Run `make oss-deb-hosted-contract-test` to replay its adversarial contract tests.
-Do not copy the template into `.github/workflows/` merely to test it; activation
-is a distinct, evidence-bound checkpoint.
+Changing the template, active workflow, builder identity or source boundary
+requires a new reviewed candidate and cannot inherit this evidence.
 
 ## Offline public Debian builder-image foundation
 
@@ -220,11 +225,12 @@ empty work/output mounts and a no-execute temporary filesystem. Git trust is
 limited to the exact source mount; wildcard safe-directory configuration is
 rejected.
 
-The current image is a local, unpublished foundation. Its local image ID and a
-synthetic test-only package rehearsal do not prove a public GHCR digest,
-approved license rights, clean committed BonVoyage source, hosted independence
-or release admission. Do not activate the hosted template until those external
-facts are separately evidenced.
+The public source-free builder is pinned to
+`ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:f32465ff914634bcb5bbb2ff9271dd1ba0cbb8838be0ab26c696e64d2a17a225`.
+Its registry manifest, anonymous pull and local image identity were verified on
+2026-10-29. That verification proves the exact execution image is independently
+retrievable; it does not grant license approval, release admission, signing,
+provenance or product publication authority.
 
 ## Deterministic OCI technical-candidate path
 
@@ -258,20 +264,38 @@ Builder publication, approved license rights, SBOMs, vulnerability review,
 signing, provenance, lifecycle testing, release admission and publication are
 separate gates and remain false in every builder receipt.
 
+## Protected hosted OCI contract
+
+`oci/oss-oci-hosted-build-contract.json` and
+`oci/oss-oci-reproducibility.workflow.yml` define a manual, protected-tag-only
+hosted replay. The active workflow must be byte-identical to that reviewed
+template. It runs two isolated Linux AMD64 builds from the exact clean public
+tag and compares the OCI archive, manifest, configuration and layer identities.
+
+Both build jobs use the exact anonymously verified source-free builder digest,
+no network, a read-only root, dropped capabilities, `no-new-privileges`, a
+read-only source mount, separate work/output mounts and a no-execute temporary
+filesystem. The comparison receipt is bound to the GitHub repository, tag,
+commit, run and distinct uploaded evidence digests. Run
+`make oss-oci-hosted-contract-test` for its adversarial contract tests.
+
+Activation does not make an OCI image publishable. Even a byte-identical hosted
+result qualifies only independent technical reproducibility for that immutable
+candidate. SBOM admission, vulnerability disposition, signing, provenance,
+lifecycle acceptance, release admission and product upload remain separate
+false gates.
+
 ## Current status
 
 This contract is a release-admission foundation, not a release. The public
-native package assembler has passed exact clean-source local acceptance, and a
-source-free offline builder-image foundation has passed a bounded local
-mechanical rehearsal. A deterministic OCI assembler and source-free OCI-builder
-candidate have also passed a bounded local two-execution replay. Their
-implementation is accepted in the exact clean private commit `25d8df02` and its
-matching 854-file no-Git exports; one untouched export now occupies OSS staging
-and passes complete-inventory verification. Hosted independent-build acceptance
-remains pending. The builder image is not publicly published or externally
-verified, and the synthetic rehearsals do not qualify release artifacts. The
-repository also does not yet have its final public license, public origin and
-release tag, clean tagged public-origin OCI artifact, active hosted release
-workflow, signing identity, hosted provenance, final vulnerability disposition
-or publication approval. Existing private package and scanner evidence cannot
-be relabeled to satisfy these gates.
+Apache-2.0 repository, protected candidate tags, release environment, Debian
+builder identity and hosted Debian reproducibility gate are established for the
+evidence named above. The deterministic OCI assembler and source-free OCI
+builder have passed bounded local two-execution replay; hosted OCI independence
+is the active checkpoint.
+
+No result in this directory grants final artifact admission or publication.
+Final SBOM and vulnerability disposition, signatures, hosted provenance,
+installation/lifecycle acceptance and explicit release-owner approval remain
+separate requirements. Existing local, private or differently bound evidence
+cannot be relabeled to satisfy them.

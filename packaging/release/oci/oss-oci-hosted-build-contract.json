@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-oss-oci-hosted-build-contract",
+  "activation": {
+    "state": "activatable",
+    "template_path": "packaging/release/oci/oss-oci-reproducibility.workflow.yml",
+    "active_workflow_path": ".github/workflows/oss-oci-reproducibility.yml",
+    "public_repository_created": true,
+    "builder_image_identity_verified": true,
+    "repository_settings_verified": true
+  },
+  "source": {
+    "repository": "https://github.com/routesphere-global/bonvoyage",
+    "event": "workflow_dispatch",
+    "ref_type": "tag",
+    "tag_pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$",
+    "protected_tag_required": true,
+    "pushed_commit_required": true,
+    "clean_checkout_required": true
+  },
+  "execution": {
+    "environment": "release",
+    "runner": "ubuntu-24.04",
+    "platform": "linux/amd64",
+    "permissions": {
+      "contents": "read"
+    },
+    "jobs": {
+      "preflight": {
+        "timeout_minutes": 5
+      },
+      "build-a": {
+        "timeout_minutes": 90
+      },
+      "build-b": {
+        "timeout_minutes": 90
+      },
+      "compare": {
+        "timeout_minutes": 15
+      }
+    },
+    "artifact_retention_days": 3,
+    "maximum_billable_job_minutes": 200,
+    "manual_only": true,
+    "scheduled_runs": false,
+    "self_hosted_runners": false,
+    "cancel_in_progress": false
+  },
+  "builder_image": {
+    "repository": "ghcr.io/routesphere-global/bonvoyage-oci-builder",
+    "reference": "ghcr.io/routesphere-global/bonvoyage-oci-builder@sha256:51d38192e3bdd43714b77b30b87908030a0424224aacd75747125186624ada9b",
+    "verification_receipt": "packaging/release/oci/oss-oci-builder-image-verification.json",
+    "entrypoint": "/usr/local/bin/bonvoyage-oss-oci-builder",
+    "network": "none",
+    "read_only_root": true
+  },
+  "actions": {
+    "checkout": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "upload_artifact": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+    "download_artifact": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"
+  },
+  "evidence": {
+    "builder_artifacts": [
+      "oci-builder-execution.json",
+      "builder-image-observation.json",
+      "bonvoyage-gateway-*-linux-amd64.oci.tar"
+    ],
+    "comparison_artifacts": [
+      "reproducibility-receipt.json",
+      "hosted-reproducibility-receipt.json"
+    ],
+    "builder_names": [
+      "oss-oci-build-a",
+      "oss-oci-build-b"
+    ],
+    "comparison_name": "oss-oci-comparison"
+  },
+  "authority": {
+    "release_admitted": false,
+    "publishable": false,
+    "github_release_created": false,
+    "package_uploaded": false,
+    "container_uploaded": false,
+    "signature_created": false,
+    "provenance_created": false
+  }
+}

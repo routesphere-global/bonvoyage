@@ -253,6 +253,7 @@ class OssOciBuilderTests(unittest.TestCase):
             directories.append(directory)
         comparison = reproducibility.compare(*directories)
         self.assertTrue(comparison["technical_reproducibility_observed"])
+        self.assertEqual(comparison["builder_image"], receipt["builder_image"])
         self.assertFalse(comparison["hosted_builder_independence_qualified"])
         self.assertFalse(comparison["publishable"])
         same = json.loads((directories[1] / "oci-builder-execution.json").read_text())
