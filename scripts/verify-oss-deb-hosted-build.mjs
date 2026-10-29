@@ -282,6 +282,15 @@ function validateWorkflow(contract, workflow, workflowSource) {
   requireCondition(workflow.jobs.compare.steps.filter((step) =>
     actionName(step.uses) === 'actions/download-artifact').length === 2,
   'comparison must download both builder artifacts');
+  const comparisonStep = workflow.jobs.compare.steps.find((step) =>
+    step.name === 'Compare exact package and receipt bytes');
+  requireCondition(typeof comparisonStep?.run === 'string' && [
+    '--github-repository "$GITHUB_REPOSITORY"',
+    '--github-ref-type "$GITHUB_REF_TYPE"',
+    '--github-ref-name "$GITHUB_REF_NAME"',
+    '--github-sha "$GITHUB_SHA"',
+  ].every((argument) => comparisonStep.run.includes(argument)),
+  'hosted receipt must bind complete GitHub source context');
 
   for (const forbidden of [
     /pull_request_target/u, /self-hosted/u, /secrets\s*[.[]/u,
