@@ -52,18 +52,20 @@ require = native.require
 
 PHASE_CHECKS = {
     "upgrade-from-baseline": {
-        "baseline_active", "candidate_package_installed", "service_not_implicitly_restarted",
-        "candidate_activated_after_explicit_restart", "fixed_route_exact",
+        "baseline_active", "candidate_package_installed",
+        "service_stopped_without_implicit_restart",
+        "candidate_activated_after_explicit_start", "fixed_route_exact",
         "proxied_route_exact", "automatic_restarts_zero",
     },
     "rollback-to-baseline": {
-        "baseline_package_restored", "service_not_implicitly_restarted",
-        "baseline_activated_after_explicit_restart", "traffic_restored",
+        "baseline_package_restored", "service_stopped_without_implicit_restart",
+        "baseline_activated_after_explicit_start", "traffic_restored",
         "automatic_restarts_zero",
     },
     "candidate-reactivation": {
-        "candidate_package_restored", "candidate_activated_after_explicit_restart",
-        "traffic_restored", "automatic_restarts_zero",
+        "candidate_package_restored", "service_stopped_without_implicit_restart",
+        "candidate_activated_after_explicit_start", "traffic_restored",
+        "automatic_restarts_zero",
     },
     "shutdown-remove": {
         "graceful_stop", "process_absent", "package_absent", "package_payload_absent",
@@ -182,19 +184,34 @@ def active_identity(log, command_id: str) -> dict:
     fields = service_fields(log, command_id)
     require(fields.get("ActiveState") == "active" and fields.get("MainPID", "").isdigit() and
             int(fields["MainPID"]) > 1 and fields.get("NRestarts") == "0" and
-            fields.get("InvocationID"), "gateway service is not stably active")
+            fields.get("InvocationID"),
+            f"{command_id}: gateway service is not stably active: "
+            f"ActiveState={fields.get('ActiveState')!r} "
+            f"SubState={fields.get('SubState')!r} MainPID={fields.get('MainPID')!r} "
+            f"NRestarts={fields.get('NRestarts')!r} "
+            f"InvocationID={fields.get('InvocationID')!r}")
     process = process_identity(int(fields["MainPID"]))
     require(process["uid"] == pwd.getpwnam(SERVICE_USER).pw_uid,
             "gateway process does not use the service identity")
     return {"fields": fields, "process": process}
 
 
-def same_invocation(before: dict, after: dict) -> bool:
-    return (before["fields"]["InvocationID"] == after["fields"]["InvocationID"] and
-            before["fields"]["MainPID"] == after["fields"]["MainPID"] and
-            before["fields"]["NRestarts"] == after["fields"]["NRestarts"] == "0" and
-            before["process"]["start_ticks"] == after["process"]["start_ticks"] and
-            before["process"]["executable_sha256"] == after["process"]["executable_sha256"])
+def clean_package_transition_stop(fields: dict[str, str], previous: dict,
+                                  process_present: bool) -> bool:
+    return (
+        native.clean_service_stop(fields, process_present) and
+        fields.get("InvocationID") == previous["fields"].get("InvocationID")
+    )
+
+
+def inactive_after_package_transition(log, command_id: str, previous: dict) -> dict[str, str]:
+    fields = service_fields(log, command_id)
+    previous_pid = previous["process"]["pid"]
+    process_present = Path(f"/proc/{previous_pid}").exists()
+    require(clean_package_transition_stop(fields, previous, process_present),
+            f"{command_id}: package transition did not cleanly stop the existing service "
+            "without starting a new invocation")
+    return fields
 
 
 def traffic(log, command_id: str) -> dict:
@@ -330,57 +347,59 @@ def collect(candidate_root: Path, baseline_root: Path, output: Path,
                                       candidate_control)
         candidate_binary = candidate_installed["binary_sha256"]
         require(candidate_binary != baseline_binary, "candidate binary must differ from baseline")
-        post_upgrade = active_identity(log, "post-upgrade-before-restart")
-        require(same_invocation(baseline_active, post_upgrade),
-                "package upgrade implicitly restarted the service")
-        log.run("restart-candidate", ["/usr/bin/systemctl", "restart", SERVICE], timeout=60)
+        post_upgrade = inactive_after_package_transition(
+            log, "post-upgrade-before-start", baseline_active)
+        log.run("start-candidate", ["/usr/bin/systemctl", "start", SERVICE], timeout=60)
         native.wait_http(9901, "/health/ready", native.ADMIN_READY_BODY, START_TIMEOUT)
         candidate_active = traffic(log, "candidate-upgrade-traffic")["identity"]
         require(candidate_active["process"]["executable_sha256"] == candidate_binary and
                 candidate_active["fields"]["InvocationID"] != baseline_active["fields"]["InvocationID"],
-                "explicit restart did not activate the candidate payload")
+                "explicit start did not activate the candidate payload")
         evidence = write_phase(output, "upgrade-from-baseline", {
             "baseline_active": True, "candidate_package_installed": True,
-            "service_not_implicitly_restarted": True,
-            "candidate_activated_after_explicit_restart": True,
+            "service_stopped_without_implicit_restart": True,
+            "candidate_activated_after_explicit_start": True,
             "fixed_route_exact": True, "proxied_route_exact": True,
             "automatic_restarts_zero": True,
         }, {"baseline_version": baseline_control["Version"],
             "candidate_version": candidate_control["Version"],
             "baseline_binary_sha256": baseline_binary,
-            "candidate_binary_sha256": candidate_binary})
+            "candidate_binary_sha256": candidate_binary,
+            "transition_stop": post_upgrade})
         phase_records.append({"id": "upgrade-from-baseline", "status": "PASS",
                               "checks": {name: True for name in PHASE_CHECKS["upgrade-from-baseline"]},
                               "evidence": [evidence]})
 
         rollback_installed = install(log, "rollback-baseline", baseline_package,
                                      baseline_control, allow_downgrade=True)
-        post_rollback_install = active_identity(log, "post-rollback-before-restart")
-        require(rollback_installed["binary_sha256"] == baseline_binary and
-                same_invocation(candidate_active, post_rollback_install),
-                "package rollback implicitly restarted or changed the active service")
-        log.run("restart-rollback", ["/usr/bin/systemctl", "restart", SERVICE], timeout=60)
+        post_rollback_install = inactive_after_package_transition(
+            log, "post-rollback-before-start", candidate_active)
+        require(rollback_installed["binary_sha256"] == baseline_binary,
+                "package rollback did not restore the baseline payload")
+        log.run("start-rollback", ["/usr/bin/systemctl", "start", SERVICE], timeout=60)
         native.wait_http(9901, "/health/ready", native.ADMIN_READY_BODY, START_TIMEOUT)
         rollback_active = traffic(log, "rollback-traffic")["identity"]
         require(rollback_active["process"]["executable_sha256"] == baseline_binary,
-                "explicit restart did not reactivate the baseline payload")
+                "explicit start did not reactivate the baseline payload")
         evidence = write_phase(output, "rollback-to-baseline", {
-            "baseline_package_restored": True, "service_not_implicitly_restarted": True,
-            "baseline_activated_after_explicit_restart": True, "traffic_restored": True,
+            "baseline_package_restored": True,
+            "service_stopped_without_implicit_restart": True,
+            "baseline_activated_after_explicit_start": True, "traffic_restored": True,
             "automatic_restarts_zero": True,
         }, {"restored_version": baseline_control["Version"],
-            "active_binary_sha256": baseline_binary})
+            "active_binary_sha256": baseline_binary,
+            "transition_stop": post_rollback_install})
         phase_records.append({"id": "rollback-to-baseline", "status": "PASS",
                               "checks": {name: True for name in PHASE_CHECKS["rollback-to-baseline"]},
                               "evidence": [evidence]})
 
         reinstalled = install(log, "reactivate-candidate", candidate_package,
                               candidate_control)
-        post_reactivation_install = active_identity(log, "post-reactivation-before-restart")
-        require(reinstalled["binary_sha256"] == candidate_binary and
-                same_invocation(rollback_active, post_reactivation_install),
-                "candidate reinstallation implicitly restarted the service")
-        log.run("restart-reactivated-candidate", ["/usr/bin/systemctl", "restart", SERVICE],
+        post_reactivation_install = inactive_after_package_transition(
+            log, "post-reactivation-before-start", rollback_active)
+        require(reinstalled["binary_sha256"] == candidate_binary,
+                "candidate reinstallation did not restore the candidate payload")
+        log.run("start-reactivated-candidate", ["/usr/bin/systemctl", "start", SERVICE],
                 timeout=60)
         native.wait_http(9901, "/health/ready", native.ADMIN_READY_BODY, START_TIMEOUT)
         reactivated = traffic(log, "reactivated-candidate-traffic")["identity"]
@@ -388,10 +407,12 @@ def collect(candidate_root: Path, baseline_root: Path, output: Path,
                 "candidate payload was not reactivated")
         evidence = write_phase(output, "candidate-reactivation", {
             "candidate_package_restored": True,
-            "candidate_activated_after_explicit_restart": True,
+            "service_stopped_without_implicit_restart": True,
+            "candidate_activated_after_explicit_start": True,
             "traffic_restored": True, "automatic_restarts_zero": True,
         }, {"restored_version": candidate_control["Version"],
-            "active_binary_sha256": candidate_binary})
+            "active_binary_sha256": candidate_binary,
+            "transition_stop": post_reactivation_install})
         phase_records.append({"id": "candidate-reactivation", "status": "PASS",
                               "checks": {name: True for name in PHASE_CHECKS["candidate-reactivation"]},
                               "evidence": [evidence]})
@@ -399,9 +420,8 @@ def collect(candidate_root: Path, baseline_root: Path, output: Path,
         final_pid = reactivated["process"]["pid"]
         log.run("stop-service", ["/usr/bin/systemctl", "stop", SERVICE], timeout=60)
         stopped = service_fields(log, "stopped-service")
-        graceful = (stopped.get("ActiveState") == "inactive" and stopped.get("MainPID") == "0" and
-                    stopped.get("Result") == "success" and stopped.get("ExecMainStatus") == "0" and
-                    not Path(f"/proc/{final_pid}").exists())
+        graceful = native.clean_service_stop(
+            stopped, Path(f"/proc/{final_pid}").exists())
         require(graceful, "gateway did not stop gracefully")
         stop_fixture(log, fixture)
         fixture = None

@@ -62,8 +62,8 @@
           "required_checks": [
             "baseline_active",
             "candidate_package_installed",
-            "service_not_implicitly_restarted",
-            "candidate_activated_after_explicit_restart",
+            "service_stopped_without_implicit_restart",
+            "candidate_activated_after_explicit_start",
             "fixed_route_exact",
             "proxied_route_exact",
             "automatic_restarts_zero"
@@ -73,8 +73,8 @@
           "id": "rollback-to-baseline",
           "required_checks": [
             "baseline_package_restored",
-            "service_not_implicitly_restarted",
-            "baseline_activated_after_explicit_restart",
+            "service_stopped_without_implicit_restart",
+            "baseline_activated_after_explicit_start",
             "traffic_restored",
             "automatic_restarts_zero"
           ]
@@ -83,7 +83,8 @@
           "id": "candidate-reactivation",
           "required_checks": [
             "candidate_package_restored",
-            "candidate_activated_after_explicit_restart",
+            "service_stopped_without_implicit_restart",
+            "candidate_activated_after_explicit_start",
             "traffic_restored",
             "automatic_restarts_zero"
           ]
