@@ -143,6 +143,10 @@ class OssOciBuilderEntrypointTests(unittest.TestCase):
         self.assertIn('"release_admitted": False', source)
         self.assertIn('"publishable": False', source)
 
+    def test_release_version_is_bound_into_the_compiled_dataplane(self):
+        source = Path(__file__).with_name("oss-oci-builder-entrypoint.py").read_text()
+        self.assertIn('f"-DBONVOYAGE_RELEASE_VERSION={version}"', source)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -141,6 +141,10 @@ class OssDebBuilderEntrypointTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "1 through 8"):
                     ENTRYPOINT.build()
 
+    def test_release_version_is_bound_into_the_compiled_dataplane(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+        self.assertIn('f"-DBONVOYAGE_RELEASE_VERSION={version}"', source)
+
     def test_failure_log_is_tail_bounded(self):
         source = self.root / "source.log"
         destination = self.root / "failure.log"

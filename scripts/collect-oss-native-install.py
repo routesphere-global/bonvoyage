@@ -123,6 +123,7 @@ SYSTEMCTL_PROPERTIES = tuple(HARDENING) + (
     "FragmentPath", "DropInPaths", "InvocationID", "Result", "ExecMainCode",
     "ExecMainStatus", "ExecMainStartTimestampMonotonic", "ReadWritePaths",
 )
+SYSTEMD_CLD_EXITED = "1"
 FIXTURE_PROGRAM = r'''import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -159,6 +160,18 @@ class Rejected(RuntimeError):
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise Rejected(message)
+
+
+def clean_service_stop(fields: dict[str, str], process_present: bool) -> bool:
+    return (
+        fields.get("ActiveState") == "inactive" and
+        fields.get("MainPID") == "0" and
+        fields.get("Result") == "success" and
+        fields.get("ExecMainCode") == SYSTEMD_CLD_EXITED and
+        fields.get("ExecMainStatus") == "0" and
+        fields.get("NRestarts") == "0" and
+        not process_present
+    )
 
 
 def utc_now() -> str:
@@ -1267,11 +1280,17 @@ class NativeHost:
         pid = process["main_pid"]
         self.log.run("stop-service", ["/usr/bin/systemctl", "stop", SERVICE], timeout=60)
         fields, service_text = self.systemctl_show("stopped-service-properties")
-        require(fields.get("ActiveState") == "inactive" and fields.get("MainPID") == "0" and
-                fields.get("Result") == "success" and fields.get("ExecMainCode") == "exited" and
-                fields.get("ExecMainStatus") == "0" and fields.get("NRestarts") == "0" and
-                not Path(f"/proc/{pid}").exists(),
-                "gateway did not stop gracefully")
+        process_present = Path(f"/proc/{pid}").exists()
+        require(clean_service_stop(fields, process_present),
+                "gateway did not stop gracefully: " + json.dumps({
+                    "ActiveState": fields.get("ActiveState"),
+                    "ExecMainCode": fields.get("ExecMainCode"),
+                    "ExecMainStatus": fields.get("ExecMainStatus"),
+                    "MainPID": fields.get("MainPID"),
+                    "NRestarts": fields.get("NRestarts"),
+                    "Result": fields.get("Result"),
+                    "process_present": process_present,
+                }, sort_keys=True))
         self.service_started = False
         journal = self.log.run(
             "service-journal",
@@ -1281,7 +1300,7 @@ class NativeHost:
         require(journal.strip(), "service journal is empty")
         self.write_raw("raw/journal.txt", journal)
         self.write_raw("raw/stopped-state.txt", service_text +
-                       f"process_path_absent={str(not Path(f'/proc/{pid}').exists()).lower()}\n")
+                       f"process_path_absent={str(not process_present).lower()}\n")
         process["graceful_stop"] = True
         self.phase_records.append(phase_record("stopped", {
             "graceful_stop": True,

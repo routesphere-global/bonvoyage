@@ -13,6 +13,18 @@ option(BONVOYAGE_WARNINGS_AS_ERRORS "Treat BonVoyage compiler warnings as errors
 option(BONVOYAGE_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(BONVOYAGE_BUILD_DOCUMENTATION "Build Doxygen API documentation" OFF)
 option(BONVOYAGE_RUN_RUNTIME_TESTS "Run tests that initialize the Seastar reactor" ON)
+set(
+  BONVOYAGE_RELEASE_VERSION
+  "${PROJECT_VERSION}"
+  CACHE STRING
+  "BonVoyage product release version embedded in the dataplane executable"
+)
+if(NOT BONVOYAGE_RELEASE_VERSION MATCHES
+   "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$")
+  message(FATAL_ERROR
+    "BONVOYAGE_RELEASE_VERSION must be a bounded semantic release version"
+  )
+endif()
 
 # Seastar exports ABI-affecting debug macros for the Sanitize configuration.
 # RelWithDebInfo against sanitizer Seastar can link incompatible gate layouts.
@@ -759,6 +771,10 @@ add_executable(bonvoyage-dataplane
 )
 
 target_include_directories(bonvoyage-dataplane PRIVATE include)
+target_compile_definitions(
+  bonvoyage-dataplane
+  PRIVATE BONVOYAGE_RELEASE_VERSION="${BONVOYAGE_RELEASE_VERSION}"
+)
 target_link_libraries(
   bonvoyage-dataplane
   PRIVATE
@@ -1110,7 +1126,8 @@ if(BUILD_TESTING)
         --overprovisioned
     )
     set_tests_properties(bonvoyage-dataplane-version PROPERTIES
-      PASS_REGULAR_EXPRESSION "RouteSphere BonVoyage dataplane 0.2.0"
+      PASS_REGULAR_EXPRESSION
+        "RouteSphere BonVoyage dataplane 0.2.0 release=0.2.0"
       TIMEOUT 20
     )
   endif()
