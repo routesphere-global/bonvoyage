@@ -384,12 +384,17 @@ independent builders produced the exact Debian package SHA-256
 This is hosted reproducibility evidence for that immutable candidate, not a
 published product release.
 
-The workflow permits two independent build jobs and a comparison job only.
-Each build runs without container network access, with a read-only root,
-dropped capabilities and no new privileges. Evidence expires after three days,
-and the total workflow budget is capped at 200 billable job minutes. Even a
-byte-identical hosted result remains a technical candidate: release admission,
-publication, signing, provenance and package/container upload all stay false.
+The workflow permits a preflight, two independent build jobs, exact-byte
+comparison and one downstream provenance job. Each build runs without container
+network access, with a read-only root, dropped capabilities and no new
+privileges. The provenance job revalidates the reviewed contract, downloads
+only builder A's already-compared candidate, rechecks its receipt and bytes,
+then creates GitHub-hosted SLSA provenance for that exact subject. Its separate
+receipt and Sigstore bundle retain no product-signing or release authority.
+Evidence expires after three days, and the total workflow budget is capped at
+210 billable job minutes. Even a byte-identical, attested hosted result remains
+a technical candidate: release admission, publication, product signing and
+package/container upload all stay false.
 
 Run `make oss-deb-hosted-contract-test` to replay its adversarial contract tests.
 Changing the template, active workflow, builder identity or source boundary
@@ -472,10 +477,13 @@ filesystem. The comparison receipt is bound to the GitHub repository, tag,
 commit, run and distinct uploaded evidence digests. Run
 `make oss-oci-hosted-contract-test` for its adversarial contract tests.
 
-Activation does not make an OCI image publishable. Even a byte-identical hosted
-result qualifies only independent technical reproducibility for that immutable
-candidate. SBOM admission, vulnerability disposition, signing, provenance,
-lifecycle acceptance, release admission and product upload remain separate
+After exact-byte comparison, one downstream job revalidates the contract and
+builder A archive, then creates GitHub-hosted SLSA provenance for those exact
+OCI archive bytes. The evidence is retained separately as a bounded receipt and
+Sigstore bundle; it is not an OCI registry upload or a product signature.
+Activation therefore does not make an OCI image publishable. SBOM admission,
+vulnerability disposition, independent provenance verification, product
+signing, lifecycle acceptance, release admission and upload remain separate
 false gates.
 
 ## Current status
@@ -490,7 +498,11 @@ objects, with no failures. Earlier failed attempts remain diagnostic evidence
 and do not satisfy this gate.
 
 No result in this directory grants final artifact admission or publication.
-Final SBOM and vulnerability disposition, signatures, hosted provenance,
-installation/lifecycle acceptance and explicit release-owner approval remain
-separate requirements. Existing local, private or differently bound evidence
-cannot be relabeled to satisfy them.
+The hosted Debian and OCI contracts can now create producer provenance for a
+fresh candidate, but existing immutable candidates cannot acquire it
+retroactively. A later release checkpoint must independently verify those
+attestations against the exact retained candidate bytes. Final SBOM and
+vulnerability disposition, product signatures, installation/lifecycle
+acceptance and explicit release-owner approval remain separate requirements.
+Existing local, private or differently bound evidence cannot be relabeled to
+satisfy them.

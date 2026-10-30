@@ -229,3 +229,85 @@ jobs:
           overwrite: false
           include-hidden-files: false
           retention-days: 3
+
+  provenance:
+    name: Attest exact Debian candidate bytes
+    needs: compare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Install locked contract-verifier dependencies
+        run: npm ci --ignore-scripts
+      - name: Reverify the hosted-build contract before attestation
+        run: >-
+          node scripts/verify-oss-deb-hosted-build.mjs
+          --contract "$CONTRACT_PATH"
+          --workflow "$WORKFLOW_TEMPLATE"
+          --require-activatable
+          --github-repository "$GITHUB_REPOSITORY"
+          --github-ref-type "$GITHUB_REF_TYPE"
+          --github-ref-name "$GITHUB_REF_NAME"
+          --github-sha "$GITHUB_SHA"
+      - name: Download the exact builder A candidate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: oss-deb-build-a
+          path: ${{ runner.temp }}/oss-deb-build-a
+      - name: Resolve and verify the exact Debian subject
+        id: subject
+        run: >-
+          node scripts/record-oss-hosted-provenance.mjs
+          --mode prepare
+          --format debian
+          --input "$RUNNER_TEMP/oss-deb-build-a"
+          --repository "$GITHUB_REPOSITORY"
+          --commit "$GITHUB_SHA"
+          --tag "$GITHUB_REF_NAME"
+          --run-id "$GITHUB_RUN_ID"
+          --run-attempt "$GITHUB_RUN_ATTEMPT"
+          --workflow-ref "$GITHUB_WORKFLOW_REF"
+          --workflow-sha "$GITHUB_WORKFLOW_SHA"
+          --github-output "$GITHUB_OUTPUT"
+      - name: Create signed SLSA provenance for the exact Debian subject
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: ${{ steps.subject.outputs.subject_path }}
+      - name: Record bounded non-publishing Debian provenance evidence
+        run: >-
+          node scripts/record-oss-hosted-provenance.mjs
+          --mode record
+          --format debian
+          --input "$RUNNER_TEMP/oss-deb-build-a"
+          --repository "$GITHUB_REPOSITORY"
+          --commit "$GITHUB_SHA"
+          --tag "$GITHUB_REF_NAME"
+          --run-id "$GITHUB_RUN_ID"
+          --run-attempt "$GITHUB_RUN_ATTEMPT"
+          --workflow-ref "$GITHUB_WORKFLOW_REF"
+          --workflow-sha "$GITHUB_WORKFLOW_SHA"
+          --bundle "${{ steps.attest.outputs.bundle-path }}"
+          --attestation-id "${{ steps.attest.outputs.attestation-id }}"
+          --attestation-url "${{ steps.attest.outputs.attestation-url }}"
+          --output "$RUNNER_TEMP/oss-deb-provenance"
+      - name: Upload bounded Debian provenance evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: oss-deb-provenance
+          path: ${{ runner.temp }}/oss-deb-provenance
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 3

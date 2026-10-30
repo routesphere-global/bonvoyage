@@ -118,25 +118,33 @@ authority. Producer artifacts expire after three days. Run
 producer and workflow-drift suites.
 
 The hosted Debian and OCI workflows establish reproducible technical-candidate
-bytes only. The first fully signable candidate must be cut from a later commit
-that already contains this separately reviewed workflow and any subsequently
-reviewed product-artifact gates. Passing candidate intake and the identity
-probe is a distinct checkpoint and does not by itself authorize a product signature,
-provenance statement, GitHub Release, package upload, container upload or
-publication.
+bytes and producer provenance. A fully signable candidate must be cut from a
+commit that already contains these reviewed producer gates and the later
+product-signing gate. Passing candidate intake and the identity probe remains a
+distinct checkpoint and does not by itself authorize a product signature,
+GitHub Release, package upload, container upload or publication.
 
-## Inactive Debian reproducibility candidate
+## Protected hosted reproducibility candidates
 
-`packaging/release/debian/oss-deb-reproducibility.workflow.yml` is a reviewed
-workflow template, not an active GitHub workflow. It deliberately lives outside
-`.github/workflows/`, so GitHub cannot dispatch it or consume Actions minutes.
+The active Debian and OCI reproducibility workflows must remain byte-identical
+to their reviewed templates under `packaging/release/`. Each workflow contains
+a preflight, two independent Ubuntu 24.04 builders, an exact-byte comparison
+and one downstream provenance job. All jobs use the protected `release`
+environment. The build and comparison jobs inherit read-only repository
+permissions; only the provenance job receives `id-token: write` and
+`attestations: write` in addition to read-only contents.
 
-The template defines two independent Ubuntu 24.04 builders, an exact-byte
-comparison job, read-only permissions, a protected `release` environment,
-three-day evidence retention and a maximum 200 billable job-minute envelope.
-It has no publication, package-upload, signature or provenance authority. The
-contract verifier rejects activation until the public repository exists, the
-protected environment settings are evidenced, and a public Linux AMD64 builder
-image is pinned and externally verified by digest. Only then may the exact
-reviewed template be promoted to
-`.github/workflows/oss-deb-reproducibility.yml` in a separate checkpoint.
+The provenance job downloads only builder A's already-compared candidate,
+revalidates its powerless build receipt and exact bytes, and invokes the pinned
+GitHub attestation action for that subject. It retains a separate canonical
+receipt and Sigstore bundle for three days. It cannot alter the candidate,
+create a product signature, upload a package or container, create a GitHub
+Release or admit publication. Each workflow has a maximum 210 billable
+job-minute envelope.
+
+Run `make oss-hosted-provenance-test`,
+`make oss-deb-hosted-contract-test` and
+`make oss-oci-hosted-contract-test` for the recorder and fail-closed workflow
+contracts. Existing immutable candidates do not inherit this mechanism; a
+fresh protected tag must execute both producer workflows before a later release
+checkpoint can independently verify their attestations.
