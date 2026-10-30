@@ -129,6 +129,45 @@ relabeled. The first candidate eligible for signing and complete admission must
 be created from a later commit that already contains the reviewed release
 workflow.
 
+## Dual-SBOM and vulnerability evidence handoff
+
+`oss-supply-chain-evidence-contract.json` and
+`scripts/intake-oss-supply-chain-evidence.mjs` define the offline handoff from
+an exact candidate intake to a retained, non-admitting evidence set. The review
+root contains one physical vulnerability database shared by all four scans.
+For each Debian and OCI candidate, the evidence directory contains exactly:
+
+- CycloneDX 1.6 and SPDX 2.3 documents whose roots contain the exact candidate
+  SHA-256, artifact kind, platform, source commit and source tag;
+- decoded inventories from both formats plus command records bound to the
+  candidate, documents, validator outcomes and decoded outputs;
+- complete Grype reports for both formats, produced with the one retained
+  database and no filtering, user ignores, VEX or suppressed matches; and
+- a canonical, accountable review that covers every exact nonblocking finding
+  and records zero unreviewed or unresolved High/Critical findings.
+
+```bash
+node scripts/intake-oss-supply-chain-evidence.mjs \
+  --candidate-root VERIFIED_CANDIDATE_INTAKE \
+  --review-root DOWNLOADED_SUPPLY_CHAIN_EVIDENCE \
+  --output NEW_PRIVATE_SUPPLY_CHAIN_DIRECTORY \
+  --source-commit FULL_COMMIT \
+  --source-tag v1.0.0-rc.N
+```
+
+The adapter validates all input before creating output, streams large candidate
+and database identities without buffering them into memory, and retains the
+exact snapshots it inspected. It emits one checksum-bound
+`supply-chain-evidence-handoff.json` with status `EVIDENCE_RETAINED`. It does
+not emit release-gate PASS receipts. The adapter has no network or
+product-signing authority and cannot create provenance, admit a release, upload
+packages or containers, create or move a tag, create a GitHub Release, or
+publish. Operator-authored JSON remains evidence for a later protected producer
+to verify; it is not proof by itself that a tool executed. Run
+`make oss-supply-chain-evidence-test` for the portable artifact-root,
+database, reviewer, command, substitution, parity, freshness, severity and
+authority regressions.
+
 ## Protected candidate intake and keyless identity foundation
 
 `oss-release-identity-workflow-contract.json`,

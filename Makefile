@@ -13,7 +13,7 @@ export GOCACHE := $(CURDIR)/.cache/go-build
 	config-authoring-openai-codex-capture-test \
 	config-authoring-openai-codex-skill-test \
 	config-authoring-claude-skill-test \
-	dco-signoff-test oss-release-bundle-test oss-release-workflow-test oss-candidate-intake-test oss-deb-builder-test oss-deb-hosted-contract-test \
+	dco-signoff-test oss-release-bundle-test oss-release-workflow-test oss-candidate-intake-test oss-supply-chain-evidence-test oss-deb-builder-test oss-deb-hosted-contract-test \
 	oss-deb-builder-image-test oss-native-install-verifier-test oss-native-install-collector-test oss-kubernetes-deployment-verifier-test oss-kubernetes-acceptance-runner-test oss-bounded-benchmark-verifier-test oss-bounded-benchmark-runner-test oss-oci-builder-test local-deployment-verifier-test \
 	oss-oci-hosted-contract-test \
 	dataplane-image dataplane-build dataplane-http2-deadline \
@@ -45,6 +45,7 @@ help:
 	@echo "  oss-release-bundle-test  Verify fail-closed release-bundle admission"
 	@echo "  oss-release-workflow-test  Verify protected candidate intake and keyless identity"
 	@echo "  oss-candidate-intake-test  Verify hosted candidate intake and authority isolation"
+	@echo "  oss-supply-chain-evidence-test  Verify the neutral dual-SBOM and vulnerability evidence handoff"
 	@echo "  oss-deb-builder-test  Verify public Debian build and reproducibility contracts"
 	@echo "  oss-deb-hosted-contract-test  Verify the protected hosted-build contract"
 	@echo "  oss-deb-builder-image-test  Verify the offline public Debian builder-image foundation"
@@ -104,6 +105,7 @@ test-node:
 	@$(MAKE) oss-release-bundle-test
 	@$(MAKE) oss-release-workflow-test
 	@$(MAKE) oss-candidate-intake-test
+	@$(MAKE) oss-supply-chain-evidence-test
 	@$(MAKE) local-deployment-verifier-test
 	@$(MAKE) oss-kubernetes-deployment-verifier-test
 	@$(MAKE) oss-kubernetes-acceptance-runner-test
@@ -122,6 +124,9 @@ oss-release-workflow-test:
 
 oss-candidate-intake-test:
 	@node --test scripts/intake-oss-release-candidate.test.mjs
+
+oss-supply-chain-evidence-test:
+	@node --test scripts/intake-oss-supply-chain-evidence.test.mjs
 
 dco-signoff-test:
 	@node --test scripts/verify-dco-signoffs.test.mjs
