@@ -175,6 +175,40 @@ test('assembles all exact lanes and passes the accepted lifecycle verifier', () 
   assert.equal(observation.artifacts[1].phases.length, 5);
 });
 
+test('accepts semantically identical lane identities with reordered fields', () => {
+  const value = fixture();
+  const lanePath = path.join(value.roots['debian-transition'], 'lane.json');
+  const lane = JSON.parse(fs.readFileSync(lanePath, 'utf8'));
+  lane.candidate = {
+    commit: lane.candidate.commit,
+    dirty: lane.candidate.dirty,
+    repository: lane.candidate.repository,
+    tag: lane.candidate.tag,
+  };
+  lane.baseline = {
+    commit: lane.baseline.commit,
+    dirty: lane.baseline.dirty,
+    repository: lane.baseline.repository,
+    tag: lane.baseline.tag,
+  };
+  writeJson(lanePath, lane);
+  assert.equal(assemble(value).lifecycle_qualified, true);
+});
+
+test('rejects a changed lane identity after semantic comparison', () => {
+  const value = fixture();
+  const lanePath = path.join(value.roots['debian-transition'], 'lane.json');
+  const lane = JSON.parse(fs.readFileSync(lanePath, 'utf8'));
+  lane.candidate = {
+    commit: 'c'.repeat(40),
+    dirty: lane.candidate.dirty,
+    repository: lane.candidate.repository,
+    tag: lane.candidate.tag,
+  };
+  writeJson(lanePath, lane);
+  assert.throws(() => assemble(value), /lane identity changed/);
+});
+
 test('rejects an unbound lane file', () => {
   const value = fixture();
   fs.writeFileSync(path.join(value.roots['oci-lifecycle'], 'raw/unbound.txt'), 'unbound\n');
