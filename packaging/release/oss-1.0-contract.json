@@ -79,7 +79,7 @@
     ],
     "signature_mode": "sigstore-keyless",
     "signature_issuer": "https://token.actions.githubusercontent.com",
-    "signature_subject_prefix": "https://github.com/routesphere-global/bonvoyage/.github/workflows/release.yml@refs/tags/",
+    "signature_subject_prefix": "https://github.com/routesphere-global/bonvoyage/.github/workflows/oss-product-signing.yml@refs/tags/",
     "maximum_vulnerability_database_age_hours": 48,
     "maximum_unreviewed_findings": 0,
     "maximum_unresolved_blocking_findings": 0,

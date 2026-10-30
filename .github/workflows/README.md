@@ -78,10 +78,31 @@ revisions, Cosign version, evidence paths, timeout, retention and false
 authority fields. Run `make oss-release-workflow-test` for the focused
 adversarial checks.
 
-The verified release contract requires product signatures whose subject is
-exactly this workflow at `refs/tags/<tag>`. Existing immutable candidates,
-including `v1.0.0-rc.6`, cannot acquire that identity retroactively and their
-tags must not be moved.
+This workflow's probe signature is not an accepted product signature. Existing
+immutable candidates cannot acquire a later product-signing identity
+retroactively and their tags must not be moved.
+
+## Protected product signing and independent verification
+
+`.github/workflows/oss-product-signing.yml` is the only workflow authorized to
+create BonVoyage product signatures. It runs manually from a strict protected
+tag after discovering exactly one earlier successful candidate intake for the
+same commit. Callers cannot choose a run ID, payload path, bundle path or
+artifact name. The signing job revalidates the entire intake and signs only the
+checksum-bound Debian package and OCI archive with pinned Cosign `v3.1.4`.
+
+The signing job verifies both bundles online and offline. A separate job with
+no OIDC permission downloads the same candidate and same-run bundles, repeats
+both verification modes and emits an independent receipt. Both jobs bind the
+exact workflow subject, GitHub Actions issuer, repository, commit, protected
+tag and manual trigger. The workflow uploads short-lived evidence only; it
+cannot create provenance, admit or publish a release, create a GitHub Release,
+or upload a package or container.
+
+The contract and `scripts/verify-oss-product-signing-workflow.mjs` freeze this
+boundary. Run `make oss-product-signing-test` for the portable adversarial
+suites. The verified-release contract accepts only subjects under
+`oss-product-signing.yml@refs/tags/<tag>`.
 
 ## Protected supply-chain evidence producers
 

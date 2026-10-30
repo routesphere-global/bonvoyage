@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-oss-product-signing-workflow-contract",
+  "state": "product-signing-evidence-foundation",
+  "source": {
+    "repository": "https://github.com/routesphere-global/bonvoyage",
+    "event": "workflow_dispatch",
+    "ref_type": "tag",
+    "tag_pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$",
+    "protected_tag_required": true,
+    "exact_commit_required": true
+  },
+  "execution": {
+    "environment": "release",
+    "runner": "ubuntu-24.04",
+    "workflow_permissions": {
+      "contents": "read"
+    },
+    "job_permissions": {
+      "preflight": {
+        "contents": "read",
+        "actions": "read"
+      },
+      "sign": {
+        "contents": "read",
+        "actions": "read",
+        "id-token": "write"
+      },
+      "verify": {
+        "contents": "read",
+        "actions": "read"
+      }
+    },
+    "jobs": {
+      "preflight": {
+        "timeout_minutes": 5
+      },
+      "sign": {
+        "timeout_minutes": 20
+      },
+      "verify": {
+        "timeout_minutes": 15
+      }
+    },
+    "artifact_retention_days": 3,
+    "maximum_billable_job_minutes": 40,
+    "manual_only": true,
+    "scheduled_runs": false,
+    "self_hosted_runners": false,
+    "cancel_in_progress": false
+  },
+  "actions": {
+    "checkout": "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+    "setup_node": "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
+    "download_artifact": "actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53",
+    "cosign_installer": "sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+    "upload_artifact": "actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4"
+  },
+  "candidate_intake": {
+    "workflow_name": "OSS Release Candidate Intake Foundation",
+    "workflow_path": ".github/workflows/release.yml",
+    "artifact_name": "oss-release-candidate-intake",
+    "contract_path": "packaging/release/oss-candidate-intake-contract.json",
+    "discovery_script": "scripts/discover-oss-product-signing-input.mjs",
+    "prepare_script": "scripts/prepare-oss-product-signatures.mjs",
+    "download_root": "${{ runner.temp }}/product-signing-candidate",
+    "required_run_attempt": 1,
+    "caller_selected_run_id_allowed": false,
+    "caller_selected_payload_allowed": false
+  },
+  "signing": {
+    "workflow_path": ".github/workflows/oss-product-signing.yml",
+    "cosign_version": "v3.1.4",
+    "mode": "sigstore-keyless",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "subject_prefix": "https://github.com/routesphere-global/bonvoyage/.github/workflows/oss-product-signing.yml@refs/tags/",
+    "output_root": "${{ runner.temp }}/product-signature-evidence",
+    "intermediate_artifact": "oss-product-signature-bundles",
+    "final_artifact": "oss-product-signature-evidence",
+    "artifacts": [
+      "gateway-deb-linux-amd64",
+      "gateway-oci-linux-amd64"
+    ],
+    "online_verification_required": true,
+    "offline_verification_required": true,
+    "independent_job_required": true
+  },
+  "authority": {
+    "product_artifact_signature_allowed": true,
+    "product_provenance_allowed": false,
+    "release_admitted": false,
+    "publishable": false,
+    "github_release_created": false,
+    "package_uploaded": false,
+    "container_uploaded": false
+  }
+}

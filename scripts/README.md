@@ -42,6 +42,25 @@ source, changed workflow identity, retries and future runs. The ephemeral
 GitHub token is neither accepted as a command argument nor returned in output.
 Run `make oss-release-workflow-test` for both focused adversarial suites.
 
+`discover-oss-product-signing-input.mjs`,
+`prepare-oss-product-signatures.mjs`,
+`finalize-oss-product-signatures.mjs` and
+`verify-oss-product-signatures.mjs` form the protected product-signature
+handoff. They select exactly one earlier successful candidate intake for the
+same protected tag and commit, revalidate its complete inventory, sign only
+the retained Debian and OCI bytes with pinned Cosign `v3.1.4`, then verify
+both bundles online and offline in a separate job that has no OIDC permission.
+The signing and independent receipts bind every input, bundle, transcript,
+tool version and authority field. Neither receipt admits or publishes a
+release, creates provenance, uploads a package or container, or creates a
+GitHub Release.
+
+`verify-oss-product-signing-workflow.mjs` pins the complete workflow shape,
+action revisions, protected-tag runtime, candidate discovery, exact commands,
+single OIDC-capable job, evidence names, retention and false release authority.
+Run `make oss-product-signing-test` for the discovery, preparation,
+finalization, independent-verification and workflow-drift suites.
+
 `intake-oss-release-candidate.mjs` performs the fail-closed offline handoff from
 the hosted Debian and OCI reproducibility workflows. It requires one exact clean
 tagged public source, distinct run IDs, two byte-identical builders per format,
