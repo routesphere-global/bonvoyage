@@ -33,7 +33,8 @@ separate least-privilege review.
 
 `.github/workflows/oss-builder-publication.yml` is the narrow exception that
 can upload the two source-free builder containers. It runs only by manual
-dispatch from protected `main`, requires the protected `release` environment,
+dispatch from protected `main`, requires the main-only protected
+`builder-publication` environment,
 and accepts exactly one full source commit. The protected workflow definition
 and requested builder source are checked out separately without retained Git
 credentials.

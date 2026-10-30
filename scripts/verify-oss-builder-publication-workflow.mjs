@@ -40,7 +40,7 @@ function validateContract(contract) {
     commit_pattern: COMMIT,
   }), 'builder publication source boundary changed');
   const execution = object(contract.execution, 'contract.execution');
-  requireCondition(execution.environment === 'release' &&
+  requireCondition(execution.environment === 'builder-publication' &&
     execution.runner === 'ubuntu-24.04' && execution.timeout_minutes === 180 &&
     JSON.stringify(execution.workflow_permissions) === JSON.stringify({contents: 'read'}) &&
     JSON.stringify(execution.job_permissions) ===

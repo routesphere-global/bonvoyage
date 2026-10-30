@@ -10,7 +10,7 @@
     "commit_pattern": "^[a-f0-9]{40}$"
   },
   "execution": {
-    "environment": "release",
+    "environment": "builder-publication",
     "runner": "ubuntu-24.04",
     "timeout_minutes": 180,
     "workflow_permissions": {

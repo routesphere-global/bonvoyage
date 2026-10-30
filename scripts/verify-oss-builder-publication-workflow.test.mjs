@@ -57,6 +57,7 @@ test('rejects contract authority and registry drift', (t) => {
     (contract) => { contract.authority.product_container_uploaded = true; },
     (contract) => { contract.execution.targets[0].repository = 'ghcr.io/example/builder'; },
     (contract) => { contract.execution.timeout_minutes = 0; },
+    (contract) => { contract.execution.environment = 'release'; },
     (contract) => { contract.source.workflow_branch = 'feature'; },
   ]) {
     const paths = fixture(t);
