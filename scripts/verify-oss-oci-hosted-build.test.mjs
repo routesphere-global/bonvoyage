@@ -82,6 +82,7 @@ test('committed hosted-build contract is activatable and powerless', () => {
   assert.equal(result.blockers.length, 0);
   assert.equal(result.builder_image_verification.path,
     'packaging/release/oci/oss-oci-builder-image-verification.json');
+  assert.equal(result.provenance_created, true);
   assert.equal(result.release_admitted, false);
   assert.equal(result.publishable, false);
 });
@@ -130,7 +131,9 @@ test('floating image, partial activation and changed authority are rejected', (t
     (contract) => { contract.builder_image.reference = 'ghcr.io/routesphere/builder:latest'; },
     (contract) => { contract.activation.repository_settings_verified = false; },
     (contract) => { contract.authority.publishable = true; },
+    (contract) => { contract.authority.provenance_created = false; },
     (contract) => { contract.execution.permissions = {contents: 'write'}; },
+    (contract) => { contract.execution.provenance_permissions['id-token'] = 'read'; },
   ]) {
     const fixture = copyFixture(t);
     const contract = activate(fixture.contractPath, fixture.root);
@@ -145,8 +148,10 @@ test('automatic trigger, unpinned action, secret and publishing command are reje
   for (const replacement of [
     ['  workflow_dispatch:\n', '  push:\n    branches: [main]\n'],
     ['actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1', 'actions/checkout@v7'],
+    ['actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6', 'actions/attest@v4'],
     ['npm ci --ignore-scripts', 'echo "${{ secrets.RELEASE_TOKEN }}"'],
     ['mkdir -p "$RUNNER_TEMP/oss-oci-comparison"', 'gh release create v1.0.0'],
+    ['      id-token: write\n', '      id-token: read\n'],
   ]) {
     const fixture = copyFixture(t);
     const source = fs.readFileSync(fixture.workflowPath, 'utf8');

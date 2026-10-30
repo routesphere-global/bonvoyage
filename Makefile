@@ -13,7 +13,7 @@ export GOCACHE := $(CURDIR)/.cache/go-build
 	config-authoring-openai-codex-capture-test \
 	config-authoring-openai-codex-skill-test \
 	config-authoring-claude-skill-test \
-	dco-signoff-test oss-release-bundle-test oss-release-workflow-test oss-candidate-intake-test oss-supply-chain-producer-test oss-supply-chain-evidence-test oss-deb-builder-test oss-deb-hosted-contract-test \
+	dco-signoff-test oss-release-bundle-test oss-release-workflow-test oss-candidate-intake-test oss-supply-chain-producer-test oss-supply-chain-evidence-test oss-deb-builder-test oss-hosted-provenance-test oss-deb-hosted-contract-test \
 	oss-builder-publication-workflow-test \
 	oss-deb-builder-image-test oss-native-install-verifier-test oss-native-install-collector-test oss-artifact-lifecycle-test oss-kubernetes-deployment-verifier-test oss-kubernetes-acceptance-runner-test oss-bounded-benchmark-verifier-test oss-bounded-benchmark-runner-test oss-oci-builder-test local-deployment-verifier-test \
 	oss-oci-hosted-contract-test \
@@ -50,6 +50,7 @@ help:
 	@echo "  oss-supply-chain-evidence-test  Verify the neutral dual-SBOM and vulnerability evidence handoff"
 	@echo "  oss-builder-publication-workflow-test  Verify manual powerless builder publication"
 	@echo "  oss-deb-builder-test  Verify public Debian build and reproducibility contracts"
+	@echo "  oss-hosted-provenance-test  Verify exact hosted provenance recording"
 	@echo "  oss-deb-hosted-contract-test  Verify the protected hosted-build contract"
 	@echo "  oss-deb-builder-image-test  Verify the offline public Debian builder-image foundation"
 	@echo "  oss-native-install-verifier-test  Verify native fresh-install evidence admission"
@@ -119,6 +120,7 @@ test-node:
 	@$(MAKE) oss-bounded-benchmark-verifier-test
 	@$(MAKE) oss-bounded-benchmark-runner-test
 	@node --test scripts/verify-oss-deb-builder-image.test.mjs
+	@$(MAKE) oss-hosted-provenance-test
 	@$(MAKE) oss-deb-hosted-contract-test
 	@node --test scripts/verify-oss-oci-builder-image.test.mjs
 	@$(MAKE) oss-oci-hosted-contract-test
@@ -252,6 +254,9 @@ oss-oci-builder-test:
 
 oss-deb-hosted-contract-test:
 	@node --test scripts/verify-oss-deb-hosted-build.test.mjs
+
+oss-hosted-provenance-test:
+	@node --test scripts/record-oss-hosted-provenance.test.mjs
 
 oss-oci-hosted-contract-test:
 	@node --test scripts/verify-oss-oci-hosted-build.test.mjs

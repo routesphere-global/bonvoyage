@@ -20,6 +20,48 @@ const BLOCKED = 'blocked-pending-public-builder-image';
 const SHA256 = /^[a-f0-9]{64}$/u;
 const COMMIT = /^[a-f0-9]{40}$/u;
 const IMAGE_REFERENCE = /^(ghcr\.io\/routesphere-global\/bonvoyage-oci-builder)@sha256:([a-f0-9]{64})$/u;
+const ATTEST_ACTION = 'actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6';
+const PROVENANCE_VERIFY_COMMAND = [
+  'node scripts/verify-oss-oci-hosted-build.mjs',
+  '--contract "$CONTRACT_PATH"',
+  '--workflow "$WORKFLOW_TEMPLATE"',
+  '--require-activatable',
+  '--github-repository "$GITHUB_REPOSITORY"',
+  '--github-ref-type "$GITHUB_REF_TYPE"',
+  '--github-ref-name "$GITHUB_REF_NAME"',
+  '--github-sha "$GITHUB_SHA"',
+].join(' ');
+const PROVENANCE_PREPARE_COMMAND = [
+  'node scripts/record-oss-hosted-provenance.mjs',
+  '--mode prepare',
+  '--format oci',
+  '--input "$RUNNER_TEMP/oss-oci-build-a"',
+  '--repository "$GITHUB_REPOSITORY"',
+  '--commit "$GITHUB_SHA"',
+  '--tag "$GITHUB_REF_NAME"',
+  '--run-id "$GITHUB_RUN_ID"',
+  '--run-attempt "$GITHUB_RUN_ATTEMPT"',
+  '--workflow-ref "$GITHUB_WORKFLOW_REF"',
+  '--workflow-sha "$GITHUB_WORKFLOW_SHA"',
+  '--github-output "$GITHUB_OUTPUT"',
+].join(' ');
+const PROVENANCE_RECORD_COMMAND = [
+  'node scripts/record-oss-hosted-provenance.mjs',
+  '--mode record',
+  '--format oci',
+  '--input "$RUNNER_TEMP/oss-oci-build-a"',
+  '--repository "$GITHUB_REPOSITORY"',
+  '--commit "$GITHUB_SHA"',
+  '--tag "$GITHUB_REF_NAME"',
+  '--run-id "$GITHUB_RUN_ID"',
+  '--run-attempt "$GITHUB_RUN_ATTEMPT"',
+  '--workflow-ref "$GITHUB_WORKFLOW_REF"',
+  '--workflow-sha "$GITHUB_WORKFLOW_SHA"',
+  '--bundle "${{ steps.attest.outputs.bundle-path }}"',
+  '--attestation-id "${{ steps.attest.outputs.attestation-id }}"',
+  '--attestation-url "${{ steps.attest.outputs.attestation-url }}"',
+  '--output "$RUNNER_TEMP/oss-oci-provenance"',
+].join(' ');
 
 function fail(message) {
   throw new Error(message);
@@ -88,7 +130,7 @@ function validateRelativePath(value, label) {
 function validateContract(contract) {
   exactKeys(contract, [
     'schema_version', 'classification', 'activation', 'source', 'execution',
-    'builder_image', 'actions', 'evidence', 'authority',
+    'builder_image', 'actions', 'evidence', 'provenance', 'authority',
   ], 'contract');
   requireCondition(contract.schema_version === 1 && contract.classification === CLASSIFICATION,
     'unsupported hosted-build contract');
@@ -132,7 +174,7 @@ function validateContract(contract) {
     !tagPattern.test('main') && !tagPattern.test('v01.0.0'), 'tag pattern is not strict SemVer');
 
   exactKeys(contract.execution, [
-    'environment', 'runner', 'platform', 'permissions', 'jobs',
+    'environment', 'runner', 'platform', 'permissions', 'provenance_permissions', 'jobs',
     'artifact_retention_days', 'maximum_billable_job_minutes', 'manual_only',
     'scheduled_runs', 'self_hosted_runners', 'cancel_in_progress',
   ], 'contract.execution');
@@ -141,12 +183,17 @@ function validateContract(contract) {
     contract.execution.platform === 'linux/amd64', 'unexpected hosted execution target');
   requireCondition(JSON.stringify(contract.execution.permissions) ===
     JSON.stringify({contents: 'read'}), 'workflow permissions must be read-only contents');
-  const expectedTimeouts = {preflight: 5, 'build-a': 90, 'build-b': 90, compare: 15};
+  requireCondition(JSON.stringify(contract.execution.provenance_permissions) ===
+    JSON.stringify({contents: 'read', 'id-token': 'write', attestations: 'write'}),
+  'provenance permissions must be minimal and explicit');
+  const expectedTimeouts = {
+    preflight: 5, 'build-a': 90, 'build-b': 90, compare: 15, provenance: 10,
+  };
   requireCondition(JSON.stringify(contract.execution.jobs) === JSON.stringify(
     Object.fromEntries(Object.entries(expectedTimeouts).map(([name, timeout]) =>
       [name, {timeout_minutes: timeout}]))), 'unexpected hosted job budget');
   requireCondition(contract.execution.artifact_retention_days === 3 &&
-    contract.execution.maximum_billable_job_minutes === 200 &&
+    contract.execution.maximum_billable_job_minutes === 210 &&
     contract.execution.manual_only === true && contract.execution.scheduled_runs === false &&
     contract.execution.self_hosted_runners === false &&
     contract.execution.cancel_in_progress === false, 'hosted cost or runner boundary changed');
@@ -161,19 +208,23 @@ function validateContract(contract) {
     contract.builder_image.network === 'none' && contract.builder_image.read_only_root === true,
   'builder image isolation contract changed');
 
-  exactKeys(contract.actions, ['checkout', 'upload_artifact', 'download_artifact'],
+  exactKeys(contract.actions, ['checkout', 'upload_artifact', 'download_artifact', 'attest'],
     'contract.actions');
   for (const [name, value] of Object.entries(contract.actions)) {
     requireCondition(/^actions\/[a-z-]+@[a-f0-9]{40}$/u.test(value),
       `contract.actions.${name} must be a GitHub-owned action pinned to a full commit`);
   }
+  requireCondition(contract.actions.attest === ATTEST_ACTION,
+    'provenance action identity changed');
 
   exactKeys(contract.evidence, [
     'builder_artifacts', 'comparison_artifacts', 'builder_names', 'comparison_name',
+    'provenance_artifacts', 'provenance_name',
   ], 'contract.evidence');
   requireCondition(JSON.stringify(contract.evidence.builder_names) ===
     JSON.stringify(['oss-oci-build-a', 'oss-oci-build-b']) &&
-    contract.evidence.comparison_name === 'oss-oci-comparison',
+    contract.evidence.comparison_name === 'oss-oci-comparison' &&
+    contract.evidence.provenance_name === 'oss-oci-provenance',
   'hosted evidence names changed');
   requireCondition(JSON.stringify(requireArray(contract.evidence.builder_artifacts,
     'contract.evidence.builder_artifacts')) === JSON.stringify([
@@ -182,15 +233,30 @@ function validateContract(contract) {
     ]) && JSON.stringify(requireArray(contract.evidence.comparison_artifacts,
     'contract.evidence.comparison_artifacts')) === JSON.stringify([
       'reproducibility-receipt.json', 'hosted-reproducibility-receipt.json',
+    ]) && JSON.stringify(requireArray(contract.evidence.provenance_artifacts,
+      'contract.evidence.provenance_artifacts')) === JSON.stringify([
+      'provenance-receipt.json', 'provenance.sigstore.jsonl',
     ]),
   'hosted evidence inventory must remain exact');
+
+  exactKeys(contract.provenance, [
+    'recorder_script', 'predicate_type', 'slsa_build_level', 'subject_builder',
+  ], 'contract.provenance');
+  requireCondition(contract.provenance.recorder_script ===
+    'scripts/record-oss-hosted-provenance.mjs' &&
+    contract.provenance.predicate_type === 'https://slsa.dev/provenance/v1' &&
+    contract.provenance.slsa_build_level === 2 &&
+    contract.provenance.subject_builder === 'build-a',
+  'hosted provenance contract changed');
 
   exactKeys(contract.authority, [
     'release_admitted', 'publishable', 'github_release_created', 'package_uploaded',
     'container_uploaded', 'signature_created', 'provenance_created',
   ], 'contract.authority');
-  requireCondition(Object.values(contract.authority).every((value) => value === false),
-    'hosted reproducibility contract must not grant release authority');
+  requireCondition(contract.authority.provenance_created === true &&
+    Object.entries(contract.authority).every(([field, value]) =>
+      field === 'provenance_created' ? value === true : value === false),
+  'hosted build may create provenance but must not grant release authority');
 
   const active = activation.state === ACTIVATABLE;
   if (active) {
@@ -218,6 +284,45 @@ function actionName(value) {
   return typeof value === 'string' ? value.split('@', 1)[0] : '';
 }
 
+function validateProvenanceJob(contract, job) {
+  requireCondition(job.name === 'Attest exact OCI candidate bytes' &&
+    job.needs === 'compare' && job.steps.length === 8,
+  'OCI provenance job boundary changed');
+  const download = job.steps[3];
+  requireCondition(download.name === 'Download the exact builder A candidate' &&
+    download.uses === contract.actions.download_artifact &&
+    JSON.stringify(download.with) === JSON.stringify({
+      name: 'oss-oci-build-a', path: '${{ runner.temp }}/oss-oci-build-a',
+    }), 'OCI provenance download changed');
+  const prepare = job.steps[4];
+  requireCondition(prepare.name === 'Resolve and verify the exact OCI subject' &&
+    prepare.id === 'subject' && prepare.run.trimEnd() === PROVENANCE_PREPARE_COMMAND,
+  'OCI provenance subject resolution changed');
+  const attest = job.steps[5];
+  requireCondition(attest.name ===
+    'Create signed SLSA provenance for the exact OCI subject' &&
+    attest.id === 'attest' && attest.uses === contract.actions.attest &&
+    JSON.stringify(attest.with) === JSON.stringify({
+      'subject-path': '${{ steps.subject.outputs.subject_path }}',
+    }), 'OCI provenance action boundary changed');
+  const record = job.steps[6];
+  requireCondition(record.name ===
+    'Record bounded non-publishing OCI provenance evidence' &&
+    record.run.trimEnd() === PROVENANCE_RECORD_COMMAND,
+  'OCI provenance evidence recorder changed');
+  const upload = job.steps[7];
+  requireCondition(upload.name === 'Upload bounded OCI provenance evidence' &&
+    upload.uses === contract.actions.upload_artifact &&
+    upload.with.name === contract.evidence.provenance_name &&
+    upload.with.path === '${{ runner.temp }}/oss-oci-provenance',
+  'OCI provenance upload changed');
+  requireCondition(job.steps[1].name === 'Install locked contract-verifier dependencies' &&
+    job.steps[1].run === 'npm ci --ignore-scripts' &&
+    job.steps[2].name === 'Reverify the hosted-build contract before attestation' &&
+    job.steps[2].run.trimEnd() === PROVENANCE_VERIFY_COMMAND,
+  'OCI provenance preflight changed');
+}
+
 function validateWorkflow(contract, workflow, workflowSource) {
   requireCondition(workflow.name === 'OSS OCI Reproducibility Candidate',
     'unexpected hosted workflow name');
@@ -232,8 +337,8 @@ function validateWorkflow(contract, workflow, workflowSource) {
     workflow.env?.WORKFLOW_TEMPLATE === contract.activation.template_path,
   'workflow must use the reviewed contract and template paths');
   requireCondition(JSON.stringify(Object.keys(workflow.jobs)) ===
-    JSON.stringify(['preflight', 'build-a', 'build-b', 'compare']),
-  'workflow must contain the exact preflight, two builders and comparison jobs');
+    JSON.stringify(['preflight', 'build-a', 'build-b', 'compare', 'provenance']),
+  'workflow must contain the exact preflight, builders, comparison and provenance jobs');
 
   const allowedActions = new Set(Object.values(contract.actions));
   for (const [jobName, expected] of Object.entries(contract.execution.jobs)) {
@@ -242,8 +347,16 @@ function validateWorkflow(contract, workflow, workflowSource) {
       job['timeout-minutes'] === expected.timeout_minutes &&
       job.environment === contract.execution.environment,
     `${jobName} execution policy changed`);
-    requireCondition(job.permissions === undefined && job.container === undefined,
-      `${jobName} must inherit read-only permissions and use the reviewed Docker boundary`);
+    requireCondition(job.container === undefined,
+      `${jobName} must use the reviewed Docker boundary`);
+    if (jobName === 'provenance') {
+      requireCondition(JSON.stringify(job.permissions) ===
+        JSON.stringify(contract.execution.provenance_permissions),
+      'provenance job permissions changed');
+    } else {
+      requireCondition(job.permissions === undefined,
+        `${jobName} must inherit read-only permissions`);
+    }
     for (const step of requireArray(job.steps, `${jobName}.steps`)) {
       if (step.uses !== undefined) {
         requireCondition(allowedActions.has(step.uses), `${step.uses} is not an approved action`);
@@ -255,6 +368,7 @@ function validateWorkflow(contract, workflow, workflowSource) {
   requireCondition(JSON.stringify(workflow.jobs.compare.needs) ===
     JSON.stringify(['preflight', 'build-a', 'build-b']),
   'comparison must depend on both independent builders');
+  validateProvenanceJob(contract, workflow.jobs.provenance);
 
   for (const job of Object.values(workflow.jobs)) {
     const checkouts = job.steps.filter((step) => actionName(step.uses) === 'actions/checkout');
@@ -294,13 +408,18 @@ function validateWorkflow(contract, workflow, workflowSource) {
 
   for (const forbidden of [
     /pull_request_target/u, /self-hosted/u, /secrets\s*[.[]/u,
-    /(?:id-token|packages|pull-requests|contents)\s*:\s*write/iu,
+    /(?:packages|pull-requests|contents)\s*:\s*write/iu,
     /\bgh\s+release\b/iu, /\bdocker\s+push\b/iu, /\bnpm\s+publish\b/iu,
     /\bcosign\s+sign\b/iu,
   ]) {
     requireCondition(!forbidden.test(workflowSource),
       `workflow contains forbidden authority or execution pattern ${forbidden}`);
   }
+  requireCondition((workflowSource.match(/^\s+id-token:\s*write\s*$/gmu) || []).length === 1 &&
+    (workflowSource.match(/^\s+attestations:\s*write\s*$/gmu) || []).length === 1,
+  'provenance OIDC and attestation write permissions must appear exactly once');
+  requireCondition((workflowSource.match(/actions\/attest@[a-f0-9]{40}/gu) || []).length === 1,
+    'exactly one pinned hosted provenance action is required');
   requireCondition(workflowSource.includes('docker run --rm --network none --read-only') &&
     workflowSource.includes('--cap-drop ALL') &&
     workflowSource.includes('--security-opt no-new-privileges'),
@@ -530,6 +649,7 @@ export function verifyHostedBuildContract(contractPath, workflowPath, options = 
       contract_sha256: sha256File(contractPath),
       workflow_template_sha256: sha256File(workflowPath),
       builder_image_verification: verificationReceipt,
+      provenance_created: true,
       release_admitted: false,
       publishable: false,
     },
