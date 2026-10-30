@@ -15,7 +15,7 @@ export GOCACHE := $(CURDIR)/.cache/go-build
 	config-authoring-claude-skill-test \
 	dco-signoff-test oss-release-bundle-test oss-release-workflow-test oss-candidate-intake-test oss-supply-chain-producer-test oss-supply-chain-evidence-test oss-deb-builder-test oss-deb-hosted-contract-test \
 	oss-builder-publication-workflow-test \
-	oss-deb-builder-image-test oss-native-install-verifier-test oss-native-install-collector-test oss-kubernetes-deployment-verifier-test oss-kubernetes-acceptance-runner-test oss-bounded-benchmark-verifier-test oss-bounded-benchmark-runner-test oss-oci-builder-test local-deployment-verifier-test \
+	oss-deb-builder-image-test oss-native-install-verifier-test oss-native-install-collector-test oss-artifact-lifecycle-test oss-kubernetes-deployment-verifier-test oss-kubernetes-acceptance-runner-test oss-bounded-benchmark-verifier-test oss-bounded-benchmark-runner-test oss-oci-builder-test local-deployment-verifier-test \
 	oss-oci-hosted-contract-test \
 	dataplane-image dataplane-build dataplane-http2-deadline \
 	dataplane-http2-cookie dedicated-preflight-rehearsal \
@@ -54,6 +54,7 @@ help:
 	@echo "  oss-deb-builder-image-test  Verify the offline public Debian builder-image foundation"
 	@echo "  oss-native-install-verifier-test  Verify native fresh-install evidence admission"
 	@echo "  oss-native-install-collector-test  Verify the fail-closed disposable-host runner"
+	@echo "  oss-artifact-lifecycle-test  Verify exact fresh, upgrade, rollback, reactivation, and removal evidence"
 	@echo "  oss-kubernetes-deployment-verifier-test  Verify Kubernetes fresh-install observation controls"
 	@echo "  oss-kubernetes-acceptance-runner-test  Verify disposable Kubernetes lifecycle and teardown controls"
 	@echo "  oss-bounded-benchmark-verifier-test  Verify bounded benchmark evidence admission"
@@ -111,6 +112,7 @@ test-node:
 	@$(MAKE) oss-supply-chain-producer-test
 	@$(MAKE) oss-supply-chain-evidence-test
 	@$(MAKE) oss-builder-publication-workflow-test
+	@$(MAKE) oss-artifact-lifecycle-test
 	@$(MAKE) local-deployment-verifier-test
 	@$(MAKE) oss-kubernetes-deployment-verifier-test
 	@$(MAKE) oss-kubernetes-acceptance-runner-test
@@ -204,6 +206,9 @@ oss-native-install-verifier-test:
 
 oss-native-install-collector-test:
 	@python3 -B scripts/test_collect_oss_native_install.py
+
+oss-artifact-lifecycle-test:
+	@node --test scripts/verify-oss-artifact-lifecycle.test.mjs
 
 oss-kubernetes-deployment-verifier-test:
 	@node --test scripts/verify-kubernetes-deployment.test.mjs

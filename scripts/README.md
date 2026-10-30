@@ -125,6 +125,24 @@ the complete bounded state-tree and service identity. Run
 `make oss-native-install-collector-test` for its 27 portable safety tests.
 Those tests do not execute the privileged lifecycle.
 
+`verify-oss-artifact-lifecycle.mjs` defines the next exact-artifact evidence
+boundary for the Gateway package and OCI image. Its canonical contract pins the
+immutable `v1.0.0-rc.6` Debian and OCI rollback artifacts, their source commit,
+and their successful protected hosted-build runs. It admits two distinct lanes:
+one fresh candidate installation/start, and one real baseline-to-candidate
+upgrade or replacement followed by rollback to the baseline, candidate
+reactivation, clean shutdown and removal. A candidate must be newer than the
+baseline and byte-distinct, so a same-version reinstall cannot be relabeled as
+upgrade or rollback evidence.
+
+The verifier requires exact Ubuntu 24.04 AMD64 runner identity, run attempt one,
+the complete ordered phase and check set, and a checksum-bound inventory of all
+raw evidence. It rejects changed baseline bytes, mixed intake identities,
+missing or false checks, unbound evidence, links, repeated attempts and every
+release-authority escalation. Run `make oss-artifact-lifecycle-test` for its
+portable adversarial suite. These tests do not install either artifact, execute
+the privileged hosted lifecycle, admit a release, sign or publish a product.
+
 `phase4-console-community-package.sh` builds and qualifies the proprietary,
 no-cost Console Free Debian package for Ubuntu 24.04 AMD64. It requires a clean
 source tree by default, independently rebuilds and compares the frontend,
