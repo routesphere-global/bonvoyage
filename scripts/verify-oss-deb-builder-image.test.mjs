@@ -118,6 +118,7 @@ test('builder stage rejects embedded product source and floating package indexes
     ['APT::Update::Error-Mode=any', 'APT::Update::Error-Mode=none'],
     ['FROM ubuntu-snapshot AS seastar-build', 'FROM ${UBUNTU_IMAGE} AS seastar-build'],
     ['ca-certificates_20240203_all.deb', 'ca-certificates_20240203_amd64.deb'],
+    ['dpkg-deb --field /tmp/ca-certificates.deb Version', 'true'],
     ['io.routesphere.bonvoyage.release-authority="false"',
       'io.routesphere.bonvoyage.release-authority="true"'],
   ]) {

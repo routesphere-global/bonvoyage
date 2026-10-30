@@ -119,6 +119,7 @@ test('builder stage rejects product source, binaries and authority', (t) => {
       'cp /tmp/bonvoyage-dataplane /opt/bonvoyage/bin/bonvoyage-dataplane'],
     ['FROM ubuntu-snapshot AS seastar-build', 'FROM ${UBUNTU_IMAGE} AS seastar-build'],
     ['ca-certificates_20240203_all.deb', 'ca-certificates_20240203_amd64.deb'],
+    ['dpkg-deb --field /tmp/ca-certificates.deb Version', 'true'],
   ]) {
     const paths = fixture(t);
     const source = fs.readFileSync(paths.dockerfile, 'utf8');

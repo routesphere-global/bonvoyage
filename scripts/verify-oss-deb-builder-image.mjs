@@ -185,7 +185,10 @@ function validateDockerfile(contract, source) {
   for (const marker of [
     'ARG UBUNTU_SNAPSHOT',
     `test "${'${UBUNTU_SNAPSHOT}'}" = "${contract.image.packaging_snapshot}"`,
-    'sha256:641de77d8f142cfd62a1a6f964ba67b20754d3337c480efb529d086075a06c9a',
+    'sha256:77ecadb27cdb16b44d02ef8fbdfc0630c37ecae0b95a750418aa5e25f534b662',
+    'dpkg-deb --field /tmp/ca-certificates.deb Package',
+    'dpkg-deb --field /tmp/ca-certificates.deb Version',
+    'dpkg-deb --field /tmp/ca-certificates.deb Architecture',
     'dpkg-deb --extract /tmp/ca-certificates.deb',
     'cat /usr/share/ca-certificates/mozilla/*.crt',
     '> /etc/ssl/certs/ca-certificates.crt',
