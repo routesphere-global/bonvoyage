@@ -233,6 +233,31 @@ containers, or assert release admission or publication. Run
 workflow-drift tests. Later reviewed checkpoints must add the remaining product
 gates before any candidate is admitted or published.
 
+## Protected product-signature evidence
+
+`oss-product-signing-workflow-contract.json`,
+`.github/workflows/oss-product-signing.yml` and
+`scripts/verify-oss-product-signing-workflow.mjs` define the only authorized
+product-signature identity. The manual workflow accepts no caller inputs and
+must run from a strict protected tag after exactly one successful candidate
+intake for the same tag and commit. The intake is downloaded by its discovered
+run ID and revalidated before any signature is requested.
+
+Only the signing job receives `id-token: write`. It signs the exact retained
+Debian and OCI candidate bytes with pinned Cosign `v3.1.4`, verifies both
+bundles online and offline, and emits a checksum-bound signing receipt. A
+separate job with no OIDC permission downloads the same candidate and same-run
+signature evidence, repeats both verification modes and emits the independent
+verification receipt.
+
+This checkpoint creates signature evidence only. It cannot generate product
+provenance, admit or publish a release, create a GitHub Release, or upload a
+package or container. Run `make oss-product-signing-test` for the discovery,
+preparation, receipt, verifier and workflow-drift suites. The accepted product
+signature subject is
+`oss-product-signing.yml@refs/tags/<tag>`; an older immutable candidate cannot
+acquire this identity retroactively.
+
 ## Required artifact gates
 
 Each artifact must independently pass:

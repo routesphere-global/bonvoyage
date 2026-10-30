@@ -1,0 +1,258 @@
+name: OSS Product Signing Evidence
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oss-product-signing-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Discover exact protected candidate intake
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: release
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      candidate_run_id: ${{ steps.candidate-intake.outputs.candidate_run_id }}
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Use the reviewed Node.js runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+      - name: Install locked workflow-verifier dependencies
+        run: npm ci --ignore-scripts
+      - name: Verify the protected product-signing workflow
+        run: >-
+          node scripts/verify-oss-product-signing-workflow.mjs
+          --contract packaging/release/oss-product-signing-workflow-contract.json
+          --workflow .github/workflows/oss-product-signing.yml
+          --github-repository "$GITHUB_REPOSITORY"
+          --github-ref-type "$GITHUB_REF_TYPE"
+          --github-ref-name "$GITHUB_REF_NAME"
+          --github-ref-protected "$GITHUB_REF_PROTECTED"
+          --github-sha "$GITHUB_SHA"
+      - name: Discover the exact prior candidate intake
+        id: candidate-intake
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          node scripts/discover-oss-product-signing-input.mjs
+          --repository "$GITHUB_REPOSITORY"
+          --tag "$GITHUB_REF_NAME"
+          --commit "$GITHUB_SHA"
+          --current-run-id "$GITHUB_RUN_ID"
+          --github-output "$GITHUB_OUTPUT"
+
+  sign:
+    name: Sign exact candidate artifacts
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: release
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Use the reviewed Node.js runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+      - name: Install locked workflow-verifier dependencies
+        run: npm ci --ignore-scripts
+      - name: Reverify the protected product-signing workflow
+        run: >-
+          node scripts/verify-oss-product-signing-workflow.mjs
+          --contract packaging/release/oss-product-signing-workflow-contract.json
+          --workflow .github/workflows/oss-product-signing.yml
+          --github-repository "$GITHUB_REPOSITORY"
+          --github-ref-type "$GITHUB_REF_TYPE"
+          --github-ref-name "$GITHUB_REF_NAME"
+          --github-ref-protected "$GITHUB_REF_PROTECTED"
+          --github-sha "$GITHUB_SHA"
+      - name: Download the exact prior candidate intake
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-release-candidate-intake
+          path: ${{ runner.temp }}/product-signing-candidate
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.candidate_run_id }}
+      - name: Prepare checksum-bound signing targets
+        id: signing-plan
+        run: >-
+          node scripts/prepare-oss-product-signatures.mjs
+          --intake-root "$RUNNER_TEMP/product-signing-candidate"
+          --output "$RUNNER_TEMP/product-signature-evidence"
+          --source-commit "$GITHUB_SHA"
+          --source-tag "$GITHUB_REF_NAME"
+          --current-run-id "$GITHUB_RUN_ID"
+          --candidate-run-id "${{ needs.preflight.outputs.candidate_run_id }}"
+          --created-at "$(node -e 'process.stdout.write(new Date().toISOString())')"
+          --github-output "$GITHUB_OUTPUT"
+      - name: Install the pinned keyless signing client
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6
+        with:
+          cosign-release: v3.1.4
+      - name: Sign the exact Debian and OCI candidate bytes
+        env:
+          DEBIAN_ARTIFACT: ${{ steps.signing-plan.outputs.debian_artifact }}
+          DEBIAN_BUNDLE: ${{ steps.signing-plan.outputs.debian_bundle }}
+          OCI_ARTIFACT: ${{ steps.signing-plan.outputs.oci_artifact }}
+          OCI_BUNDLE: ${{ steps.signing-plan.outputs.oci_bundle }}
+        run: |
+          cosign sign-blob --yes --oidc-provider github-actions \
+            --bundle "$DEBIAN_BUNDLE" "$DEBIAN_ARTIFACT"
+          cosign sign-blob --yes --oidc-provider github-actions \
+            --bundle "$OCI_BUNDLE" "$OCI_ARTIFACT"
+      - name: Verify both signatures in the signing job
+        env:
+          DEBIAN_ARTIFACT: ${{ steps.signing-plan.outputs.debian_artifact }}
+          DEBIAN_BUNDLE: ${{ steps.signing-plan.outputs.debian_bundle }}
+          OCI_ARTIFACT: ${{ steps.signing-plan.outputs.oci_artifact }}
+          OCI_BUNDLE: ${{ steps.signing-plan.outputs.oci_bundle }}
+          EXPECTED_IDENTITY: https://github.com/routesphere-global/bonvoyage/.github/workflows/oss-product-signing.yml@refs/tags/${{ github.ref_name }}
+          EXPECTED_ISSUER: https://token.actions.githubusercontent.com
+        run: |
+          cosign verify-blob --bundle "$DEBIAN_BUNDLE" \
+            --certificate-identity "$EXPECTED_IDENTITY" \
+            --certificate-oidc-issuer "$EXPECTED_ISSUER" \
+            --certificate-github-workflow-repository "$GITHUB_REPOSITORY" \
+            --certificate-github-workflow-sha "$GITHUB_SHA" \
+            --certificate-github-workflow-ref "$GITHUB_REF" \
+            --certificate-github-workflow-trigger "$GITHUB_EVENT_NAME" \
+            "$DEBIAN_ARTIFACT" \
+            > "$RUNNER_TEMP/product-signature-evidence/signing-verification/gateway-deb-linux-amd64.online.txt"
+          cosign verify-blob --offline=true --bundle "$DEBIAN_BUNDLE" \
+            --certificate-identity "$EXPECTED_IDENTITY" \
+            --certificate-oidc-issuer "$EXPECTED_ISSUER" \
+            --certificate-github-workflow-repository "$GITHUB_REPOSITORY" \
+            --certificate-github-workflow-sha "$GITHUB_SHA" \
+            --certificate-github-workflow-ref "$GITHUB_REF" \
+            --certificate-github-workflow-trigger "$GITHUB_EVENT_NAME" \
+            "$DEBIAN_ARTIFACT" \
+            > "$RUNNER_TEMP/product-signature-evidence/signing-verification/gateway-deb-linux-amd64.offline.txt"
+          cosign verify-blob --bundle "$OCI_BUNDLE" \
+            --certificate-identity "$EXPECTED_IDENTITY" \
+            --certificate-oidc-issuer "$EXPECTED_ISSUER" \
+            --certificate-github-workflow-repository "$GITHUB_REPOSITORY" \
+            --certificate-github-workflow-sha "$GITHUB_SHA" \
+            --certificate-github-workflow-ref "$GITHUB_REF" \
+            --certificate-github-workflow-trigger "$GITHUB_EVENT_NAME" \
+            "$OCI_ARTIFACT" \
+            > "$RUNNER_TEMP/product-signature-evidence/signing-verification/gateway-oci-linux-amd64.online.txt"
+          cosign verify-blob --offline=true --bundle "$OCI_BUNDLE" \
+            --certificate-identity "$EXPECTED_IDENTITY" \
+            --certificate-oidc-issuer "$EXPECTED_ISSUER" \
+            --certificate-github-workflow-repository "$GITHUB_REPOSITORY" \
+            --certificate-github-workflow-sha "$GITHUB_SHA" \
+            --certificate-github-workflow-ref "$GITHUB_REF" \
+            --certificate-github-workflow-trigger "$GITHUB_EVENT_NAME" \
+            "$OCI_ARTIFACT" \
+            > "$RUNNER_TEMP/product-signature-evidence/signing-verification/gateway-oci-linux-amd64.offline.txt"
+      - name: Finalize the bounded signing receipt
+        run: >-
+          node scripts/finalize-oss-product-signatures.mjs
+          --intake-root "$RUNNER_TEMP/product-signing-candidate"
+          --evidence-root "$RUNNER_TEMP/product-signature-evidence"
+          --created-at "$(node -e 'process.stdout.write(new Date().toISOString())')"
+          --cosign cosign
+      - name: Upload bounded signature bundles for independent verification
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: oss-product-signature-bundles
+          path: ${{ runner.temp }}/product-signature-evidence
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 3
+
+  verify:
+    name: Independently verify exact product signatures
+    needs:
+      - preflight
+      - sign
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Use the reviewed Node.js runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+      - name: Install locked workflow-verifier dependencies
+        run: npm ci --ignore-scripts
+      - name: Reverify the protected product-signing workflow without OIDC
+        run: >-
+          node scripts/verify-oss-product-signing-workflow.mjs
+          --contract packaging/release/oss-product-signing-workflow-contract.json
+          --workflow .github/workflows/oss-product-signing.yml
+          --github-repository "$GITHUB_REPOSITORY"
+          --github-ref-type "$GITHUB_REF_TYPE"
+          --github-ref-name "$GITHUB_REF_NAME"
+          --github-ref-protected "$GITHUB_REF_PROTECTED"
+          --github-sha "$GITHUB_SHA"
+      - name: Download the exact prior candidate intake
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-release-candidate-intake
+          path: ${{ runner.temp }}/product-signing-candidate
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.candidate_run_id }}
+      - name: Download same-run signature evidence
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-product-signature-bundles
+          path: ${{ runner.temp }}/product-signature-evidence
+      - name: Install the pinned verification client
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6
+        with:
+          cosign-release: v3.1.4
+      - name: Independently verify both signatures online and offline
+        run: >-
+          node scripts/verify-oss-product-signatures.mjs
+          --intake-root "$RUNNER_TEMP/product-signing-candidate"
+          --evidence-root "$RUNNER_TEMP/product-signature-evidence"
+          --output "$RUNNER_TEMP/product-signature-evidence/independent-verification"
+          --created-at "$(node -e 'process.stdout.write(new Date().toISOString())')"
+          --cosign cosign
+      - name: Upload bounded independently verified signature evidence
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: oss-product-signature-evidence
+          path: ${{ runner.temp }}/product-signature-evidence
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 3

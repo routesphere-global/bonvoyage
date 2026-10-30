@@ -13,7 +13,7 @@ export GOCACHE := $(CURDIR)/.cache/go-build
 	config-authoring-openai-codex-capture-test \
 	config-authoring-openai-codex-skill-test \
 	config-authoring-claude-skill-test \
-	dco-signoff-test oss-release-bundle-test oss-release-workflow-test oss-candidate-intake-test oss-supply-chain-producer-test oss-supply-chain-evidence-test oss-deb-builder-test oss-hosted-provenance-test oss-deb-hosted-contract-test \
+	dco-signoff-test oss-release-bundle-test oss-release-workflow-test oss-product-signing-test oss-candidate-intake-test oss-supply-chain-producer-test oss-supply-chain-evidence-test oss-deb-builder-test oss-hosted-provenance-test oss-deb-hosted-contract-test \
 	oss-builder-publication-workflow-test \
 	oss-deb-builder-image-test oss-native-install-verifier-test oss-native-install-collector-test oss-artifact-lifecycle-test oss-kubernetes-deployment-verifier-test oss-kubernetes-acceptance-runner-test oss-bounded-benchmark-verifier-test oss-bounded-benchmark-runner-test oss-oci-builder-test local-deployment-verifier-test \
 	oss-oci-hosted-contract-test \
@@ -45,6 +45,7 @@ help:
 	@echo "  dco-signoff-test  Verify pull-request commit sign-off enforcement"
 	@echo "  oss-release-bundle-test  Verify fail-closed release-bundle admission"
 	@echo "  oss-release-workflow-test  Verify protected candidate intake and keyless identity"
+	@echo "  oss-product-signing-test  Verify exact product signatures and independent verification"
 	@echo "  oss-candidate-intake-test  Verify hosted candidate intake and authority isolation"
 	@echo "  oss-supply-chain-producer-test  Verify protected dual-SBOM and vulnerability producers"
 	@echo "  oss-supply-chain-evidence-test  Verify the neutral dual-SBOM and vulnerability evidence handoff"
@@ -109,6 +110,7 @@ test-node:
 	@$(MAKE) dco-signoff-test
 	@$(MAKE) oss-release-bundle-test
 	@$(MAKE) oss-release-workflow-test
+	@$(MAKE) oss-product-signing-test
 	@$(MAKE) oss-candidate-intake-test
 	@$(MAKE) oss-supply-chain-producer-test
 	@$(MAKE) oss-supply-chain-evidence-test
@@ -130,6 +132,22 @@ oss-release-bundle-test:
 
 oss-release-workflow-test:
 	@node --test scripts/discover-oss-release-candidate-runs.test.mjs scripts/verify-oss-release-workflow.test.mjs
+
+oss-product-signing-test:
+	@node --test \
+		scripts/discover-oss-product-signing-input.test.mjs \
+		scripts/prepare-oss-product-signatures.test.mjs \
+		scripts/finalize-oss-product-signatures.test.mjs \
+		scripts/verify-oss-product-signatures.test.mjs \
+		scripts/verify-oss-product-signing-workflow.test.mjs
+	@node scripts/verify-oss-product-signing-workflow.mjs \
+		--contract packaging/release/oss-product-signing-workflow-contract.json \
+		--workflow .github/workflows/oss-product-signing.yml \
+		--github-repository routesphere-global/bonvoyage \
+		--github-ref-type tag \
+		--github-ref-name v1.0.0-rc.16 \
+		--github-ref-protected true \
+		--github-sha aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa >/dev/null
 
 oss-candidate-intake-test:
 	@node --test scripts/intake-oss-release-candidate.test.mjs
