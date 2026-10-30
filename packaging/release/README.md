@@ -368,9 +368,9 @@ limited to the exact source mount; wildcard safe-directory configuration is
 rejected.
 
 The public source-free builder is pinned to
-`ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:f32465ff914634bcb5bbb2ff9271dd1ba0cbb8838be0ab26c696e64d2a17a225`.
+`ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:f0b5bdd396cabe4f96f07840780f2b621cb6983feed28f2e28b78a73a9c0e1be`.
 Its registry manifest, anonymous pull and local image identity were verified on
-2026-10-29. That verification proves the exact execution image is independently
+2026-10-30. That verification proves the exact execution image is independently
 retrievable; it does not grant license approval, release admission, signing,
 provenance or product publication authority.
 
@@ -392,6 +392,12 @@ Run `make oss-oci-builder-test` for the focused portable contracts. A mechanical
 builder execution must additionally use no network, a read-only root, dropped
 capabilities, `no-new-privileges`, a read-only source mount, separate empty
 work/output mounts and a no-execute temporary filesystem.
+
+The public source-free OCI builder is pinned to
+`ghcr.io/routesphere-global/bonvoyage-oci-builder@sha256:e217afae27d23e24c994198e4bc285fe17936bf483249661b5f89c2f67b5850c`.
+Its registry manifest, anonymous pull and local image identity were verified on
+2026-10-30. That verification establishes the independently retrievable
+execution image only; it does not make a BonVoyage runtime image publishable.
 
 The assembler emits one deterministic gzip layer and one Linux AMD64 manifest.
 It rejects unsafe paths and modes, links, special files, non-AMD64 ELF objects,
@@ -430,11 +436,13 @@ false gates.
 ## Current status
 
 This contract is a release-admission foundation, not a release. The public
-Apache-2.0 repository, protected candidate tags, release environment, Debian
-builder identity and hosted Debian reproducibility gate are established for the
-evidence named above. The deterministic OCI assembler and source-free OCI
-builder have passed bounded local two-execution replay; hosted OCI independence
-is the active checkpoint.
+Apache-2.0 repository, protected candidate tags and release environment are
+established. Protected GitHub Actions run `41042184197`, attempt 2, published
+both source-free builder images from reviewed source commit
+`f50fa24df37b22aea5459104c73e37ac9bd7ceb4`. Independent anonymous checks then
+read each exact manifest and all referenced blobs: 30 Debian objects and 62 OCI
+objects, with no failures. Earlier failed attempts remain diagnostic evidence
+and do not satisfy this gate.
 
 No result in this directory grants final artifact admission or publication.
 Final SBOM and vulnerability disposition, signatures, hosted provenance,

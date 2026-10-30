@@ -51,7 +51,7 @@
   },
   "registry": {
     "repository": "ghcr.io/routesphere-global/bonvoyage-debian-builder",
-    "reference": "ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:f32465ff914634bcb5bbb2ff9271dd1ba0cbb8838be0ab26c696e64d2a17a225",
+    "reference": "ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:f0b5bdd396cabe4f96f07840780f2b621cb6983feed28f2e28b78a73a9c0e1be",
     "external_verification_receipt": "packaging/release/debian/oss-deb-builder-image-verification.json",
     "anonymous_pull_verified": true
   },
