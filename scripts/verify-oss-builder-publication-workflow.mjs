@@ -17,7 +17,7 @@ const RUN_SHA256 = {
   install: '9b121a2c9dfda060ff1898be64ffb3252cdf0fbc8e0e121128b9688ce1f7ef4d',
   verify_workflow: '6bfd4d9176ccb0f5697ea4c40e575da6998cd5dbcb3ac8b93e7b19f898741349',
   verify_source: '47f3183cf8d40ad07187582a513c087b78d0e289e7f1de822b150447b293135e',
-  build_and_verify: 'a0dc632821ccda56bcf07f3d7bc6231a81c57bd0c928ee45fdfcf48f77a992da',
+  build_and_verify: 'ed3791c9af3dbe04c0aefb83a6e3078a7b817acc1607f4b9d6d433367832cdab',
   authenticate: 'bcc146e2d20ee44938f89f122d290a0ecd8ea1bd6c73b8f5bc5c6d7331824977',
   upload: '71e0ae660bb281d93a08f184c7189e8fb31030cf62e5a235b8257a1d25dfc7df',
   record: 'a1027ae046502334bc166cb77fbf4653214f9999da539119d8be10b9b30366cd',
@@ -59,7 +59,7 @@ function validateContract(contract) {
     'environment', 'runner', 'timeout_minutes', 'workflow_permissions',
     'job_permissions', 'checkout_action', 'setup_node_action', 'node_version',
     'platform', 'dockerfile', 'tag_template', 'source_free_paths', 'targets',
-    'minimum_zlib1g', 'run_sha256',
+    'packaging_snapshot', 'zlib1g_version', 'run_sha256',
   ], 'contract.execution');
   requireCondition(execution.environment === 'builder-publication' &&
     execution.runner === 'ubuntu-24.04' && execution.timeout_minutes === 180 &&
@@ -74,7 +74,8 @@ function validateContract(contract) {
     JSON.stringify(execution.source_free_paths) === JSON.stringify([
       '/opt/bonvoyage', '/usr/src/bonvoyage', '/workspace',
     ]) &&
-    execution.minimum_zlib1g === '1:1.3.dfsg-3.1ubuntu2.3' &&
+    execution.packaging_snapshot === '20261006T000000Z' &&
+    execution.zlib1g_version === '1:1.3.dfsg-3.1ubuntu2.3' &&
     JSON.stringify(execution.targets) === JSON.stringify([
       {name: 'oss-deb-builder',
         repository: 'ghcr.io/routesphere-global/bonvoyage-debian-builder',
@@ -123,7 +124,8 @@ function validateWorkflow(contract, workflow, source) {
       SOURCE_COMMIT: '${{ inputs.source_commit }}',
       DEB_REPOSITORY: contract.execution.targets[0].repository,
       OCI_REPOSITORY: contract.execution.targets[1].repository,
-      MINIMUM_ZLIB1G: contract.execution.minimum_zlib1g,
+      PACKAGING_SNAPSHOT: contract.execution.packaging_snapshot,
+      ZLIB1G_VERSION: contract.execution.zlib1g_version,
     }), 'publication job boundary changed');
 
   const steps = job.steps;
@@ -175,9 +177,9 @@ function validateWorkflow(contract, workflow, source) {
     'attempt-${GITHUB_RUN_ATTEMPT}',
     '--platform linux/amd64 --target oss-deb-builder',
     '--platform linux/amd64 --target oss-oci-builder', '--provenance=false',
-    '-f="\\${Version}"', 'dpkg --compare-versions "$version" ge "$1"',
+    '-f="\\${Version}"', 'zlib1g-dev)" = "$1"',
     "'oss-deb-builder'", "'oss-oci-builder'", 'docker login ghcr.io',
-    "'false'", "'20261029T000000Z'", "'65532:65532'",
+    "'false'", '"$PACKAGING_SNAPSHOT"', '"$ZLIB1G_VERSION"', "'65532:65532'",
     "'[\"/usr/local/bin/bonvoyage-oss-deb-builder\"]'",
     "'[\"/usr/local/bin/bonvoyage-oss-oci-builder\"]'",
     'test ! -e /opt/bonvoyage', 'test ! -e /usr/src/bonvoyage',

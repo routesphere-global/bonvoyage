@@ -29,7 +29,8 @@ jobs:
       SOURCE_COMMIT: ${{ inputs.source_commit }}
       DEB_REPOSITORY: ghcr.io/routesphere-global/bonvoyage-debian-builder
       OCI_REPOSITORY: ghcr.io/routesphere-global/bonvoyage-oci-builder
-      MINIMUM_ZLIB1G: 1:1.3.dfsg-3.1ubuntu2.3
+      PACKAGING_SNAPSHOT: 20261006T000000Z
+      ZLIB1G_VERSION: 1:1.3.dfsg-3.1ubuntu2.3
     steps:
       - name: Check out protected workflow authority
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -74,14 +75,16 @@ jobs:
             --load --provenance=false --tag "$deb_ref" \
             --file source/deploy/docker/bonvoyage/Dockerfile source
           docker run --rm --user 0 --entrypoint /bin/sh "$deb_ref" -ec \
-            'version=$(dpkg-query -W -f="\${Version}" zlib1g); dpkg --compare-versions "$version" ge "$1"' \
-            verify-zlib "$MINIMUM_ZLIB1G"
+            'test "$(dpkg-query -W -f="\${Version}" zlib1g)" = "$1"; test "$(dpkg-query -W -f="\${Version}" zlib1g-dev)" = "$1"' \
+            verify-zlib "$ZLIB1G_VERSION"
           test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.role}}' "$deb_ref")" = \
             'oss-deb-builder'
           test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.release-authority}}' "$deb_ref")" = \
             'false'
           test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.ubuntu-snapshot}}' "$deb_ref")" = \
-            '20261029T000000Z'
+            "$PACKAGING_SNAPSHOT"
+          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.zlib1g-version}}' "$deb_ref")" = \
+            "$ZLIB1G_VERSION"
           test "$(docker image inspect --format '{{.Config.User}}' "$deb_ref")" = '65532:65532'
           test "$(docker image inspect --format '{{json .Config.Entrypoint}}' "$deb_ref")" = \
             '["/usr/local/bin/bonvoyage-oss-deb-builder"]'
@@ -91,14 +94,16 @@ jobs:
             --load --provenance=false --tag "$oci_ref" \
             --file source/deploy/docker/bonvoyage/Dockerfile source
           docker run --rm --user 0 --entrypoint /bin/sh "$oci_ref" -ec \
-            'version=$(dpkg-query -W -f="\${Version}" zlib1g); dpkg --compare-versions "$version" ge "$1"' \
-            verify-zlib "$MINIMUM_ZLIB1G"
+            'test "$(dpkg-query -W -f="\${Version}" zlib1g)" = "$1"; test "$(dpkg-query -W -f="\${Version}" zlib1g-dev)" = "$1"' \
+            verify-zlib "$ZLIB1G_VERSION"
           test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.role}}' "$oci_ref")" = \
             'oss-oci-builder'
           test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.release-authority}}' "$oci_ref")" = \
             'false'
           test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.ubuntu-snapshot}}' "$oci_ref")" = \
-            '20261029T000000Z'
+            "$PACKAGING_SNAPSHOT"
+          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.zlib1g-version}}' "$oci_ref")" = \
+            "$ZLIB1G_VERSION"
           test "$(docker image inspect --format '{{.Config.User}}' "$oci_ref")" = '65532:65532'
           test "$(docker image inspect --format '{{json .Config.Entrypoint}}' "$oci_ref")" = \
             '["/usr/local/bin/bonvoyage-oss-oci-builder"]'
