@@ -45,6 +45,8 @@ test('rejects automatic triggers and product publication authority', (t) => {
     ['ref: ${{ inputs.source_commit }}', 'ref: main'],
     ['attempt-${GITHUB_RUN_ATTEMPT}', 'attempt-1'],
     ['-f="\\${Version}"', '-f="${Version}"'],
+    ['{{index .Config.Labels "io.routesphere.bonvoyage.role"}}',
+      '{{.Config.Labels.io.routesphere.bonvoyage.role}}'],
     ['test ! -e /opt/bonvoyage', 'true'],
     ['      - name: Build and verify source-free builder images\n        run: |',
       '      - name: Build and verify source-free builder images\n        env:\n          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n        run: |'],

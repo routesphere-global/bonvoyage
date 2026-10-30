@@ -17,7 +17,7 @@ const RUN_SHA256 = {
   install: '9b121a2c9dfda060ff1898be64ffb3252cdf0fbc8e0e121128b9688ce1f7ef4d',
   verify_workflow: '6bfd4d9176ccb0f5697ea4c40e575da6998cd5dbcb3ac8b93e7b19f898741349',
   verify_source: '47f3183cf8d40ad07187582a513c087b78d0e289e7f1de822b150447b293135e',
-  build_and_verify: 'ed3791c9af3dbe04c0aefb83a6e3078a7b817acc1607f4b9d6d433367832cdab',
+  build_and_verify: 'cc5b0b0cf26681333a60bcacb5f746f975404aa3e225c4682be95bc72630ca21',
   authenticate: 'bcc146e2d20ee44938f89f122d290a0ecd8ea1bd6c73b8f5bc5c6d7331824977',
   upload: '71e0ae660bb281d93a08f184c7189e8fb31030cf62e5a235b8257a1d25dfc7df',
   record: 'a1027ae046502334bc166cb77fbf4653214f9999da539119d8be10b9b30366cd',
@@ -185,7 +185,12 @@ function validateWorkflow(contract, workflow, source) {
     'test ! -e /opt/bonvoyage', 'test ! -e /usr/src/bonvoyage',
     'find /workspace -mindepth 1 -print -quit',
     'docker push "$DEB_IMAGE"', 'docker push "$OCI_IMAGE"',
-    'docker image inspect --format', 'Product release authority: `false`',
+    'docker image inspect --format',
+    '{{index .Config.Labels "io.routesphere.bonvoyage.role"}}',
+    '{{index .Config.Labels "io.routesphere.bonvoyage.release-authority"}}',
+    '{{index .Config.Labels "io.routesphere.bonvoyage.ubuntu-snapshot"}}',
+    '{{index .Config.Labels "io.routesphere.bonvoyage.zlib1g-version"}}',
+    'Product release authority: `false`',
     'docker logout ghcr.io || true',
   ]) requireCondition(runText.includes(required), `publication workflow is missing ${required}`);
   requireCondition(JSON.stringify(steps[7].env) === JSON.stringify({
