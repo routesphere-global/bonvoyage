@@ -77,13 +77,13 @@ jobs:
           docker run --rm --user 0 --entrypoint /bin/sh "$deb_ref" -ec \
             'test "$(dpkg-query -W -f="\${Version}" zlib1g)" = "$1"; test "$(dpkg-query -W -f="\${Version}" zlib1g-dev)" = "$1"' \
             verify-zlib "$ZLIB1G_VERSION"
-          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.role}}' "$deb_ref")" = \
+          test "$(docker image inspect --format '{{index .Config.Labels "io.routesphere.bonvoyage.role"}}' "$deb_ref")" = \
             'oss-deb-builder'
-          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.release-authority}}' "$deb_ref")" = \
+          test "$(docker image inspect --format '{{index .Config.Labels "io.routesphere.bonvoyage.release-authority"}}' "$deb_ref")" = \
             'false'
-          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.ubuntu-snapshot}}' "$deb_ref")" = \
+          test "$(docker image inspect --format '{{index .Config.Labels "io.routesphere.bonvoyage.ubuntu-snapshot"}}' "$deb_ref")" = \
             "$PACKAGING_SNAPSHOT"
-          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.zlib1g-version}}' "$deb_ref")" = \
+          test "$(docker image inspect --format '{{index .Config.Labels "io.routesphere.bonvoyage.zlib1g-version"}}' "$deb_ref")" = \
             "$ZLIB1G_VERSION"
           test "$(docker image inspect --format '{{.Config.User}}' "$deb_ref")" = '65532:65532'
           test "$(docker image inspect --format '{{json .Config.Entrypoint}}' "$deb_ref")" = \
@@ -96,13 +96,13 @@ jobs:
           docker run --rm --user 0 --entrypoint /bin/sh "$oci_ref" -ec \
             'test "$(dpkg-query -W -f="\${Version}" zlib1g)" = "$1"; test "$(dpkg-query -W -f="\${Version}" zlib1g-dev)" = "$1"' \
             verify-zlib "$ZLIB1G_VERSION"
-          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.role}}' "$oci_ref")" = \
+          test "$(docker image inspect --format '{{index .Config.Labels "io.routesphere.bonvoyage.role"}}' "$oci_ref")" = \
             'oss-oci-builder'
-          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.release-authority}}' "$oci_ref")" = \
+          test "$(docker image inspect --format '{{index .Config.Labels "io.routesphere.bonvoyage.release-authority"}}' "$oci_ref")" = \
             'false'
-          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.ubuntu-snapshot}}' "$oci_ref")" = \
+          test "$(docker image inspect --format '{{index .Config.Labels "io.routesphere.bonvoyage.ubuntu-snapshot"}}' "$oci_ref")" = \
             "$PACKAGING_SNAPSHOT"
-          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.zlib1g-version}}' "$oci_ref")" = \
+          test "$(docker image inspect --format '{{index .Config.Labels "io.routesphere.bonvoyage.zlib1g-version"}}' "$oci_ref")" = \
             "$ZLIB1G_VERSION"
           test "$(docker image inspect --format '{{.Config.User}}' "$oci_ref")" = '65532:65532'
           test "$(docker image inspect --format '{{json .Config.Entrypoint}}' "$oci_ref")" = \
