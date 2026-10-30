@@ -23,6 +23,7 @@ const AUTHORITY_FIELDS = [
   'release_admitted', 'publishable', 'github_release_created', 'package_uploaded',
   'container_uploaded', 'signature_created', 'provenance_created',
 ];
+const SOURCE_FIELDS = ['repository', 'commit', 'tag', 'dirty'];
 const JOBS = [
   {
     name: 'debian-candidate-fresh',
@@ -164,6 +165,12 @@ function validateAuthority(authority, label) {
     `${label} must grant no release authority`);
 }
 
+function sameSourceIdentity(actual, expected, label) {
+  exactKeys(actual, SOURCE_FIELDS, label);
+  exactKeys(expected, SOURCE_FIELDS, `${label} expected`);
+  return SOURCE_FIELDS.every((field) => actual[field] === expected[field]);
+}
+
 function readIntake(root, label) {
   const receipt = readJson(path.join(root, 'candidate-intake-receipt.json'),
     `${label} intake receipt`);
@@ -222,8 +229,10 @@ export function validateLane({root, job, contract, candidate, baseline}) {
   ], `${job.name} lane`);
   requireCondition(lane.schema_version === 1 && lane.classification === LANE_CLASSIFICATION &&
     lane.outcome === 'passed' && lane.job === job.name &&
-    JSON.stringify(lane.candidate) === JSON.stringify(candidate.source) &&
-    JSON.stringify(lane.baseline) === JSON.stringify(baseline.source),
+    sameSourceIdentity(lane.candidate, candidate.source,
+      `${job.name} lane candidate`) &&
+    sameSourceIdentity(lane.baseline, baseline.source,
+      `${job.name} lane baseline`),
   `${job.name} lane identity changed`);
   validateAuthority(lane.authority, `${job.name} lane authority`);
   const candidateArtifact = candidate.artifacts.find((item) => item.id === job.artifact);
