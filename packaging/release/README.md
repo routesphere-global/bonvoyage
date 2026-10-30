@@ -129,15 +129,25 @@ relabeled. The first candidate eligible for signing and complete admission must
 be created from a later commit that already contains the reviewed release
 workflow.
 
-## Protected keyless identity foundation
+## Protected candidate intake and keyless identity foundation
 
 `oss-release-identity-workflow-contract.json`,
 `.github/workflows/release.yml` and
-`scripts/verify-oss-release-workflow.mjs` define the first protected release
-workflow boundary. The manual workflow accepts no caller inputs and must run
-from a strict protected `v*` tag in the `release` environment. Repository
-contents remain read-only. Only its identity-probe job receives
-`id-token: write`.
+`scripts/verify-oss-release-workflow.mjs` define the protected release workflow
+boundary. The manual workflow accepts no caller inputs and must run from a
+strict protected `v*` tag in the `release` environment. Repository contents
+remain read-only.
+
+Before requesting an identity token, the workflow uses
+`scripts/discover-oss-release-candidate-runs.mjs` to find exactly one successful
+run-attempt-one Debian workflow and one OCI workflow for the exact same tag and
+commit. Those runs must predate the current release workflow. Six fixed
+evidence artifacts are downloaded with job-scoped `actions: read`, then
+`scripts/intake-oss-release-candidate.mjs` replays the existing byte, receipt,
+source, test and authority checks. Duplicate, retried, mixed-source, future or
+caller-selected runs fail closed.
+
+Only the downstream identity-probe job receives `id-token: write`.
 
 The workflow generates one fixed JSON identity probe bound to the public
 repository, exact tag, commit and GitHub run. Pinned Cosign `v3.1.4` signs that
@@ -146,13 +156,13 @@ probe keylessly and immediately verifies the bundle against the exact
 commit, ref and manual trigger claims. The bounded evidence artifact expires
 after three days.
 
-This is an identity test, not product signing. The workflow cannot accept a
-payload path, sign the Debian package or OCI archive, generate product
-provenance, create a GitHub Release, upload packages or containers, or assert
-release admission or publication. Run `make oss-release-workflow-test` for the
-focused authority and workflow-drift tests. A later reviewed checkpoint
-must add exact candidate intake and product gates before any new candidate is
-cut.
+This remains a candidate-intake and identity test, not product signing. The
+workflow cannot accept a payload path, sign the Debian package or OCI archive,
+generate product provenance, create a GitHub Release, upload packages or
+containers, or assert release admission or publication. Run
+`make oss-release-workflow-test` for the focused discovery, authority and
+workflow-drift tests. Later reviewed checkpoints must add the remaining product
+gates before any candidate is admitted or published.
 
 ## Required artifact gates
 

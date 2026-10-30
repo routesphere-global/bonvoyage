@@ -46,9 +46,10 @@ function mutateWorkflow(filePath, from, to) {
   fs.writeFileSync(filePath, source.replace(from, to));
 }
 
-test('accepts the powerless release identity workflow foundation', () => {
+test('accepts the powerless candidate intake and identity workflow foundation', () => {
   const result = verifyReleaseWorkflow(CONTRACT, WORKFLOW);
-  assert.equal(result.state, 'identity-foundation');
+  assert.equal(result.state, 'candidate-intake-foundation');
+  assert.equal(result.candidate_intake_allowed, true);
   assert.equal(result.identity_probe_signature_allowed, true);
   assert.equal(result.product_artifact_signature_allowed, false);
   assert.equal(result.product_provenance_allowed, false);
@@ -114,6 +115,7 @@ test('rejects automatic triggers, caller inputs, secrets and excessive permissio
     ['  workflow_dispatch:\n', '  push:\n    tags: ["v*"]\n'],
     ['  workflow_dispatch:\n', '  workflow_dispatch:\n    inputs:\n      payload:\n        required: true\n'],
     ['  contents: read\n', '  contents: write\n'],
+    ['      actions: read\n', '      actions: write\n'],
     ['      id-token: write\n', '      id-token: write\n      packages: write\n'],
     ['npm ci --ignore-scripts', 'echo "${{ secrets.RELEASE_TOKEN }}"'],
   ]) {
@@ -145,6 +147,23 @@ test('rejects an added run step even when its command is not deny-listed', (t) =
     '      - name: Unreviewed command\n        run: echo harmless\n' +
     '      - name: Upload bounded non-publishing identity evidence\n');
   assert.throws(() => verifyReleaseWorkflow(value.contract, value.workflow));
+});
+
+test('rejects caller-selected, mixed or reordered candidate intake inputs', (t) => {
+  for (const [from, to] of [
+    ['--current-run-id "$GITHUB_RUN_ID"', '--current-run-id "${{ inputs.run_id }}"'],
+    ['name: oss-deb-build-a', 'name: attacker-selected-artifact'],
+    ['run-id: ${{ steps.candidate-runs.outputs.deb_run_id }}',
+      'run-id: 40984886786'],
+    ['path: ${{ runner.temp }}/release-candidate-input/oci/oss-oci-build-a',
+      'path: ${{ runner.temp }}/release-candidate-input/debian/oss-oci-build-a'],
+    ['GITHUB_TOKEN: ${{ github.token }}', 'GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}'],
+    ['needs: candidate-intake\n', 'needs: preflight\n'],
+  ]) {
+    const value = fixture(t);
+    mutateWorkflow(value.workflow, from, to);
+    assert.throws(() => verifyReleaseWorkflow(value.contract, value.workflow));
+  }
 });
 
 test('rejects product signing, provenance and publication commands', (t) => {
@@ -185,7 +204,11 @@ test('rejects weakened OIDC provider or GitHub certificate claim verification', 
 test('rejects authority, identity, tool and contract drift', (t) => {
   const mutations = [
     (value) => { value.authority.publishable = true; },
+    (value) => { value.authority.candidate_intake_allowed = false; },
     (value) => { value.authority.product_artifact_signature_allowed = true; },
+    (value) => { value.candidate_intake.caller_selected_run_ids_allowed = true; },
+    (value) => { value.candidate_intake.required_run_attempt = 2; },
+    (value) => { value.candidate_intake.artifact_names.debian[0] = 'different'; },
     (value) => { value.identity.caller_selected_payload_allowed = true; },
     (value) => { value.identity.cosign_version = 'v3.1.3'; },
     (value) => { value.identity.subject_prefix = 'https://github.com/personal/fork/'; },

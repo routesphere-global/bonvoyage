@@ -1,4 +1,4 @@
-name: OSS Release Identity Foundation
+name: OSS Release Candidate Intake Foundation
 
 on:
   workflow_dispatch:
@@ -7,12 +7,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: oss-release-identity-${{ github.ref }}
+  group: oss-release-candidate-intake-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   preflight:
-    name: Protected identity preflight
+    name: Protected candidate intake preflight
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: release
@@ -41,9 +41,121 @@ jobs:
           --github-ref-name "$GITHUB_REF_NAME"
           --github-sha "$GITHUB_SHA"
 
+  candidate-intake:
+    name: Replay exact hosted candidate intake
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: release
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 22.19.0
+      - name: Install locked release-verifier dependencies
+        run: npm ci --ignore-scripts
+      - name: Reverify the workflow before reading hosted evidence
+        run: >-
+          node scripts/verify-oss-release-workflow.mjs
+          --contract packaging/release/oss-release-identity-workflow-contract.json
+          --workflow .github/workflows/release.yml
+          --github-repository "$GITHUB_REPOSITORY"
+          --github-ref-type "$GITHUB_REF_TYPE"
+          --github-ref-name "$GITHUB_REF_NAME"
+          --github-sha "$GITHUB_SHA"
+      - name: Discover exact prior candidate workflow runs
+        id: candidate-runs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          node scripts/discover-oss-release-candidate-runs.mjs
+          --repository "$GITHUB_REPOSITORY"
+          --tag "$GITHUB_REF_NAME"
+          --commit "$GITHUB_SHA"
+          --current-run-id "$GITHUB_RUN_ID"
+          --github-output "$GITHUB_OUTPUT"
+      - name: Download Debian builder A evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: oss-deb-build-a
+          path: ${{ runner.temp }}/release-candidate-input/debian/oss-deb-build-a
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.candidate-runs.outputs.deb_run_id }}
+      - name: Download Debian builder B evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: oss-deb-build-b
+          path: ${{ runner.temp }}/release-candidate-input/debian/oss-deb-build-b
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.candidate-runs.outputs.deb_run_id }}
+      - name: Download Debian comparison evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: oss-deb-comparison
+          path: ${{ runner.temp }}/release-candidate-input/debian/oss-deb-comparison
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.candidate-runs.outputs.deb_run_id }}
+      - name: Download OCI builder A evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: oss-oci-build-a
+          path: ${{ runner.temp }}/release-candidate-input/oci/oss-oci-build-a
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.candidate-runs.outputs.oci_run_id }}
+      - name: Download OCI builder B evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: oss-oci-build-b
+          path: ${{ runner.temp }}/release-candidate-input/oci/oss-oci-build-b
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.candidate-runs.outputs.oci_run_id }}
+      - name: Download OCI comparison evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: oss-oci-comparison
+          path: ${{ runner.temp }}/release-candidate-input/oci/oss-oci-comparison
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.candidate-runs.outputs.oci_run_id }}
+      - name: Replay the fail-closed candidate intake
+        run: >-
+          node scripts/intake-oss-release-candidate.mjs
+          --deb-root "$RUNNER_TEMP/release-candidate-input/debian"
+          --oci-root "$RUNNER_TEMP/release-candidate-input/oci"
+          --output "$RUNNER_TEMP/release-candidate-intake"
+          --source-commit "$GITHUB_SHA"
+          --source-tag "$GITHUB_REF_NAME"
+          --deb-run-id "${{ steps.candidate-runs.outputs.deb_run_id }}"
+          --oci-run-id "${{ steps.candidate-runs.outputs.oci_run_id }}"
+          --created-at "${{ steps.candidate-runs.outputs.created_at }}"
+      - name: Upload bounded non-publishing intake evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: oss-release-candidate-intake
+          path: ${{ runner.temp }}/release-candidate-intake
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 3
+
   identity-probe:
     name: Verify keyless workflow identity
-    needs: preflight
+    needs: candidate-intake
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: release
