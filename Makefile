@@ -14,6 +14,7 @@ export GOCACHE := $(CURDIR)/.cache/go-build
 	config-authoring-openai-codex-skill-test \
 	config-authoring-claude-skill-test \
 	dco-signoff-test oss-release-bundle-test oss-release-workflow-test oss-candidate-intake-test oss-supply-chain-producer-test oss-supply-chain-evidence-test oss-deb-builder-test oss-deb-hosted-contract-test \
+	oss-builder-publication-workflow-test \
 	oss-deb-builder-image-test oss-native-install-verifier-test oss-native-install-collector-test oss-kubernetes-deployment-verifier-test oss-kubernetes-acceptance-runner-test oss-bounded-benchmark-verifier-test oss-bounded-benchmark-runner-test oss-oci-builder-test local-deployment-verifier-test \
 	oss-oci-hosted-contract-test \
 	dataplane-image dataplane-build dataplane-http2-deadline \
@@ -47,6 +48,7 @@ help:
 	@echo "  oss-candidate-intake-test  Verify hosted candidate intake and authority isolation"
 	@echo "  oss-supply-chain-producer-test  Verify protected dual-SBOM and vulnerability producers"
 	@echo "  oss-supply-chain-evidence-test  Verify the neutral dual-SBOM and vulnerability evidence handoff"
+	@echo "  oss-builder-publication-workflow-test  Verify manual powerless builder publication"
 	@echo "  oss-deb-builder-test  Verify public Debian build and reproducibility contracts"
 	@echo "  oss-deb-hosted-contract-test  Verify the protected hosted-build contract"
 	@echo "  oss-deb-builder-image-test  Verify the offline public Debian builder-image foundation"
@@ -108,6 +110,7 @@ test-node:
 	@$(MAKE) oss-candidate-intake-test
 	@$(MAKE) oss-supply-chain-producer-test
 	@$(MAKE) oss-supply-chain-evidence-test
+	@$(MAKE) oss-builder-publication-workflow-test
 	@$(MAKE) local-deployment-verifier-test
 	@$(MAKE) oss-kubernetes-deployment-verifier-test
 	@$(MAKE) oss-kubernetes-acceptance-runner-test
@@ -133,6 +136,10 @@ oss-supply-chain-producer-test:
 
 oss-supply-chain-evidence-test:
 	@node --test scripts/intake-oss-supply-chain-evidence.test.mjs
+
+oss-builder-publication-workflow-test:
+	@node --test scripts/verify-oss-builder-publication-workflow.test.mjs
+	@node scripts/verify-oss-builder-publication-workflow.mjs --contract packaging/release/oss-builder-publication-workflow-contract.json --workflow .github/workflows/oss-builder-publication.yml >/dev/null
 
 dco-signoff-test:
 	@node --test scripts/verify-dco-signoffs.test.mjs

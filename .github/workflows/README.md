@@ -29,6 +29,30 @@ silently weakened to fit this cost-bounded workflow. Release automation may be
 added only with the verified-release checkpoint, a protected environment, and
 separate least-privilege review.
 
+## Manual builder image publication
+
+`.github/workflows/oss-builder-publication.yml` is the narrow exception that
+can upload the two source-free builder containers. It runs only by manual
+dispatch from protected `main`, requires the protected `release` environment,
+and accepts exactly one full source commit. The protected workflow definition
+and requested builder source are checked out separately without retained Git
+credentials.
+
+The job builds only `oss-deb-builder` and `oss-oci-builder` for Linux AMD64,
+checks the minimum fixed zlib version and exact powerless role labels before
+registry login, and gives every upload a source-and-run-specific tag. Its
+package-write token exists only for the bounded GHCR login and upload steps.
+It cannot sign product artifacts, create provenance, create a GitHub Release,
+or upload the BonVoyage product package or runtime container. Registry digests
+must still be independently observed and pinned in the reviewed builder
+contracts before any hosted candidate workflow can use them.
+
+The workflow contract and
+`scripts/verify-oss-builder-publication-workflow.mjs` pin its trigger, source
+input, action revision, environment, permissions, targets, zlib floor, command
+surface and false product authority. Run
+`make oss-builder-publication-workflow-test` for the focused adversarial checks.
+
 ## Release candidate intake and identity boundary
 
 `.github/workflows/release.yml` establishes the protected handoff from hosted

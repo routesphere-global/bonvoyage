@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-oss-builder-publication-workflow-contract",
+  "state": "manual-powerless-builder-publication",
+  "source": {
+    "repository": "https://github.com/routesphere-global/bonvoyage",
+    "event": "workflow_dispatch",
+    "workflow_branch": "main",
+    "input": "source_commit",
+    "commit_pattern": "^[a-f0-9]{40}$"
+  },
+  "execution": {
+    "environment": "release",
+    "runner": "ubuntu-24.04",
+    "timeout_minutes": 180,
+    "workflow_permissions": {
+      "contents": "read"
+    },
+    "job_permissions": {
+      "contents": "read",
+      "packages": "write"
+    },
+    "checkout_action": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "platform": "linux/amd64",
+    "dockerfile": "deploy/docker/bonvoyage/Dockerfile",
+    "targets": [
+      {
+        "name": "oss-deb-builder",
+        "repository": "ghcr.io/routesphere-global/bonvoyage-debian-builder",
+        "role": "oss-deb-builder"
+      },
+      {
+        "name": "oss-oci-builder",
+        "repository": "ghcr.io/routesphere-global/bonvoyage-oci-builder",
+        "role": "oss-oci-builder"
+      }
+    ],
+    "minimum_zlib1g": "1:1.3.dfsg-3.1ubuntu2.3"
+  },
+  "authority": {
+    "builder_container_upload_allowed": true,
+    "product_artifact_signature_allowed": false,
+    "product_provenance_allowed": false,
+    "release_admitted": false,
+    "publishable": false,
+    "github_release_created": false,
+    "product_package_uploaded": false,
+    "product_container_uploaded": false
+  }
+}
