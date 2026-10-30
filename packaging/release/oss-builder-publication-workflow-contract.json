@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-oss-builder-publication-workflow-contract",
+  "state": "manual-powerless-builder-publication",
+  "source": {
+    "repository": "https://github.com/routesphere-global/bonvoyage",
+    "event": "workflow_dispatch",
+    "workflow_branch": "main",
+    "input": "source_commit",
+    "commit_pattern": "^[a-f0-9]{40}$"
+  },
+  "execution": {
+    "environment": "builder-publication",
+    "runner": "ubuntu-24.04",
+    "timeout_minutes": 180,
+    "workflow_permissions": {
+      "contents": "read"
+    },
+    "job_permissions": {
+      "contents": "read",
+      "packages": "write"
+    },
+    "checkout_action": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "setup_node_action": "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
+    "node_version": "22.19.0",
+    "platform": "linux/amd64",
+    "dockerfile": "deploy/docker/bonvoyage/Dockerfile",
+    "tag_template": "source-${SOURCE_COMMIT}-run-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}",
+    "source_free_paths": [
+      "/opt/bonvoyage",
+      "/usr/src/bonvoyage",
+      "/workspace"
+    ],
+    "targets": [
+      {
+        "name": "oss-deb-builder",
+        "repository": "ghcr.io/routesphere-global/bonvoyage-debian-builder",
+        "role": "oss-deb-builder",
+        "entrypoint": "/usr/local/bin/bonvoyage-oss-deb-builder"
+      },
+      {
+        "name": "oss-oci-builder",
+        "repository": "ghcr.io/routesphere-global/bonvoyage-oci-builder",
+        "role": "oss-oci-builder",
+        "entrypoint": "/usr/local/bin/bonvoyage-oss-oci-builder"
+      }
+    ],
+    "minimum_zlib1g": "1:1.3.dfsg-3.1ubuntu2.3",
+    "run_sha256": {
+      "install": "9b121a2c9dfda060ff1898be64ffb3252cdf0fbc8e0e121128b9688ce1f7ef4d",
+      "verify_workflow": "6bfd4d9176ccb0f5697ea4c40e575da6998cd5dbcb3ac8b93e7b19f898741349",
+      "verify_source": "47f3183cf8d40ad07187582a513c087b78d0e289e7f1de822b150447b293135e",
+      "build_and_verify": "a0dc632821ccda56bcf07f3d7bc6231a81c57bd0c928ee45fdfcf48f77a992da",
+      "authenticate": "bcc146e2d20ee44938f89f122d290a0ecd8ea1bd6c73b8f5bc5c6d7331824977",
+      "upload": "71e0ae660bb281d93a08f184c7189e8fb31030cf62e5a235b8257a1d25dfc7df",
+      "record": "a1027ae046502334bc166cb77fbf4653214f9999da539119d8be10b9b30366cd",
+      "logout": "9cfd7d985065da07510a57c133685a3be819f5e7e6df08aea9c7389509cc7f43"
+    }
+  },
+  "authority": {
+    "builder_container_upload_allowed": true,
+    "product_artifact_signature_allowed": false,
+    "product_provenance_allowed": false,
+    "release_admitted": false,
+    "publishable": false,
+    "github_release_created": false,
+    "product_package_uploaded": false,
+    "product_container_uploaded": false
+  }
+}

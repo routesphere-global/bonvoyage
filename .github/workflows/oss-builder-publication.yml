@@ -1,0 +1,134 @@
+name: OSS Builder Image Publication
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_commit:
+        description: Exact reviewed BonVoyage source commit to build
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oss-builder-image-publication
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish powerless builder images
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    environment: builder-publication
+    permissions:
+      contents: read
+      packages: write
+    env:
+      SOURCE_COMMIT: ${{ inputs.source_commit }}
+      DEB_REPOSITORY: ghcr.io/routesphere-global/bonvoyage-debian-builder
+      OCI_REPOSITORY: ghcr.io/routesphere-global/bonvoyage-oci-builder
+      MINIMUM_ZLIB1G: 1:1.3.dfsg-3.1ubuntu2.3
+    steps:
+      - name: Check out protected workflow authority
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          path: authority
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Set up verifier Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22.19.0
+      - name: Install pinned verifier dependencies
+        run: npm --prefix authority ci --ignore-scripts --no-audit --no-fund
+      - name: Verify the bounded publication workflow
+        run: >-
+          node authority/scripts/verify-oss-builder-publication-workflow.mjs
+          --contract authority/packaging/release/oss-builder-publication-workflow-contract.json
+          --workflow authority/.github/workflows/oss-builder-publication.yml
+      - name: Check out the exact reviewed builder source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          path: source
+          persist-credentials: false
+          ref: ${{ inputs.source_commit }}
+      - name: Verify exact clean source identity
+        run: |
+          case "$SOURCE_COMMIT" in
+            *[!0-9a-f]*|'') echo 'source_commit must be one lowercase full commit' >&2; exit 2 ;;
+          esac
+          test "${#SOURCE_COMMIT}" -eq 40
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_COMMIT"
+          test -z "$(git -C source status --porcelain=v1 --untracked-files=all)"
+      - name: Build and verify source-free builder images
+        run: |
+          set -eu
+          tag="source-${SOURCE_COMMIT}-run-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}"
+          deb_ref="${DEB_REPOSITORY}:${tag}"
+          oci_ref="${OCI_REPOSITORY}:${tag}"
+          docker buildx build --platform linux/amd64 --target oss-deb-builder \
+            --load --provenance=false --tag "$deb_ref" \
+            --file source/deploy/docker/bonvoyage/Dockerfile source
+          docker run --rm --user 0 --entrypoint /bin/sh "$deb_ref" -ec \
+            'version=$(dpkg-query -W -f="\${Version}" zlib1g); dpkg --compare-versions "$version" ge "$1"' \
+            verify-zlib "$MINIMUM_ZLIB1G"
+          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.role}}' "$deb_ref")" = \
+            'oss-deb-builder'
+          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.release-authority}}' "$deb_ref")" = \
+            'false'
+          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.ubuntu-snapshot}}' "$deb_ref")" = \
+            '20261029T000000Z'
+          test "$(docker image inspect --format '{{.Config.User}}' "$deb_ref")" = '65532:65532'
+          test "$(docker image inspect --format '{{json .Config.Entrypoint}}' "$deb_ref")" = \
+            '["/usr/local/bin/bonvoyage-oss-deb-builder"]'
+          docker run --rm --user 0 --entrypoint /bin/sh "$deb_ref" -ec \
+            'test ! -e /opt/bonvoyage; test ! -e /usr/src/bonvoyage; test -z "$(find /workspace -mindepth 1 -print -quit)"'
+          docker buildx build --platform linux/amd64 --target oss-oci-builder \
+            --load --provenance=false --tag "$oci_ref" \
+            --file source/deploy/docker/bonvoyage/Dockerfile source
+          docker run --rm --user 0 --entrypoint /bin/sh "$oci_ref" -ec \
+            'version=$(dpkg-query -W -f="\${Version}" zlib1g); dpkg --compare-versions "$version" ge "$1"' \
+            verify-zlib "$MINIMUM_ZLIB1G"
+          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.role}}' "$oci_ref")" = \
+            'oss-oci-builder'
+          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.release-authority}}' "$oci_ref")" = \
+            'false'
+          test "$(docker image inspect --format '{{.Config.Labels.io.routesphere.bonvoyage.ubuntu-snapshot}}' "$oci_ref")" = \
+            '20261029T000000Z'
+          test "$(docker image inspect --format '{{.Config.User}}' "$oci_ref")" = '65532:65532'
+          test "$(docker image inspect --format '{{json .Config.Entrypoint}}' "$oci_ref")" = \
+            '["/usr/local/bin/bonvoyage-oss-oci-builder"]'
+          docker run --rm --user 0 --entrypoint /bin/sh "$oci_ref" -ec \
+            'test ! -e /opt/bonvoyage; test ! -e /usr/src/bonvoyage; test -z "$(find /workspace -mindepth 1 -print -quit)"'
+          printf 'DEB_IMAGE=%s\nOCI_IMAGE=%s\n' "$deb_ref" "$oci_ref" >> "$GITHUB_ENV"
+      - name: Authenticate only for the bounded registry upload
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+      - name: Upload the two powerless builder images
+        run: |
+          set -eu
+          docker push "$DEB_IMAGE"
+          docker push "$OCI_IMAGE"
+      - name: Record immutable registry identities
+        run: |
+          set -eu
+          deb_digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$DEB_IMAGE")
+          oci_digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$OCI_IMAGE")
+          case "$deb_digest" in "$DEB_REPOSITORY"@sha256:*) ;; *) exit 2 ;; esac
+          case "$oci_digest" in "$OCI_REPOSITORY"@sha256:*) ;; *) exit 2 ;; esac
+          {
+            echo '## Powerless builder publication'
+            echo
+            printf -- '- Source commit: `%s`\n' "$SOURCE_COMMIT"
+            printf -- '- Debian builder: `%s`\n' "$deb_digest"
+            printf -- '- OCI builder: `%s`\n' "$oci_digest"
+            echo '- Product release authority: `false`'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Remove registry credentials
+        if: always()
+        run: docker logout ghcr.io || true
