@@ -278,7 +278,7 @@ def tmpfs_is_exact(value: object, expected_bytes: int) -> bool:
     return observed_bytes == expected_bytes
 
 
-def validate_container(value: object, expected_image: str, upstream: str) -> dict:
+def validate_container(value: object, expected_image: str, upstream_id: str) -> dict:
     require(isinstance(value, list) and len(value) == 1 and isinstance(value[0], dict),
             "one gateway container is required")
     container = value[0]
@@ -292,7 +292,8 @@ def validate_container(value: object, expected_image: str, upstream: str) -> dic
             config.get("User") == "65532:65532" and isinstance(host, dict) and
             host.get("ReadonlyRootfs") is True and host.get("CapDrop") == ["ALL"] and
             "no-new-privileges" in (host.get("SecurityOpt") or []) and
-            host.get("NetworkMode") == f"container:{upstream}" and
+            re.fullmatch(r"[a-f0-9]{64}", upstream_id) is not None and
+            host.get("NetworkMode") == f"container:{upstream_id}" and
             host.get("PidsLimit") == 256 and host.get("Memory") == 536870912 and
             host.get("NanoCpus") == 2000000000 and
             host.get("RestartPolicy") == {"Name": "no", "MaximumRetryCount": 0} and
@@ -320,14 +321,14 @@ def traffic(docker: Docker, command_id: str, upstream: str) -> dict:
 
 
 def start_gateway(docker: Docker, command_id: str, name: str, tag: str,
-                  expected_image: str, upstream: str) -> dict:
+                  expected_image: str, upstream: str, upstream_id: str) -> dict:
     container_id = docker.run(command_id, gateway_argv(name, tag, upstream)).stdout.decode().strip()
     require(re.fullmatch(r"[a-f0-9]{64}", container_id) is not None,
             "docker did not return a full container ID")
     docker.run(command_id + "-wait", ["exec", upstream, "python3", "-c", WAIT_PROGRAM],
                timeout=60)
     inspected = docker.json(command_id + "-inspect", ["container", "inspect", name])
-    identity = validate_container(inspected, expected_image, upstream)
+    identity = validate_container(inspected, expected_image, upstream_id)
     require(identity["id"] == container_id, "gateway container identity changed")
     metrics = traffic(docker, command_id + "-traffic", upstream)
     return {"container_id": container_id, "image_id": expected_image, "metrics": metrics}
@@ -457,18 +458,20 @@ def collect(candidate_root: Path, baseline_root: Path, output: Path) -> dict:
         require(isinstance(network, list) and len(network) == 1 and
                 network[0].get("Internal") is True and network[0].get("Driver") == "bridge",
                 "qualification network is not an internal bridge")
-        docker.run("start-upstream", [
+        upstream_id = docker.run("start-upstream", [
             "run", "--detach", "--name", names["upstream"], "--network", names["network"],
             "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
             "--user", "65532:65532", "--pids-limit", "64", "--memory", "128m",
             "--cpus", "1", "--tmpfs", "/tmp:rw,noexec,nosuid,nodev,size=16m",
             PYTHON_IMAGE, "python3", "-c", native.FIXTURE_PROGRAM,
             "--bind", "127.0.0.1", "--port", "18081",
-        ])
+        ]).stdout.decode().strip()
+        require(re.fullmatch(r"[a-f0-9]{64}", upstream_id) is not None,
+                "Docker did not return the full upstream container ID")
 
         fresh_active = start_gateway(docker, "candidate-fresh-start", names["fresh"],
                                      names["candidate_tag"], candidate_image["id"],
-                                     names["upstream"])
+                                     names["upstream"], upstream_id)
         fresh_stopped = stop_remove(docker, "candidate-fresh", names["fresh"])
         phases.append(phase_record(output, "candidate-fresh-start", {
             "archive_sha256": candidate_verified["archive"]["sha256"],
@@ -480,11 +483,11 @@ def collect(candidate_root: Path, baseline_root: Path, output: Path) -> dict:
 
         baseline_active = start_gateway(docker, "replacement-baseline-start", names["gateway"],
                                         names["baseline_tag"], baseline_image["id"],
-                                        names["upstream"])
+                                        names["upstream"], upstream_id)
         old_baseline = stop_remove(docker, "replacement-baseline", names["gateway"])
         candidate_active = start_gateway(docker, "replacement-candidate-start", names["gateway"],
                                          names["candidate_tag"], candidate_image["id"],
-                                         names["upstream"])
+                                         names["upstream"], upstream_id)
         phases.append(phase_record(output, "replace-baseline-with-candidate", {
             "baseline_image_id": baseline_active["image_id"],
             "candidate_image_id": candidate_active["image_id"],
@@ -495,7 +498,7 @@ def collect(candidate_root: Path, baseline_root: Path, output: Path) -> dict:
         removed_candidate = stop_remove(docker, "rollback-candidate", names["gateway"])
         rollback_active = start_gateway(docker, "rollback-baseline-start", names["gateway"],
                                         names["baseline_tag"], baseline_image["id"],
-                                        names["upstream"])
+                                        names["upstream"], upstream_id)
         phases.append(phase_record(output, "rollback-to-baseline", {
             "removed_candidate_container_id": removed_candidate["container_id"],
             "baseline_container_id": rollback_active["container_id"],
@@ -505,7 +508,7 @@ def collect(candidate_root: Path, baseline_root: Path, output: Path) -> dict:
         removed_baseline = stop_remove(docker, "reactivation-baseline", names["gateway"])
         reactivated = start_gateway(docker, "reactivation-candidate-start", names["gateway"],
                                     names["candidate_tag"], candidate_image["id"],
-                                    names["upstream"])
+                                    names["upstream"], upstream_id)
         phases.append(phase_record(output, "candidate-reactivation", {
             "removed_baseline_container_id": removed_baseline["container_id"],
             "candidate_container_id": reactivated["container_id"],

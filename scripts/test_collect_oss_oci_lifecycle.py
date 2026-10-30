@@ -71,6 +71,43 @@ class OciLifecycleStructureTest(unittest.TestCase):
         self.assertFalse(MODULE.tmpfs_is_exact(
             "rw,rw,noexec,nosuid,nodev,size=16m", 16 * 1024 * 1024))
 
+    def test_container_network_mode_is_bound_to_the_canonical_upstream_id(self):
+        upstream_id = "a" * 64
+        container = [{
+            "Id": "b" * 64,
+            "Image": "sha256:" + "c" * 64,
+            "RestartCount": 0,
+            "State": {"Running": True, "OOMKilled": False},
+            "Config": {"User": "65532:65532"},
+            "HostConfig": {
+                "ReadonlyRootfs": True,
+                "CapDrop": ["ALL"],
+                "SecurityOpt": ["no-new-privileges"],
+                "NetworkMode": f"container:{upstream_id}",
+                "PidsLimit": 256,
+                "Memory": 536870912,
+                "NanoCpus": 2000000000,
+                "RestartPolicy": {"Name": "no", "MaximumRetryCount": 0},
+                "Tmpfs": {
+                    "/tmp": "rw,noexec,nosuid,nodev,size=16m",
+                    "/var/lib/bonvoyage": "rw,noexec,nosuid,nodev,size=16m",
+                },
+            },
+            "Mounts": [{
+                "Source": str(MODULE.SNAPSHOT),
+                "Destination": "/etc/bonvoyage/snapshot.pb",
+                "RW": False,
+            }],
+        }]
+        expected_image = "sha256:" + "c" * 64
+        self.assertEqual(
+            MODULE.validate_container(container, expected_image, upstream_id)["id"],
+            "b" * 64,
+        )
+        container[0]["HostConfig"]["NetworkMode"] = "container:upstream"
+        with self.assertRaisesRegex(MODULE.Rejected, "hardening changed"):
+            MODULE.validate_container(container, expected_image, upstream_id)
+
     def test_all_contract_phases_have_exact_nonempty_check_sets(self):
         self.assertEqual(list(MODULE.PHASE_CHECKS), [
             "candidate-fresh-start", "replace-baseline-with-candidate",

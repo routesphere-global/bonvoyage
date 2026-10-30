@@ -53,6 +53,8 @@ namespace {
 namespace bpo = boost::program_options;
 
 seastar::logger runtime_log{"bonvoyage"};
+constexpr std::string_view kReleaseVersion{BONVOYAGE_RELEASE_VERSION};
+static_assert(!kReleaseVersion.empty());
 constexpr std::uint64_t kMaximumSnapshotBytes = 16U * 1024U * 1024U;
 constexpr auto kRetiredSnapshotReapInterval =
     std::chrono::milliseconds(100);
@@ -432,8 +434,11 @@ int main(int argc, char** argv) {
   const int status = app.run(argc, argv, [&app] {
     if (app.configuration()["version"].as<bool>()) {
       const auto client = bonvoyage::runtime::kSelectedUpstreamHttp1Client;
-      std::fprintf(stdout, "%s dataplane %s upstream-http1-client=%.*s\n",
+      std::fprintf(stdout,
+                   "%s dataplane %s release=%.*s upstream-http1-client=%.*s\n",
                    bonvoyage::kProductName, bonvoyage::kDataplaneVersion,
+                   static_cast<int>(kReleaseVersion.size()),
+                   kReleaseVersion.data(),
                    static_cast<int>(client.size()), client.data());
       return seastar::make_ready_future<>();
     }
@@ -697,9 +702,9 @@ int main(int argc, char** argv) {
           }
 
           runtime_log.info(
-              "event=dataplane_ready product=\"{}\" version=\"{}\" shards={} snapshot_id={} snapshot_generation={} discovery_enabled={}",
+              "event=dataplane_ready product=\"{}\" version=\"{}\" release=\"{}\" shards={} snapshot_id={} snapshot_generation={} discovery_enabled={}",
               bonvoyage::kProductName, bonvoyage::kDataplaneVersion,
-              seastar::smp::count, active_snapshot_id,
+              kReleaseVersion, seastar::smp::count, active_snapshot_id,
               active_snapshot_generation, discovery_started);
           stop_signal.wait().get();
         } catch (...) {
@@ -738,8 +743,9 @@ int main(int argc, char** argv) {
         }
         shutdown.rethrow_if_failed();
         runtime_log.info(
-            "event=dataplane_stopped product=\"{}\" version=\"{}\" outcome=clean",
-            bonvoyage::kProductName, bonvoyage::kDataplaneVersion);
+            "event=dataplane_stopped product=\"{}\" version=\"{}\" release=\"{}\" outcome=clean",
+            bonvoyage::kProductName, bonvoyage::kDataplaneVersion,
+            kReleaseVersion);
       } catch (...) {
         outer_failure = std::current_exception();
       }

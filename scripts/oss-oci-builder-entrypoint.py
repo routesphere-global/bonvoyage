@@ -311,6 +311,7 @@ def build():
         "-DBONVOYAGE_RUN_RUNTIME_TESTS=ON",
         "-DBONVOYAGE_UPSTREAM_HTTP1_CLIENT=seastar-reference",
         "-DBONVOYAGE_WARNINGS_AS_ERRORS=ON",
+        f"-DBONVOYAGE_RELEASE_VERSION={version}",
         "-DBUILD_TESTING=ON",
     ]
     compile_command = ["cmake", "--build", str(build_root), "--parallel", str(jobs)]

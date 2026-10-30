@@ -211,6 +211,21 @@ class NativeInstallCollectorTests(unittest.TestCase):
         with self.assertRaisesRegex(collector.Rejected, "duplicate key-value"):
             collector.parse_key_values("MainPID=1\nMainPID=2\n")
 
+    def test_clean_stop_uses_numeric_systemd_exec_code(self):
+        fields = {
+            "ActiveState": "inactive",
+            "MainPID": "0",
+            "Result": "success",
+            "ExecMainCode": "1",
+            "ExecMainStatus": "0",
+            "NRestarts": "0",
+        }
+        self.assertTrue(collector.clean_service_stop(fields, False))
+        fields["ExecMainCode"] = "exited"
+        self.assertFalse(collector.clean_service_stop(fields, False))
+        fields["ExecMainCode"] = "1"
+        self.assertFalse(collector.clean_service_stop(fields, True))
+
     def test_socket_inventory_is_exact_owned_and_filtered(self):
         sockets = "\n".join((
             'LISTEN 0 128 0.0.0.0:8080 0.0.0.0:* users:(("bonvoyage",pid=4242,fd=10))',
