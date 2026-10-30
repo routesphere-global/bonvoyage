@@ -14,9 +14,9 @@ policy and exact SHA-256 identities for the authoring contract, completion
 metadata, test corpus, diagnostic catalog, result schema, and snippet catalog.
 
 :::caution[Contract and package evidence are distinct]
-The shared contract defines common behavior. The repository now contains
-pre-release Claude Code and ChatGPT/Codex wrapper packages, but package
-qualification is not a provider-model pass. No model-specific result is
+The shared contract defines common behavior. The v1.0.0 source release contains
+Claude Code and ChatGPT/Codex wrapper packages, but package qualification is
+not a provider-model pass. No model-specific result is
 accepted merely because the contract, packages, or shared harness exists.
 :::
 

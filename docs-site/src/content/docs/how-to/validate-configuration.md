@@ -3,15 +3,15 @@ title: Validate a configuration offline
 description: Compile one BonVoyage YAML document locally and consume its deterministic machine result.
 ---
 
-The pre-release source tree includes the first bounded operation of the
-BonVoyage configuration-authoring command: offline validation. It invokes the
+The v1.0.0 source release includes the bounded offline-validation operation of
+the BonVoyage configuration-authoring command. It invokes the
 same Go snapshot compiler that creates the immutable data-plane artifact. It
 does not contact a gateway, inspect runtime state, or authorize an apply.
 
-:::caution[Pre-release command slice]
-`validate` is implemented and tested in source. Packaging it into an approved
-public release remains pending. The separately documented `format`, `explain`,
-`diff`, `migrate`, and `preview` slices are also implemented in source.
+:::note[Source command]
+`validate`, `format`, `explain`, `diff`, `migrate`, and `preview` are released
+and tested as source commands. The examples on this site invoke them with
+`go run` from the release source tree; do not assume a separate binary package.
 :::
 
 ## Validate a file

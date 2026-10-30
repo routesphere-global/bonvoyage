@@ -8,10 +8,10 @@ Codex. It can help generate, explain, minimally modify, diagnose, migrate and
 verify BonVoyage YAML while keeping the installed `bonvoyage-config` command
 as the semantic authority.
 
-:::caution[Pre-release package]
-This page describes the OSS staging candidate. Package tests do not constitute
-a pass by a particular language model. Published releases will identify the
-exact supported package and release artifacts.
+:::note[Release and model boundary]
+This page describes the wrapper package in the v1.0.0 source release. Package
+tests do not constitute a pass by a particular language model. Use the exact
+release source and its release-matched local command.
 :::
 
 ## Requirements

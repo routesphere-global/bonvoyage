@@ -14,11 +14,13 @@ Apache-2.0 BonVoyage repository.
 
 Console Free packages are published with admitted BonVoyage versions on the
 [BonVoyage GitHub Releases page](https://github.com/routesphere-global/bonvoyage/releases).
+The first package is attached to
+[BonVoyage v1.0.0](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.0).
 
 For the initial supported platform, select the Ubuntu 24.04 AMD64 Debian
 package whose version matches the gateway release you intend to operate. The
-release assets and notes identify the exact filename, checksum, signature,
-provenance, supported platform, and installation procedure.
+release assets and notes identify the exact filename, checksum, retained build
+and vulnerability evidence, supported platform, and installation procedure.
 
 :::caution[No package means no supported Console release]
 If a BonVoyage release does not include an admitted Console Free `.deb` asset,
@@ -31,10 +33,9 @@ gateway source snapshot implies a matching Console package.
 
 1. Confirm that the gateway and Console package identify the same admitted
    BonVoyage version.
-2. Verify the package checksum and release signature using the commands and
-   public key identified in that release.
-3. Review the supplied provenance, SBOM, supported-platform statement, and
-   Console Free binary-use terms.
+2. Verify the package checksum using the value identified in that release.
+3. Review the supplied candidate identity, SBOM, vulnerability and lifecycle
+   evidence, supported-platform statement, and Console Free binary-use terms.
 4. Install only after every required verification succeeds.
 
 The package is intended for local or private-network operation. Installation

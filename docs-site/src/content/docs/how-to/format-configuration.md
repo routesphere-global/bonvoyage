@@ -3,14 +3,14 @@ title: Format a configuration safely
 description: Normalize BonVoyage YAML offline while preserving comments, line endings, and compiled meaning.
 ---
 
-The pre-release `bonvoyage-config format` operation formats one complete,
+The release-matched `bonvoyage-config format` source operation formats one complete,
 compiler-accepted BonVoyage configuration. It is offline and deterministic.
 It does not contact a gateway, authorize an apply, or report runtime state.
 
-:::caution[Pre-release command slice]
-`format` is implemented and tested in source, but packaging it into an approved
-public release remains pending. `explain`, `diff`, `migrate`, and immutable
-artifact `preview` are also implemented in source.
+:::note[Source command]
+`format` and the other configuration-authoring operations are released and
+tested as source commands. These examples invoke them with `go run` from the
+release source tree; do not assume a separate binary package.
 :::
 
 ## Preview a formatted document

@@ -3,7 +3,7 @@ title: Migrate a configuration explicitly
 description: Run a release-shipped BonVoyage schema migration without guessing a source or target version.
 ---
 
-The pre-release `bonvoyage-config migrate` operation applies one explicitly
+The release-matched `bonvoyage-config migrate` source operation applies one explicitly
 selected, release-shipped configuration-schema migration. It runs offline,
 does not contact a gateway, and never chooses a target version automatically.
 
@@ -11,9 +11,9 @@ does not contact a gateway, and never chooses a target version automatically.
 Schema version `1` to version `1` is the only shipped pair. It is a byte-for-byte
 no-change result. Every other pair is refused with
 `BV_CFG_MIGRATION_UNSUPPORTED`; BonVoyage does not pretend that an unimplemented
-upgrade succeeded. Packaging this source command into an approved public
-release remains pending. Offline `preview` is implemented separately and does
-not replace target validation.
+upgrade succeeded. The command is released as source and invoked with `go run`;
+do not assume a separate binary package. Offline `preview` is implemented
+separately and does not replace target validation.
 :::
 
 ## Check a version 1 document
