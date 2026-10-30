@@ -13,7 +13,7 @@ export GOCACHE := $(CURDIR)/.cache/go-build
 	config-authoring-openai-codex-capture-test \
 	config-authoring-openai-codex-skill-test \
 	config-authoring-claude-skill-test \
-		dco-signoff-test oss-release-bundle-test oss-deb-builder-test oss-deb-hosted-contract-test \
+	dco-signoff-test oss-release-bundle-test oss-candidate-intake-test oss-deb-builder-test oss-deb-hosted-contract-test \
 	oss-deb-builder-image-test oss-native-install-verifier-test oss-native-install-collector-test oss-kubernetes-deployment-verifier-test oss-kubernetes-acceptance-runner-test oss-bounded-benchmark-verifier-test oss-bounded-benchmark-runner-test oss-oci-builder-test local-deployment-verifier-test \
 	oss-oci-hosted-contract-test \
 	dataplane-image dataplane-build dataplane-http2-deadline \
@@ -43,6 +43,7 @@ help:
 	@echo "  config-authoring-claude-skill-test  Verify the release-bound Claude Code configuration skill"
 	@echo "  dco-signoff-test  Verify pull-request commit sign-off enforcement"
 	@echo "  oss-release-bundle-test  Verify fail-closed release-bundle admission"
+	@echo "  oss-candidate-intake-test  Verify hosted candidate intake and authority isolation"
 	@echo "  oss-deb-builder-test  Verify public Debian build and reproducibility contracts"
 	@echo "  oss-deb-hosted-contract-test  Verify the protected hosted-build contract"
 	@echo "  oss-deb-builder-image-test  Verify the offline public Debian builder-image foundation"
@@ -100,6 +101,7 @@ test-node:
 	@$(MAKE) config-authoring-claude-skill-test
 	@$(MAKE) dco-signoff-test
 	@$(MAKE) oss-release-bundle-test
+	@$(MAKE) oss-candidate-intake-test
 	@$(MAKE) local-deployment-verifier-test
 	@$(MAKE) oss-kubernetes-deployment-verifier-test
 	@$(MAKE) oss-kubernetes-acceptance-runner-test
@@ -112,6 +114,9 @@ test-node:
 
 oss-release-bundle-test:
 	@node --test scripts/verify-oss-release-bundle.test.mjs
+
+oss-candidate-intake-test:
+	@node --test scripts/intake-oss-release-candidate.test.mjs
 
 dco-signoff-test:
 	@node --test scripts/verify-dco-signoffs.test.mjs
