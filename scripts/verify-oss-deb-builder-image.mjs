@@ -18,6 +18,10 @@ const IMAGE_ID = /^sha256:[a-f0-9]{64}$/u;
 const IMAGE_REFERENCE = /^(ghcr[.]io\/routesphere-global\/bonvoyage-debian-builder)@sha256:([a-f0-9]{64})$/u;
 const RECEIPT_CLASSIFICATION =
   'routesphere-bonvoyage-oss-deb-builder-image-verification';
+const SNAPSHOT_STAGES = [
+  'libjwt-build', 'nghttp2-build', 'llhttp-build', 'protocol-fuzz-dependencies',
+  're2-build', 'cares-build', 'seastar-build',
+];
 
 function fail(message) {
   throw new Error(message);
@@ -168,6 +172,35 @@ function validateVerificationReceipt(contract, repositoryRoot) {
 function validateDockerfile(contract, source) {
   requireCondition(source.includes(`ARG UBUNTU_IMAGE=${contract.image.ubuntu_base}`),
     'Dockerfile Ubuntu base does not match the builder contract');
+  requireCondition(source.includes(
+    `ARG UBUNTU_SNAPSHOT=${contract.image.packaging_snapshot}`),
+  'Dockerfile Ubuntu snapshot does not match the builder contract');
+  const snapshotMarker = 'FROM ${UBUNTU_IMAGE} AS ubuntu-snapshot';
+  const snapshotStart = source.indexOf(snapshotMarker);
+  const snapshotRemaining = source.slice(snapshotStart + snapshotMarker.length);
+  const snapshotNextStage = snapshotRemaining.search(/^FROM\s+/mu);
+  requireCondition(snapshotStart >= 0 && snapshotNextStage >= 0,
+    'bounded shared Ubuntu snapshot stage required');
+  const snapshotStage = snapshotRemaining.slice(0, snapshotNextStage);
+  for (const marker of [
+    'ARG UBUNTU_SNAPSHOT',
+    `test "${'${UBUNTU_SNAPSHOT}'}" = "${contract.image.packaging_snapshot}"`,
+    'sha256:641de77d8f142cfd62a1a6f964ba67b20754d3337c480efb529d086075a06c9a',
+    'dpkg-deb --extract /tmp/ca-certificates.deb',
+    'cat /usr/share/ca-certificates/mozilla/*.crt',
+    '> /etc/ssl/certs/ca-certificates.crt',
+    'APT::Update::Error-Mode=any',
+    'snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}',
+    'non-snapshot Ubuntu package index rejected',
+  ]) requireCondition(snapshotStage.includes(marker),
+    `shared Ubuntu snapshot stage is missing ${marker}`);
+  requireCondition(!snapshotStage.includes('apt-get install') &&
+    !snapshotStage.includes('_amd64.deb') && !snapshotStage.includes('_arm64.deb'),
+  'shared Ubuntu snapshot bootstrap must be package-index independent and portable');
+  for (const stageName of SNAPSHOT_STAGES) {
+    requireCondition(source.includes(`FROM ubuntu-snapshot AS ${stageName}`),
+      `${stageName} must inherit the shared Ubuntu snapshot`);
+  }
   const startMarker = 'FROM seastar-build AS oss-deb-builder';
   const start = source.indexOf(startMarker);
   requireCondition(start >= 0, 'bounded oss-deb-builder stage required');
@@ -179,7 +212,9 @@ function validateDockerfile(contract, source) {
   for (const value of contract.build.dependency_prefixes) {
     requireCondition(stage.includes(value), `builder stage is missing ${value}`);
   }
-  requireCondition(stage.includes(`ARG UBUNTU_SNAPSHOT=${contract.image.packaging_snapshot}`) &&
+  requireCondition(stage.includes('ARG UBUNTU_SNAPSHOT') &&
+    stage.includes(
+      `test "${'${UBUNTU_SNAPSHOT}'}" = "${contract.image.packaging_snapshot}"`) &&
     stage.includes('APT::Update::Error-Mode=any') &&
     stage.includes('snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}') &&
     stage.includes('non-snapshot Ubuntu package index rejected'),

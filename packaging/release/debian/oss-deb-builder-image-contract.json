@@ -7,7 +7,7 @@
     "target": "oss-deb-builder",
     "platform": "linux/amd64",
     "ubuntu_base": "ubuntu:24.04@sha256:561618e2c15bf2397621dd04f96926663a3b5616c189cf7e38db7e82f5c538ea",
-    "packaging_snapshot": "20261006T000000Z",
+    "packaging_snapshot": "20261029T000000Z",
     "entrypoint_source": "scripts/oss-deb-builder-entrypoint.py",
     "entrypoint": "/usr/local/bin/bonvoyage-oss-deb-builder",
     "default_user": "65532:65532",

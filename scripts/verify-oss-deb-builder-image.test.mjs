@@ -61,7 +61,7 @@ function inspection() {
       WorkingDir: '/workspace',
       Labels: {
         'io.routesphere.bonvoyage.role': 'oss-deb-builder',
-        'io.routesphere.bonvoyage.ubuntu-snapshot': '20261006T000000Z',
+        'io.routesphere.bonvoyage.ubuntu-snapshot': '20261029T000000Z',
         'io.routesphere.bonvoyage.release-authority': 'false',
       },
     },
@@ -116,6 +116,8 @@ test('builder stage rejects embedded product source and floating package indexes
     ['COPY scripts/oss-deb-builder-entrypoint.py', 'COPY dataplane/ /usr/src/bonvoyage/dataplane/\nCOPY scripts/oss-deb-builder-entrypoint.py'],
     ['COPY scripts/oss-deb-builder-entrypoint.py', 'RUN test ! -e /opt/bonvoyage\nCOPY scripts/oss-deb-builder-entrypoint.py'],
     ['APT::Update::Error-Mode=any', 'APT::Update::Error-Mode=none'],
+    ['FROM ubuntu-snapshot AS seastar-build', 'FROM ${UBUNTU_IMAGE} AS seastar-build'],
+    ['ca-certificates_20240203_all.deb', 'ca-certificates_20240203_amd64.deb'],
     ['io.routesphere.bonvoyage.release-authority="false"',
       'io.routesphere.bonvoyage.release-authority="true"'],
   ]) {

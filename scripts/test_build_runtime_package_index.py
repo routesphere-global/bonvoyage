@@ -151,6 +151,19 @@ class RuntimeIndexTests(unittest.TestCase):
 
 
 class PackageFloorTests(unittest.TestCase):
+    def test_all_contributing_ubuntu_stages_inherit_one_snapshot(self):
+        dockerfile = Path(__file__).resolve().parent.parent / "deploy/docker/bonvoyage/Dockerfile"
+        source = dockerfile.read_text()
+        self.assertIn("ARG UBUNTU_SNAPSHOT=20261029T000000Z", source)
+        snapshot = source.split("AS ubuntu-snapshot\n", 1)[1].split("\nFROM ", 1)[0]
+        self.assertIn("APT::Update::Error-Mode=any", snapshot)
+        self.assertIn("snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}", snapshot)
+        self.assertIn("non-snapshot Ubuntu package index rejected", snapshot)
+        for stage in ("libjwt-build", "nghttp2-build", "llhttp-build",
+                      "protocol-fuzz-dependencies", "re2-build", "cares-build",
+                      "seastar-build"):
+            self.assertIn(f"FROM ubuntu-snapshot AS {stage}", source)
+
     def test_runtime_build_explicitly_refreshes_libudev(self):
         dockerfile = Path(__file__).resolve().parent.parent / "deploy/docker/bonvoyage/Dockerfile"
         stage = dockerfile.read_text().split("AS seastar-build\n", 1)[1].split("\nFROM ", 1)[0]
@@ -163,6 +176,28 @@ class PackageFloorTests(unittest.TestCase):
                    "version": "255.4-1ubuntu8.17", "source_version": "255.4-1ubuntu8.17"}
         package.update(changes)
         return {"libudev1:amd64": package}
+
+    def zlib_package(self, **changes):
+        package = {"name": "zlib1g", "source": "zlib",
+                   "version": "1:1.3.dfsg-3.1ubuntu2.3",
+                   "source_version": "1:1.3.dfsg-3.1ubuntu2.3"}
+        package.update(changes)
+        return {"zlib1g:amd64": package}
+
+    def test_zlib_fix_floor_covers_binary_and_source_versions(self):
+        for field in ("version", "source_version"):
+            with self.subTest(field=field), self.assertRaisesRegex(
+                    ValueError, "CVE-2026-85091"):
+                index.verify_package_floors(
+                    self.zlib_package(**{field: "1:1.3.dfsg-3.1ubuntu2.2"}),
+                    lambda version, minimum: version == minimum)
+
+        compare = mock.Mock(return_value=True)
+        index.verify_package_floors(self.zlib_package(), compare)
+        self.assertEqual(compare.call_args_list, [
+            mock.call("1:1.3.dfsg-3.1ubuntu2.3", "1:1.3.dfsg-3.1ubuntu2.3"),
+            mock.call("1:1.3.dfsg-3.1ubuntu2.3", "1:1.3.dfsg-3.1ubuntu2.3"),
+        ])
 
     def test_both_binary_and_source_versions_are_checked(self):
         compare = mock.Mock(return_value=True)

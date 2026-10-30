@@ -356,7 +356,9 @@ requires a new reviewed candidate and cannot inherit this evidence.
 target and `scripts/oss-deb-builder-entrypoint.py` define the source-free Linux
 AMD64 execution environment expected by both hosted build jobs. The image
 contains pinned build dependencies and Debian packaging tools from Ubuntu
-snapshot `20261006T000000Z`; it contains no BonVoyage source or prebuilt
+snapshot `20261029T000000Z`. Every Ubuntu package-producing stage inherits that
+same fail-closed snapshot, and the runtime closure rejects `zlib1g` older than
+`1:1.3.dfsg-3.1ubuntu2.3`; the image contains no BonVoyage source or prebuilt
 dataplane. At runtime it compiles the exact clean tagged public checkout, runs
 the compiled CTest suite and emits only the package and powerless receipts.
 

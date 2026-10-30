@@ -1,8 +1,51 @@
 # syntax=docker/dockerfile:1.7
 
 ARG UBUNTU_IMAGE=ubuntu:24.04@sha256:561618e2c15bf2397621dd04f96926663a3b5616c189cf7e38db7e82f5c538ea
+ARG UBUNTU_SNAPSHOT=20261029T000000Z
 
-FROM ${UBUNTU_IMAGE} AS libjwt-build
+FROM ${UBUNTU_IMAGE} AS ubuntu-snapshot
+
+ARG UBUNTU_SNAPSHOT
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Bootstrap HTTPS from the architecture-independent, checksum-locked CA
+# package in the same snapshot. The minimal Ubuntu base intentionally omits the
+# CA bundle, so using apt first would either fail TLS or trust a moving mirror.
+ADD --checksum=sha256:641de77d8f142cfd62a1a6f964ba67b20754d3337c480efb529d086075a06c9a \
+    https://snapshot.ubuntu.com/ubuntu/20261029T000000Z/pool/main/c/ca-certificates/ca-certificates_20240203_all.deb \
+    /tmp/ca-certificates.deb
+
+# Every package-producing stage inherits one immutable Ubuntu package universe.
+RUN test "${UBUNTU_SNAPSHOT}" = "20261029T000000Z" \
+    && test -s /usr/share/keyrings/ubuntu-archive-keyring.gpg \
+    && dpkg-deb --extract /tmp/ca-certificates.deb /tmp/ca-certificates-root \
+    && cp -a /tmp/ca-certificates-root/usr/share/ca-certificates /usr/share/ \
+    && mkdir -p /etc/ssl/certs \
+    && cat /usr/share/ca-certificates/mozilla/*.crt \
+      > /etc/ssl/certs/ca-certificates.crt \
+    && test -s /etc/ssl/certs/ca-certificates.crt \
+    && printf '%s\n' \
+      'Types: deb' \
+      "URIs: https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}" \
+      'Suites: noble noble-updates noble-backports noble-security' \
+      'Components: main universe' \
+      'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' \
+      > /etc/apt/sources.list.d/ubuntu.sources \
+    && rm -f /etc/apt/sources.list \
+    && apt-get update -o APT::Update::Error-Mode=any \
+    && apt-get indextargets --format '$(URI)' \
+      | sed '/^$/d' | sort -u > /tmp/bonvoyage-apt-index-uris \
+    && test -s /tmp/bonvoyage-apt-index-uris \
+    && if grep -Ev \
+      "^https://snapshot[.]ubuntu[.]com/ubuntu/${UBUNTU_SNAPSHOT}/" \
+      /tmp/bonvoyage-apt-index-uris; then \
+         echo 'non-snapshot Ubuntu package index rejected' >&2; \
+         exit 2; \
+       fi \
+    && rm -rf /var/lib/apt/lists/* /tmp/*
+
+FROM ubuntu-snapshot AS libjwt-build
 
 ARG LIBJWT_VERSION=3.6.1
 ARG LIBJWT_COMMIT=f4edfe5b2c44ac57edf00342550e81017f5329eb
@@ -63,7 +106,7 @@ RUN case "${BONVOYAGE_ENABLE_SANITIZERS}" in \
     && test -f /opt/libjwt/include/jwt.h \
     && test -f /opt/libjwt/lib/libjwt.a
 
-FROM ${UBUNTU_IMAGE} AS nghttp2-build
+FROM ubuntu-snapshot AS nghttp2-build
 
 ARG NGHTTP2_VERSION=1.70.0
 ARG NGHTTP2_COMMIT=85e300c79fb6dbcfa9c1013215c8710c1c2cd3d2
@@ -120,7 +163,7 @@ RUN case "${BONVOYAGE_ENABLE_SANITIZERS}" in \
     && test -f /opt/nghttp2/lib/libnghttp2.a \
     && test -f /opt/nghttp2/lib/cmake/nghttp2/nghttp2Config.cmake
 
-FROM ${UBUNTU_IMAGE} AS llhttp-build
+FROM ubuntu-snapshot AS llhttp-build
 
 ARG LLHTTP_VERSION=9.4.3
 ARG LLHTTP_COMMIT=0e815792b167a9bd8ace259b95b7da953776c288
@@ -165,12 +208,12 @@ RUN case "${BONVOYAGE_ENABLE_SANITIZERS}" in \
     && test -f /opt/llhttp/lib/libllhttp.a \
     && test -f /opt/llhttp/lib/cmake/llhttp/llhttpConfig.cmake
 
-FROM ${UBUNTU_IMAGE} AS protocol-fuzz-dependencies
+FROM ubuntu-snapshot AS protocol-fuzz-dependencies
 
 COPY --from=nghttp2-build /opt/nghttp2 /opt/nghttp2
 COPY --from=llhttp-build /opt/llhttp /opt/llhttp
 
-FROM ${UBUNTU_IMAGE} AS re2-build
+FROM ubuntu-snapshot AS re2-build
 
 ARG ABSEIL_VERSION=20250512.1
 ARG ABSEIL_COMMIT=76bb24329e8bf5f39704eb10d21b9a80befa7c81
@@ -251,7 +294,7 @@ RUN case "${BONVOYAGE_ENABLE_SANITIZERS}" in \
     && test -f /opt/re2/lib/libre2.a \
     && test -f /opt/re2/lib/cmake/re2/re2Config.cmake
 
-FROM ${UBUNTU_IMAGE} AS cares-build
+FROM ubuntu-snapshot AS cares-build
 
 ARG BONVOYAGE_ENABLE_SANITIZERS=OFF
 ARG BUILD_JOBS=2
@@ -282,7 +325,7 @@ RUN case "${BONVOYAGE_ENABLE_SANITIZERS}" in \
       /opt/c-ares/share/licenses/c-ares/LICENSE.md \
     && test -f /opt/c-ares/lib/libcares.a
 
-FROM ${UBUNTU_IMAGE} AS seastar-build
+FROM ubuntu-snapshot AS seastar-build
 
 ARG SEASTAR_VERSION=seastar-25.05.0
 ARG SEASTAR_COMMIT=8df8212e53577e1d8477a5c901457cd61d88afc7
@@ -619,7 +662,7 @@ RUN apt-get update \
 # mounted at runtime. It deliberately contains no BonVoyage source or binary.
 FROM seastar-build AS oss-deb-builder
 
-ARG UBUNTU_SNAPSHOT=20261006T000000Z
+ARG UBUNTU_SNAPSHOT
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV CC=gcc-13
@@ -632,18 +675,12 @@ COPY --from=llhttp-build /opt/llhttp /opt/llhttp
 COPY --from=re2-build /opt/abseil /opt/abseil
 COPY --from=re2-build /opt/re2 /opt/re2
 
-# Package-only additions come from one fail-closed Ubuntu snapshot. The
-# complete installed-package and tool inventory is captured again at runtime.
-RUN test "${UBUNTU_SNAPSHOT}" = "20261006T000000Z" \
-    && test -s /etc/ssl/certs/ca-certificates.crt \
-    && printf '%s\n' \
-      'Types: deb' \
+# Package-only additions retain and recheck the shared fail-closed snapshot.
+# The complete installed-package and tool inventory is captured again at runtime.
+RUN test "${UBUNTU_SNAPSHOT}" = "20261029T000000Z" \
+    && grep -Fxq \
       "URIs: https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}" \
-      'Suites: noble noble-updates noble-backports noble-security' \
-      'Components: main universe' \
-      'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' \
-      > /etc/apt/sources.list.d/ubuntu.sources \
-    && rm -f /etc/apt/sources.list \
+      /etc/apt/sources.list.d/ubuntu.sources \
     && apt-get update -o APT::Update::Error-Mode=any \
     && apt-get indextargets --format '$(URI)' \
       | sed '/^$/d' | sort -u > /tmp/bonvoyage-apt-index-uris \
@@ -679,7 +716,7 @@ LABEL org.opencontainers.image.title="RouteSphere BonVoyage OSS Debian Builder" 
       org.opencontainers.image.description="Offline Linux AMD64 compiler and Debian technical-candidate assembler" \
       org.opencontainers.image.vendor="RouteSphere" \
       io.routesphere.bonvoyage.role="oss-deb-builder" \
-      io.routesphere.bonvoyage.ubuntu-snapshot="20261006T000000Z" \
+      io.routesphere.bonvoyage.ubuntu-snapshot="20261029T000000Z" \
       io.routesphere.bonvoyage.release-authority="false"
 
 USER 65532:65532
@@ -747,7 +784,7 @@ LABEL org.opencontainers.image.title="RouteSphere BonVoyage OSS OCI Builder" \
       org.opencontainers.image.description="Offline Linux AMD64 compiler and deterministic OCI technical-candidate assembler" \
       org.opencontainers.image.vendor="RouteSphere" \
       io.routesphere.bonvoyage.role="oss-oci-builder" \
-      io.routesphere.bonvoyage.ubuntu-snapshot="20261006T000000Z" \
+      io.routesphere.bonvoyage.ubuntu-snapshot="20261029T000000Z" \
       io.routesphere.bonvoyage.release-authority="false"
 
 USER 65532:65532

@@ -59,7 +59,7 @@ function inspection() {
       WorkingDir: '/workspace',
       Labels: {
         'io.routesphere.bonvoyage.role': 'oss-oci-builder',
-        'io.routesphere.bonvoyage.ubuntu-snapshot': '20261006T000000Z',
+        'io.routesphere.bonvoyage.ubuntu-snapshot': '20261029T000000Z',
         'io.routesphere.bonvoyage.release-authority': 'false',
       },
     },
@@ -117,6 +117,8 @@ test('builder stage rejects product source, binaries and authority', (t) => {
       'io.routesphere.bonvoyage.release-authority="true"'],
     ['test ! -e /opt/bonvoyage/bin/bonvoyage-dataplane',
       'cp /tmp/bonvoyage-dataplane /opt/bonvoyage/bin/bonvoyage-dataplane'],
+    ['FROM ubuntu-snapshot AS seastar-build', 'FROM ${UBUNTU_IMAGE} AS seastar-build'],
+    ['ca-certificates_20240203_all.deb', 'ca-certificates_20240203_amd64.deb'],
   ]) {
     const paths = fixture(t);
     const source = fs.readFileSync(paths.dockerfile, 'utf8');

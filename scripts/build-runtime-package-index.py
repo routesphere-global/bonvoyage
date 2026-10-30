@@ -20,9 +20,12 @@ def digest(path, algorithm="sha256"):
     return checksum.hexdigest()
 
 
-# Ubuntu 24.04 runtime floor from USN-8626-1. This prevents stale build
-# dependencies from reintroducing known fixes; it is not a scanner waiver.
-PACKAGE_FLOORS = {"libudev1": ("systemd", "255.4-1ubuntu8.17", "USN-8626-1")}
+# Ubuntu 24.04 runtime floors prevent stale build dependencies from
+# reintroducing known fixes. They are artifact assertions, not scanner waivers.
+PACKAGE_FLOORS = {
+    "libudev1": ("systemd", "255.4-1ubuntu8.17", "USN-8626-1"),
+    "zlib1g": ("zlib", "1:1.3.dfsg-3.1ubuntu2.3", "CVE-2026-85091"),
+}
 
 
 def debian_version_at_least(version, minimum):
