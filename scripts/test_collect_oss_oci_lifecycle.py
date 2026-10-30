@@ -38,15 +38,26 @@ class OciLifecycleStructureTest(unittest.TestCase):
         )
         self.assertEqual(arguments[-1], "candidate:tag")
 
-    def test_import_is_networkless_digest_pinned_and_read_only(self):
+    def test_import_is_networkless_digest_pinned_read_only_and_daemon_compatible(self):
         arguments = MODULE.import_argv(Path("/tmp/candidate.tar"), "candidate:tag")
         self.assertIn(MODULE.SKOPEO_IMAGE, arguments)
         self.assertEqual(arguments[arguments.index("--network") + 1], "none")
         self.assertIn("--read-only", arguments)
-        self.assertIn("--preserve-digests", arguments)
+        self.assertNotIn("--preserve-digests", arguments)
+        self.assertEqual(arguments[arguments.index("--format") + 1], "v2s2")
+        self.assertIn(
+            f"/var/tmp:rw,noexec,nosuid,nodev,size={MODULE.IMPORT_TMPFS_BYTES}",
+            arguments,
+        )
+        self.assertGreater(MODULE.IMPORT_TMPFS_BYTES, 80_212_890)
         self.assertEqual(arguments[-2:], [
             "oci-archive:/input/candidate.tar", "docker-daemon:candidate:tag",
         ])
+
+    def test_runtime_probes_use_the_exact_newline_terminated_admin_body(self):
+        expected = "b'{\"status\":\"ok\"}\\n'"
+        self.assertIn(expected, MODULE.PROBE_PROGRAM)
+        self.assertIn(expected, MODULE.WAIT_PROGRAM)
 
     def test_tmpfs_validation_accepts_order_changes_but_not_semantic_drift(self):
         self.assertTrue(MODULE.tmpfs_is_exact(

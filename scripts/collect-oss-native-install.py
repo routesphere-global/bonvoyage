@@ -62,6 +62,7 @@ COMMAND_TIMEOUT_SECONDS = 120
 INSTALL_TIMEOUT_SECONDS = 600
 START_TIMEOUT_SECONDS = 45
 HTTP_TIMEOUT_SECONDS = 5
+ADMIN_READY_BODY = b'{"status":"ok"}\n'
 MAX_INPUT_BYTES = 512 * 1024 * 1024
 MAX_COMMAND_OUTPUT_BYTES = 16 * 1024 * 1024
 MAX_RETAINED_STATE_BYTES = 128 * 1024 * 1024
@@ -1150,7 +1151,7 @@ class NativeHost:
         # systemctl start itself reports a timeout or failure.
         self.service_started = True
         self.log.run("start-service", ["/usr/bin/systemctl", "start", SERVICE], timeout=60)
-        wait_http(9901, "/health/ready", b'{"status":"ok"}', START_TIMEOUT_SECONDS)
+        wait_http(9901, "/health/ready", ADMIN_READY_BODY, START_TIMEOUT_SECONDS)
         fixed_probe = exact_http(8080, "/bonvoyage/ready", b"ready\n")
         proxied_probe = exact_http(8080, "/healthz", b"oss-native-upstream\n")
         fields, service_text = self.systemctl_show("commissioned-service-properties")
@@ -1209,7 +1210,7 @@ class NativeHost:
             proxied = exact_http(8080, "/healthz", b"oss-native-upstream\n")
             records.append(json.dumps({"index": index + 1, "route": "fixed", **fixed}, sort_keys=True))
             records.append(json.dumps({"index": index + 1, "route": "proxied", **proxied}, sort_keys=True))
-        admin = exact_http(9901, "/health/ready", b'{"status":"ok"}')
+        admin = exact_http(9901, "/health/ready", ADMIN_READY_BODY)
         after = fetch_text(9090, "/metrics")
         self.write_raw("raw/metrics-after.txt", after)
         traffic = analyze_metrics(
