@@ -7,6 +7,8 @@ import {fileURLToPath} from 'node:url';
 
 import yaml from 'js-yaml';
 
+import {verifyHostedBuildContract} from './verify-oss-oci-hosted-build.mjs';
+
 const CLASSIFICATION = 'routesphere-bonvoyage-oss-oci-builder-image-contract';
 const LOCAL_STATE = 'local-foundation-unpublished';
 const PUBLIC_STATE = 'public-foundation-verified';
@@ -228,8 +230,12 @@ function validateWorkflow(contract, workflowSource) {
       `${name} is missing OCI runtime boundary ${marker}`);
   }
   requireCondition(!workflowSource.includes('docker push') &&
-    !workflowSource.includes('packages: write') && !workflowSource.includes('id-token: write'),
-  'hosted OCI candidate must not publish or mint identity');
+    !workflowSource.includes('packages: write') &&
+    !workflowSource.includes('contents: write') &&
+    !workflowSource.includes('pull-requests: write') &&
+    !workflowSource.includes('gh release') &&
+    !workflowSource.includes('cosign sign'),
+  'hosted OCI candidate must not publish, sign or grant release authority');
 }
 
 function localObservation(contract, inspection) {
@@ -263,14 +269,16 @@ function localObservation(contract, inspection) {
 
 export function verifyOciBuilderImage(contractPath, dockerfilePath, entrypointPath,
   workflowPath, options = {}) {
+  const repositoryRoot = path.resolve(path.dirname(contractPath), '../../..');
   const contract = object(readJson(contractPath, 'OCI builder-image contract'),
     'OCI builder-image contract');
   const state = validateContract(contract);
   validateDockerfile(contract, fs.readFileSync(dockerfilePath, 'utf8'));
   validateEntrypoint(contract, fs.readFileSync(entrypointPath, 'utf8'));
   const workflowSource = fs.readFileSync(workflowPath, 'utf8');
+  verifyHostedBuildContract(path.join(repositoryRoot,
+    'packaging/release/oci/oss-oci-hosted-build-contract.json'), workflowPath);
   validateWorkflow(contract, workflowSource);
-  const repositoryRoot = path.resolve(path.dirname(contractPath), '../../..');
   const activeWorkflowPath = path.join(repositoryRoot,
     '.github/workflows/oss-oci-reproducibility.yml');
   if (state.publicVerified) {
