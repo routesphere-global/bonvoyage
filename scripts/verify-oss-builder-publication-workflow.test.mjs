@@ -37,9 +37,17 @@ test('rejects automatic triggers and product publication authority', (t) => {
     ['  workflow_dispatch:\n', '  push:\n'],
     ["    if: github.ref == 'refs/heads/main'\n", ''],
     ['      packages: write\n', '      packages: read\n'],
+    ['npm --prefix authority ci --ignore-scripts --no-audit --no-fund', 'true'],
     ['--target oss-deb-builder', '--target runtime'],
     ['docker push "$DEB_IMAGE"', 'docker push ghcr.io/routesphere-global/bonvoyage:latest'],
+    ['docker push "$OCI_IMAGE"',
+      'docker push "$OCI_IMAGE"\n          docker push ghcr.io/routesphere-global/bonvoyage:latest'],
     ['ref: ${{ inputs.source_commit }}', 'ref: main'],
+    ['attempt-${GITHUB_RUN_ATTEMPT}', 'attempt-1'],
+    ['-f="\\${Version}"', '-f="${Version}"'],
+    ['test ! -e /opt/bonvoyage', 'true'],
+    ['      - name: Build and verify source-free builder images\n        run: |',
+      '      - name: Build and verify source-free builder images\n        env:\n          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n        run: |'],
     ['1:1.3.dfsg-3.1ubuntu2.3', '1:1.3.dfsg-3.1ubuntu2.2'],
   ]) {
     const paths = fixture(t);
@@ -56,6 +64,8 @@ test('rejects contract authority and registry drift', (t) => {
   for (const mutate of [
     (contract) => { contract.authority.product_container_uploaded = true; },
     (contract) => { contract.execution.targets[0].repository = 'ghcr.io/example/builder'; },
+    (contract) => { contract.execution.tag_template = 'latest'; },
+    (contract) => { contract.execution.source_free_paths = []; },
     (contract) => { contract.execution.timeout_minutes = 0; },
     (contract) => { contract.execution.environment = 'release'; },
     (contract) => { contract.source.workflow_branch = 'feature'; },

@@ -40,13 +40,15 @@ and requested builder source are checked out separately without retained Git
 credentials.
 
 The job builds only `oss-deb-builder` and `oss-oci-builder` for Linux AMD64,
-checks the minimum fixed zlib version and exact powerless role labels before
-registry login, and gives every upload a source-and-run-specific tag. Its
-package-write token exists only for the bounded GHCR login and upload steps.
-It cannot sign product artifacts, create provenance, create a GitHub Release,
-or upload the BonVoyage product package or runtime container. Registry digests
-must still be independently observed and pinned in the reviewed builder
-contracts before any hosted candidate workflow can use them.
+checks the minimum fixed zlib version, exact powerless identity and empty
+product-source locations before registry login, and gives every upload a
+source, run and attempt-specific tag. The job-level package-write permission is
+present throughout the protected job, while the registry token is passed to
+Docker only for the bounded GHCR login. It cannot sign product artifacts,
+create provenance, create a GitHub Release, or upload the BonVoyage product
+package or runtime container. Registry digests must still be independently
+observed and pinned in the reviewed builder contracts before any hosted
+candidate workflow can use them.
 
 The workflow contract and
 `scripts/verify-oss-builder-publication-workflow.mjs` pin its trigger, source
