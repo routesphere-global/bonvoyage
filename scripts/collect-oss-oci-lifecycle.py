@@ -30,6 +30,8 @@ PYTHON_IMAGE = (
 )
 REQUESTS = 25
 DOCKER_TIMEOUT = 180
+# Skopeo expands the checksum-verified archive before writing to Docker.
+IMPORT_TMPFS_BYTES = 256 * 1024 * 1024
 SHA256 = re.compile(r"^[a-f0-9]{64}$")
 PHASE_CHECKS = {
     "candidate-fresh-start": {
@@ -89,7 +91,7 @@ assert status == 200
 for _ in range(REQUESTS):
     assert fetch(8080, "/bonvoyage/ready") == (200, b"ready\n")
     assert fetch(8080, "/healthz") == (200, b"oss-native-upstream\n")
-assert fetch(9901, "/health/ready") == (200, b'{"status":"ok"}')
+assert fetch(9901, "/health/ready") == (200, b'{"status":"ok"}\n')
 status, after = fetch(9090, "/metrics")
 assert status == 200
 print(json.dumps({"before": before.decode(), "after": after.decode()}, sort_keys=True))
@@ -107,7 +109,7 @@ while time.monotonic() < deadline:
         response = connection.getresponse()
         body = response.read()
         connection.close()
-        if response.status == 200 and body == b'{"status":"ok"}':
+        if response.status == 200 and body == b'{"status":"ok"}\n':
             sys.exit(0)
     except OSError:
         pass
@@ -203,14 +205,16 @@ class Docker:
 
 
 def import_argv(archive: Path, local_tag: str) -> list[str]:
+    # Docker's daemon transport accepts schema 2; archive identity is verified
+    # independently before this transport-only conversion.
     return [
         "run", "--rm", "--network", "none", "--read-only", "--cap-drop", "ALL",
         "--security-opt", "no-new-privileges", "--user", "0:0",
         "--tmpfs", "/run:rw,noexec,nosuid,nodev,size=16m",
-        "--tmpfs", "/var/tmp:rw,noexec,nosuid,nodev,size=64m",
+        "--tmpfs", f"/var/tmp:rw,noexec,nosuid,nodev,size={IMPORT_TMPFS_BYTES}",
         "--mount", "type=bind,src=/var/run/docker.sock,dst=/var/run/docker.sock",
         "--mount", f"type=bind,src={archive.parent},dst=/input,readonly",
-        SKOPEO_IMAGE, "copy", "--preserve-digests",
+        SKOPEO_IMAGE, "copy", "--format", "v2s2",
         f"oci-archive:/input/{archive.name}", f"docker-daemon:{local_tag}",
     ]
 

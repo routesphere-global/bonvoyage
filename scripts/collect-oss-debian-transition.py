@@ -202,7 +202,7 @@ def traffic(log, command_id: str) -> dict:
     for _ in range(REQUESTS):
         native.exact_http(8080, "/bonvoyage/ready", b"ready\n")
         native.exact_http(8080, "/healthz", b"oss-native-upstream\n")
-    native.exact_http(9901, "/health/ready", b'{"status":"ok"}')
+    native.exact_http(9901, "/health/ready", native.ADMIN_READY_BODY)
     after = native.fetch_text(9090, "/metrics")
     metrics = native.analyze_metrics(before, after, REQUESTS, 2)
     identity = active_identity(log, command_id + "-service")
@@ -320,7 +320,7 @@ def collect(candidate_root: Path, baseline_root: Path, output: Path,
         fixture = start_fixture(log)
         log.run("enable-service", ["/usr/bin/systemctl", "enable", SERVICE])
         log.run("start-baseline", ["/usr/bin/systemctl", "start", SERVICE], timeout=60)
-        native.wait_http(9901, "/health/ready", b'{"status":"ok"}', START_TIMEOUT)
+        native.wait_http(9901, "/health/ready", native.ADMIN_READY_BODY, START_TIMEOUT)
         baseline_active = active_identity(log, "baseline-active")
         require(baseline_active["process"]["executable_sha256"] == baseline_binary,
                 "baseline process does not execute the baseline payload")
@@ -334,7 +334,7 @@ def collect(candidate_root: Path, baseline_root: Path, output: Path,
         require(same_invocation(baseline_active, post_upgrade),
                 "package upgrade implicitly restarted the service")
         log.run("restart-candidate", ["/usr/bin/systemctl", "restart", SERVICE], timeout=60)
-        native.wait_http(9901, "/health/ready", b'{"status":"ok"}', START_TIMEOUT)
+        native.wait_http(9901, "/health/ready", native.ADMIN_READY_BODY, START_TIMEOUT)
         candidate_active = traffic(log, "candidate-upgrade-traffic")["identity"]
         require(candidate_active["process"]["executable_sha256"] == candidate_binary and
                 candidate_active["fields"]["InvocationID"] != baseline_active["fields"]["InvocationID"],
@@ -360,7 +360,7 @@ def collect(candidate_root: Path, baseline_root: Path, output: Path,
                 same_invocation(candidate_active, post_rollback_install),
                 "package rollback implicitly restarted or changed the active service")
         log.run("restart-rollback", ["/usr/bin/systemctl", "restart", SERVICE], timeout=60)
-        native.wait_http(9901, "/health/ready", b'{"status":"ok"}', START_TIMEOUT)
+        native.wait_http(9901, "/health/ready", native.ADMIN_READY_BODY, START_TIMEOUT)
         rollback_active = traffic(log, "rollback-traffic")["identity"]
         require(rollback_active["process"]["executable_sha256"] == baseline_binary,
                 "explicit restart did not reactivate the baseline payload")
@@ -382,7 +382,7 @@ def collect(candidate_root: Path, baseline_root: Path, output: Path,
                 "candidate reinstallation implicitly restarted the service")
         log.run("restart-reactivated-candidate", ["/usr/bin/systemctl", "restart", SERVICE],
                 timeout=60)
-        native.wait_http(9901, "/health/ready", b'{"status":"ok"}', START_TIMEOUT)
+        native.wait_http(9901, "/health/ready", native.ADMIN_READY_BODY, START_TIMEOUT)
         reactivated = traffic(log, "reactivated-candidate-traffic")["identity"]
         require(reactivated["process"]["executable_sha256"] == candidate_binary,
                 "candidate payload was not reactivated")

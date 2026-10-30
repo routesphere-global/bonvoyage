@@ -200,6 +200,11 @@ class NativeInstallCollectorTests(unittest.TestCase):
             with self.subTest(values=values), self.assertRaises(collector.Rejected):
                 collector.validate_platform(*values)
 
+    def test_admin_readiness_body_matches_the_dataplane_contract(self):
+        self.assertEqual(collector.ADMIN_READY_BODY, b'{"status":"ok"}\n')
+        source = (SOURCE.parents[1] / "dataplane/src/main.cc").read_text(encoding="utf-8")
+        self.assertIn(r'return seastar::sstring{"{\"status\":\"ok\"}\n"};', source)
+
     def test_os_release_and_systemd_output_reject_duplicates(self):
         with self.assertRaisesRegex(collector.Rejected, "duplicate os-release"):
             collector.parse_os_release("ID=ubuntu\nID=ubuntu\n")
