@@ -37,6 +37,7 @@ AUTHORITY = {
 CHECKS = {
     "package_identity_exact": True,
     "payload_identity_exact": True,
+    "runtime_release_identity_exact": True,
     "service_inactive_after_install": True,
     "commissioned_non_root": True,
     "fixed_route_exact": True,

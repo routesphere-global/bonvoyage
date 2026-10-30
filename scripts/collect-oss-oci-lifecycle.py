@@ -36,7 +36,8 @@ SHA256 = re.compile(r"^[a-f0-9]{64}$")
 PHASE_CHECKS = {
     "candidate-fresh-start": {
         "archive_identity_exact", "image_manifest_exact", "hardened_runtime_exact",
-        "fixed_route_exact", "proxied_route_exact", "runtime_error_counters_zero",
+        "runtime_release_identity_exact", "fixed_route_exact", "proxied_route_exact",
+        "runtime_error_counters_zero",
     },
     "replace-baseline-with-candidate": {
         "baseline_digest_active", "candidate_digest_active", "old_container_absent",
@@ -146,6 +147,10 @@ def source_version(source: dict) -> str:
     return tag[1:]
 
 
+def parse_runtime_identity(output: bytes, expected_release: str) -> dict[str, str]:
+    return native.parse_runtime_identity(output, expected_release)
+
+
 def execution(root: Path, artifact: dict) -> dict:
     path = root / "evidence/oci/oss-oci-build-a/oci-builder-execution.json"
     value = fresh.read_json(path, "OCI builder execution")
@@ -230,6 +235,16 @@ def gateway_argv(name: str, image: str, upstream: str) -> list[str]:
         "--mount", f"type=bind,src={SNAPSHOT},dst=/etc/bonvoyage/snapshot.pb,readonly",
         image,
     ]
+
+
+def image_runtime_identity(docker: Docker, image: str, expected_release: str) -> dict[str, str]:
+    result = docker.run("candidate-runtime-version", [
+        "run", "--rm", "--network", "none", "--read-only", "--cap-drop", "ALL",
+        "--security-opt", "no-new-privileges", "--user", "65532:65532",
+        "--pids-limit", "64", "--memory", "256m", "--cpus", "1",
+        image, "--smp", "1", "--memory", "128M", "--version",
+    ], timeout=60)
+    return parse_runtime_identity(result.stdout, expected_release)
 
 
 def inspect_image(docker: Docker, command_id: str, tag: str, item: dict) -> dict:
@@ -451,6 +466,8 @@ def collect(candidate_root: Path, baseline_root: Path, output: Path) -> dict:
                                         names["candidate_tag"], candidate)
         baseline_image = inspect_image(docker, "inspect-baseline-image",
                                        names["baseline_tag"], baseline)
+        candidate_runtime_identity = image_runtime_identity(
+            docker, names["candidate_tag"], source_version(candidate["source"]))
 
         docker.run("create-network", ["network", "create", "--driver", "bridge", "--internal",
                                               names["network"]])
@@ -479,6 +496,7 @@ def collect(candidate_root: Path, baseline_root: Path, output: Path) -> dict:
             "image_id": candidate_image["id"],
             "container_id": fresh_active["container_id"],
             "graceful_stop": fresh_stopped["graceful"],
+            "runtime_identity": candidate_runtime_identity,
         }))
 
         baseline_active = start_gateway(docker, "replacement-baseline-start", names["gateway"],

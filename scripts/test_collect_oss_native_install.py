@@ -205,6 +205,24 @@ class NativeInstallCollectorTests(unittest.TestCase):
         source = (SOURCE.parents[1] / "dataplane/src/main.cc").read_text(encoding="utf-8")
         self.assertIn(r'return seastar::sstring{"{\"status\":\"ok\"}\n"};', source)
 
+    def test_runtime_identity_distinguishes_compatibility_from_product_release(self):
+        output = (b"RouteSphere BonVoyage dataplane 0.2.0 "
+                  b"release=1.0.1 upstream-http1-client=seastar-reference\n")
+        identity = collector.parse_runtime_identity(output, "1.0.1")
+        self.assertEqual(identity, {
+            "dataplane_version": "0.2.0",
+            "release_version": "1.0.1",
+            "upstream_http1_client": "seastar-reference",
+        })
+        with self.assertRaisesRegex(collector.Rejected, "does not match the source tag"):
+            collector.parse_runtime_identity(
+                b"RouteSphere BonVoyage dataplane 0.2.0 "
+                b"release=0.2.0 upstream-http1-client=seastar-reference\n",
+                "1.0.1",
+            )
+        source = SOURCE.read_text(encoding="utf-8")
+        self.assertIn('build["source"]["tag"][1:]', source)
+
     def test_os_release_and_systemd_output_reject_duplicates(self):
         with self.assertRaisesRegex(collector.Rejected, "duplicate os-release"):
             collector.parse_os_release("ID=ubuntu\nID=ubuntu\n")

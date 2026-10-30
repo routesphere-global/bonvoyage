@@ -49,6 +49,18 @@ function powerless() {
   return {release_admitted: false, publishable: false};
 }
 
+function runtimeIdentity() {
+  return {
+    command: ['/work/output/.internal/install/bin/bonvoyage-dataplane',
+      '--smp', '1', '--memory', '256M', '--version'],
+    dataplane_version: '0.2.0',
+    release_version: TAG.slice(1),
+    upstream_http1_client: 'seastar-reference',
+    stdout_sha256: '8'.repeat(64),
+    stderr_sha256: '9'.repeat(64),
+  };
+}
+
 function createFixture(t) {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'bonvoyage-intake-'));
   t.after(() => fs.rmSync(temporary, {recursive: true, force: true}));
@@ -82,6 +94,7 @@ function createFixture(t) {
         path: debPackage.path,
         sha256: debPackage.sha256,
       },
+      runtime_identity: runtimeIdentity(),
       source: source(),
       technical_candidate_built: true,
       ...powerless(),
@@ -159,6 +172,7 @@ function createFixture(t) {
       config,
       layer,
       manifest,
+      runtime_identity: runtimeIdentity(),
       source: source(),
       technical_candidate_built: true,
       ...powerless(),
@@ -264,6 +278,17 @@ test('rejects mixed source and hosted run identities', (t) => {
   assert.throws(() => run(wrongRun, {debRunId: '41000009999'}),
     /workflow identity changed/u);
   assert.equal(fs.existsSync(wrongRun.output), false);
+});
+
+test('rejects stale runtime product identity from a builder execution', (t) => {
+  const fixture = createFixture(t);
+  const executionPath = path.join(fixture.debRoot,
+    'oss-deb-build-a/builder-execution.json');
+  const execution = JSON.parse(fs.readFileSync(executionPath, 'utf8'));
+  execution.runtime_identity.release_version = '0.2.0';
+  fs.writeFileSync(executionPath, `${JSON.stringify(execution, null, 2)}\n`);
+  assert.throws(() => run(fixture), /runtime release identity does not match/u);
+  assert.equal(fs.existsSync(fixture.output), false);
 });
 
 test('rejects authority escalation and changed technical receipt', (t) => {

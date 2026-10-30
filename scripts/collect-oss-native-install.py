@@ -101,6 +101,12 @@ METRICS = {
     "abandoned_failed_futures": "bonvoyage_reactor_abandoned_failed_futures",
     "reactor_stalls": "bonvoyage_stall_detector_reported",
 }
+RUNTIME_IDENTITY = re.compile(
+    r"RouteSphere BonVoyage dataplane "
+    r"(?P<dataplane>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?) "
+    r"release=(?P<release>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?) "
+    r"upstream-http1-client=(?P<client>[A-Za-z0-9._-]{1,64})"
+)
 HARDENING = {
     "User": "bonvoyage",
     "Group": "bonvoyage",
@@ -160,6 +166,23 @@ class Rejected(RuntimeError):
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise Rejected(message)
+
+
+def parse_runtime_identity(output: bytes, expected_release: str) -> dict[str, str]:
+    try:
+        text = output.decode("utf-8").strip()
+    except UnicodeDecodeError as error:
+        raise Rejected("gateway runtime identity is not UTF-8") from error
+    match = RUNTIME_IDENTITY.fullmatch(text)
+    require(match is not None, "gateway runtime identity is malformed")
+    identity = match.groupdict()
+    require(identity["release"] == expected_release,
+            "gateway runtime release identity does not match the source tag")
+    return {
+        "dataplane_version": identity["dataplane"],
+        "release_version": identity["release"],
+        "upstream_http1_client": identity["client"],
+    }
 
 
 def clean_service_stop(fields: dict[str, str], process_present: bool) -> bool:
@@ -978,6 +1001,12 @@ class NativeHost:
         binary_raw = read_regular(binary, "installed gateway binary")
         require(sha256_bytes(binary_raw) == build["binary"]["sha256"],
                 "installed gateway binary differs from the build receipt")
+        version_result = self.log.run(
+            "installed-binary-version",
+            [str(binary), "--smp", "1", "--memory", "256M", "--version"],
+        )
+        runtime_identity = parse_runtime_identity(
+            version_result.stdout, build["source"]["tag"][1:])
 
         account = pwd.getpwnam(SERVICE_USER)
         group = grp.getgrnam(SERVICE_GROUP)
@@ -1037,6 +1066,11 @@ class NativeHost:
             f"captured_at={utc_now()}",
             f"package_version={installed_fields['Version']}",
             f"installed_binary_sha256={sha256_bytes(binary_raw)}",
+            f"dataplane_compatibility_version={runtime_identity['dataplane_version']}",
+            f"product_release_version={runtime_identity['release_version']}",
+            f"upstream_http1_client={runtime_identity['upstream_http1_client']}",
+            f"version_stdout_sha256={sha256_bytes(version_result.stdout)}",
+            f"version_stderr_sha256={sha256_bytes(version_result.stderr)}",
             f"service_uid={account.pw_uid}",
             f"service_gid={group.gr_gid}",
             f"config_state={json.dumps(etc_state, sort_keys=True)}",
@@ -1052,6 +1086,7 @@ class NativeHost:
         self.phase_records.append(phase_record("installed-inactive", {
             "package_identity_exact": True,
             "payload_identity_exact": True,
+            "runtime_release_identity_exact": True,
             "service_account_non_root": True,
             "state_modes_safe": True,
             "service_disabled": True,
@@ -1061,6 +1096,7 @@ class NativeHost:
         return {
             "version": installed_fields["Version"],
             "binary_sha256": sha256_bytes(binary_raw),
+            "runtime_identity": runtime_identity,
             "uid": account.pw_uid,
             "gid": group.gr_gid,
             "identity": identity,
@@ -1453,6 +1489,7 @@ class NativeHost:
                 "sha256": self.inputs["package_record"]["sha256"],
                 "build_receipt_sha256": self.inputs["receipt_record"]["sha256"],
                 "installed_binary_sha256": installed["binary_sha256"],
+                "runtime_identity": installed["runtime_identity"],
             },
             "phases": self.phase_records,
             "traffic": traffic,

@@ -37,6 +37,7 @@
       "required_checks": [
         "package_identity_exact",
         "payload_identity_exact",
+        "runtime_release_identity_exact",
         "service_account_non_root",
         "state_modes_safe",
         "service_disabled",

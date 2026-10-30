@@ -27,6 +27,12 @@ BUILDER_IMAGE = re.compile(
     r"ghcr[.]io/routesphere-global/bonvoyage-debian-builder@sha256:[a-f0-9]{64}"
 )
 BUILDER_ID = re.compile(r"[A-Za-z0-9._:/-]{1,128}")
+RUNTIME_IDENTITY = re.compile(
+    r"RouteSphere BonVoyage dataplane "
+    r"(?P<dataplane>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?) "
+    r"release=(?P<release>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?) "
+    r"upstream-http1-client=(?P<client>[A-Za-z0-9._-]{1,64})"
+)
 REQUIRED_TOOLS = (
     "cmake",
     "ctest",
@@ -203,6 +209,31 @@ def run_logged(command, cwd, environment, log_path, timeout):
     require(result.returncode == 0, f"command failed with exit code {result.returncode}")
 
 
+def runtime_identity(binary, expected_release, environment):
+    require(binary.is_file() and not binary.is_symlink(),
+            "compiled dataplane installation is missing")
+    command = [str(binary), "--smp", "1", "--memory", "256M", "--version"]
+    result = subprocess.run(
+        command, cwd=SOURCE_ROOT, env=environment, capture_output=True,
+        text=True, timeout=30,
+    )
+    require(result.returncode == 0, "compiled dataplane version command failed")
+    output = result.stdout.strip()
+    match = RUNTIME_IDENTITY.fullmatch(output)
+    require(match is not None, "compiled dataplane version output is malformed")
+    identity = match.groupdict()
+    require(identity["release"] == expected_release,
+            "compiled dataplane release identity does not match the source tag")
+    return {
+        "command": command,
+        "dataplane_version": identity["dataplane"],
+        "release_version": identity["release"],
+        "upstream_http1_client": identity["client"],
+        "stdout_sha256": digest(result.stdout.encode("utf-8")),
+        "stderr_sha256": digest(result.stderr.encode("utf-8")),
+    }
+
+
 def bounded_log(source, destination, maximum=1024 * 1024):
     if not source.is_file():
         return
@@ -310,8 +341,7 @@ def build():
         execution["compiled_tests_passed"] = True
         run_logged(install_command, SOURCE_ROOT, environment, log, 300)
         dataplane = install_root / "bin/bonvoyage-dataplane"
-        require(dataplane.is_file() and not dataplane.is_symlink(),
-                "compiled dataplane installation is missing")
+        execution["runtime_identity"] = runtime_identity(dataplane, version, environment)
 
         toolchain = inputs_root / "toolchain-lock.json"
         run_logged([

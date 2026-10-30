@@ -193,7 +193,8 @@ function validateEntrypoint(contract, source) {
   for (const marker of [
     'git", "-c", f"safe.directory={root}"', 'status", "--porcelain=v1"',
     'refs/tags/', 'substantive reviewed public LICENSE required', 'ctest',
-    'compiled_tests_passed', 'build-runtime-package-index.py', 'build-oss-oci.py',
+    'compiled_tests_passed', 'runtime_identity', 'build-runtime-package-index.py',
+    'build-oss-oci.py',
     'release_admitted": False', 'publishable": False',
   ]) requireCondition(source.includes(marker), `OCI entrypoint is missing ${marker}`);
   for (const name of contract.runtime.required_environment) {

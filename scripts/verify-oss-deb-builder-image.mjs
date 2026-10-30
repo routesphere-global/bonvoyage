@@ -210,6 +210,7 @@ function validateEntrypoint(contract, source) {
     '"GIT_CONFIG_VALUE_0": str(SOURCE_ROOT)',
     'status", "--porcelain=v1"', 'refs/tags/',
     'reviewed public LICENSE file required', 'ctest', 'compiled_tests_passed',
+    'runtime_identity',
     'capture-oss-deb-toolchain.py', 'create-oss-deb-input.py', 'build-oss-deb.py',
     'release_admitted": False', 'publishable": False',
   ]) requireCondition(source.includes(marker), `builder entrypoint is missing ${marker}`);

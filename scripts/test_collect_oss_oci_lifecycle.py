@@ -59,6 +59,18 @@ class OciLifecycleStructureTest(unittest.TestCase):
         self.assertIn(expected, MODULE.PROBE_PROGRAM)
         self.assertIn(expected, MODULE.WAIT_PROGRAM)
 
+    def test_runtime_identity_requires_candidate_product_release(self):
+        output = (b"RouteSphere BonVoyage dataplane 0.2.0 "
+                  b"release=1.0.1 upstream-http1-client=seastar-reference\n")
+        self.assertEqual(MODULE.parse_runtime_identity(output, "1.0.1")["release_version"],
+                         "1.0.1")
+        with self.assertRaisesRegex(MODULE.Rejected, "does not match the source tag"):
+            MODULE.parse_runtime_identity(
+                b"RouteSphere BonVoyage dataplane 0.2.0 "
+                b"release=0.2.0 upstream-http1-client=seastar-reference\n",
+                "1.0.1",
+            )
+
     def test_tmpfs_validation_accepts_order_changes_but_not_semantic_drift(self):
         self.assertTrue(MODULE.tmpfs_is_exact(
             "nodev,size=16777216,rw,nosuid,noexec", 16 * 1024 * 1024))
@@ -114,7 +126,7 @@ class OciLifecycleStructureTest(unittest.TestCase):
             "rollback-to-baseline", "candidate-reactivation", "shutdown-remove",
         ])
         self.assertTrue(all(values for values in MODULE.PHASE_CHECKS.values()))
-        self.assertEqual(len(set().union(*MODULE.PHASE_CHECKS.values())), 17)
+        self.assertEqual(len(set().union(*MODULE.PHASE_CHECKS.values())), 18)
 
 
 if __name__ == "__main__":

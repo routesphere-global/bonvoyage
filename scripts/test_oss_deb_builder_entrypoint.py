@@ -145,6 +145,32 @@ class OssDebBuilderEntrypointTests(unittest.TestCase):
         source = SCRIPT.read_text(encoding="utf-8")
         self.assertIn('f"-DBONVOYAGE_RELEASE_VERSION={version}"', source)
 
+    def test_runtime_identity_requires_the_exact_release_version(self):
+        binary = self.root / "bonvoyage-dataplane"
+        binary.write_bytes(b"fixture")
+        binary.chmod(0o700)
+        accepted = subprocess.CompletedProcess(
+            [], 0,
+            stdout=("RouteSphere BonVoyage dataplane 0.2.0 "
+                    "release=1.2.3-rc.1 upstream-http1-client=seastar-reference\n"),
+            stderr="bounded warning\n",
+        )
+        with mock.patch.object(ENTRYPOINT.subprocess, "run", return_value=accepted):
+            identity = ENTRYPOINT.runtime_identity(binary, "1.2.3-rc.1", {"PATH": "/bin"})
+        self.assertEqual(identity["dataplane_version"], "0.2.0")
+        self.assertEqual(identity["release_version"], "1.2.3-rc.1")
+        self.assertEqual(identity["upstream_http1_client"], "seastar-reference")
+
+        stale = subprocess.CompletedProcess(
+            [], 0,
+            stdout=("RouteSphere BonVoyage dataplane 0.2.0 "
+                    "release=0.2.0 upstream-http1-client=seastar-reference\n"),
+            stderr="",
+        )
+        with mock.patch.object(ENTRYPOINT.subprocess, "run", return_value=stale), \
+                self.assertRaisesRegex(ValueError, "release identity"):
+            ENTRYPOINT.runtime_identity(binary, "1.2.3-rc.1", {"PATH": "/bin"})
+
     def test_failure_log_is_tail_bounded(self):
         source = self.root / "source.log"
         destination = self.root / "failure.log"

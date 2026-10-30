@@ -175,6 +175,22 @@ function checkAuthorityFalse(record, label) {
   }
 }
 
+function checkRuntimeIdentity(record, expectedSource, label) {
+  exactKeys(record, [
+    'command', 'dataplane_version', 'release_version', 'stderr_sha256',
+    'stdout_sha256', 'upstream_http1_client',
+  ], `${label} runtime identity`);
+  requireCondition(Array.isArray(record.command) && record.command.length >= 5 &&
+    record.command.at(-1) === '--version' &&
+    record.dataplane_version === '0.2.0' &&
+    record.release_version === expectedSource.tag.slice(1) &&
+    typeof record.upstream_http1_client === 'string' &&
+    /^[A-Za-z0-9._-]{1,64}$/u.test(record.upstream_http1_client),
+  `${label} runtime release identity does not match the source tag`);
+  checkSha(record.stdout_sha256, `${label} runtime identity stdout`);
+  checkSha(record.stderr_sha256, `${label} runtime identity stderr`);
+}
+
 function checkCandidate(actualPath, candidate, label) {
   requireObject(candidate, `${label} identity`);
   const filename = requireString(candidate.path, `${label}.path`);
@@ -280,6 +296,7 @@ function validateDebian(root, identity, runId) {
     checkAuthorityFalse(executions[index], `${label} execution`);
     checkSource(builds[index].source, identity, `${label} source`);
     checkSource(executions[index].source, identity, `${label} execution source`);
+    checkRuntimeIdentity(executions[index].runtime_identity, identity, label);
     requireCondition(builds[index].builder_id === expectedBuilders[index] &&
       executions[index].builder_id === expectedBuilders[index] &&
       builds[index].technical_candidate_built === true &&
@@ -377,6 +394,7 @@ function validateOci(root, identity, runId) {
     const label = `OCI builder ${index === 0 ? 'a' : 'b'}`;
     checkAuthorityFalse(builds[index], `${label} execution`);
     checkSource(builds[index].source, identity, `${label} source`);
+    checkRuntimeIdentity(builds[index].runtime_identity, identity, label);
     requireCondition(builds[index].builder_id === expectedBuilders[index] &&
       builds[index].technical_candidate_built === true &&
       builds[index].compiled_tests_passed === true &&
