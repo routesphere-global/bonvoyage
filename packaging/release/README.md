@@ -343,14 +343,27 @@ GitHub Actions runner identity, run attempt one, and every raw evidence file by
 path, size and SHA-256. The verifier rejects linked or extra files, changed
 baseline bytes, mixed identities, phase drift, false checks, repeated attempts,
 unbound evidence and any assertion of release admission, signing, provenance or
-publication. Run `make oss-artifact-lifecycle-test` for the 14 portable
-adversarial cases.
+publication.
 
-This checkpoint establishes the contract and independent verifier only. It has
-not yet executed package installation, OCI start/replacement, upgrade, rollback,
-reactivation or removal on hosted Ubuntu. No lifecycle gate, release gate or
-publication authority is granted until a separately reviewed collector and
-protected hosted run satisfy this exact contract.
+`oss-artifact-lifecycle-workflow-contract.json`, the byte-identical reviewed
+template and active workflow, `discover-oss-artifact-lifecycle-runs.mjs`, the
+three bounded collectors and `assemble-oss-artifact-lifecycle.mjs` add the
+protected hosted runner foundation. The manual workflow accepts only a
+protected strict tag newer than the rollback baseline, discovers exact
+unexpired run-attempt-one Debian and OCI reproducibility artifacts, reconstructs
+checksum-bound baseline and candidate intakes, and keeps the Debian fresh,
+Debian transition and OCI transition lanes separate until final independent
+verification. All jobs use Ubuntu 24.04, read-only repository and Actions
+permissions, full action commits, short-lived evidence and a 155-minute total
+job ceiling. The workflow cannot sign, attest, tag, publish or admit a release.
+
+Run `make oss-artifact-lifecycle-test` for 46 portable verifier, discovery,
+assembler, collector and workflow cases. These tests establish the runner's
+safety contract; they do not execute package installation, OCI
+start/replacement, upgrade, rollback, reactivation or removal on hosted Ubuntu.
+No lifecycle gate, release gate or publication authority is granted until a
+newer protected candidate has successful Debian and OCI reproducibility runs
+and this hosted workflow passes against their exact artifacts.
 
 ## Protected hosted Debian contract
 

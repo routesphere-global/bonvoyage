@@ -208,7 +208,24 @@ oss-native-install-collector-test:
 	@python3 -B scripts/test_collect_oss_native_install.py
 
 oss-artifact-lifecycle-test:
-	@node --test scripts/verify-oss-artifact-lifecycle.test.mjs
+	@node --test \
+		scripts/verify-oss-artifact-lifecycle.test.mjs \
+		scripts/discover-oss-artifact-lifecycle-runs.test.mjs \
+		scripts/assemble-oss-artifact-lifecycle.test.mjs \
+		scripts/verify-oss-artifact-lifecycle-workflow.test.mjs
+	@python3 -B -m unittest \
+		scripts/test_collect_oss_artifact_lifecycle_fresh.py \
+		scripts/test_collect_oss_debian_transition.py \
+		scripts/test_collect_oss_oci_lifecycle.py
+	@node scripts/verify-oss-artifact-lifecycle-workflow.mjs \
+		--contract packaging/release/oss-artifact-lifecycle-workflow-contract.json \
+		--workflow packaging/release/oss-artifact-lifecycle.workflow.yml \
+		--active-workflow .github/workflows/oss-artifact-lifecycle.yml \
+		--github-repository routesphere-global/bonvoyage \
+		--github-ref-type tag \
+		--github-ref-name v1.0.0-rc.7 \
+		--github-ref-protected true \
+		--github-sha aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa >/dev/null
 
 oss-kubernetes-deployment-verifier-test:
 	@node --test scripts/verify-kubernetes-deployment.test.mjs
