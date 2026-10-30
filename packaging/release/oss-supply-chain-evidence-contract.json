@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-oss-supply-chain-evidence-contract",
+  "product": "RouteSphere BonVoyage API Gateway",
+  "source_repository": "https://github.com/routesphere-global/bonvoyage",
+  "platform": "linux/amd64",
+  "candidate_intake_contract_path": "packaging/release/oss-candidate-intake-contract.json",
+  "artifacts": [
+    {
+      "id": "gateway-deb-linux-amd64",
+      "kind": "debian-package",
+      "evidence_directory": "gateway-deb-linux-amd64"
+    },
+    {
+      "id": "gateway-oci-linux-amd64",
+      "kind": "oci-image",
+      "evidence_directory": "gateway-oci-linux-amd64"
+    }
+  ],
+  "limits": {
+    "maximum_artifact_bytes": 2147483648,
+    "maximum_control_bytes": 67108864,
+    "maximum_database_bytes": 8589934592
+  },
+  "sbom": {
+    "formats": [
+      "cyclonedx-1.6-json",
+      "spdx-2.3-json"
+    ],
+    "syft_image": "anchore/syft:v1.44.0@sha256:86fde6445b483d902fe011dd9f68c4987dd94e07da1e9edc004e3c2422650de6",
+    "cyclonedx_validator_image": "cyclonedx/cyclonedx-cli:0.33.1@sha256:9a37575fb51fcaed3a4c62dddba091c46ffc867712e46bdb6cdf219a7e90a061",
+    "spdx_schema_sha256": "239208b7ac287b3cf5d9a9af23f9d69863971102a5e1587a27a398b43490b89b",
+    "spdx_validator_lock_sha256": "e2e52a0b047055d4d860b379b1c0e35931659d94069398c6bf0b68cb21d6e194",
+    "official_validation_required": true,
+    "invalid_control_rejection_required": true,
+    "decoded_inventory_parity_required": true,
+    "artifact_root_binding_required": true
+  },
+  "vulnerability": {
+    "scanner_image": "anchore/grype:v0.116.1@sha256:1e71065c0a4cff3e6bd3b8add525ffac4343eb4971694eb90a31cf6d4d3e85db",
+    "database_origin": "grype.anchore.io",
+    "maximum_database_age_hours": 48,
+    "blocking_severities": [
+      "High",
+      "Critical"
+    ],
+    "maximum_unreviewed_findings": 0,
+    "maximum_unresolved_blocking_findings": 0,
+    "same_physical_database_required": true,
+    "format_parity_required": true,
+    "suppression_allowed": false,
+    "vex_allowed": false
+  },
+  "review": {
+    "required_reviewer_identity": "johnynixon@routesphere.global",
+    "required_reviewer_role": "release-security-reviewer"
+  },
+  "authority": {
+    "evidence_handoff_allowed": true,
+    "product_artifact_signature_allowed": false,
+    "product_provenance_allowed": false,
+    "release_admitted": false,
+    "publishable": false,
+    "github_release_created": false,
+    "package_uploaded": false,
+    "container_uploaded": false
+  }
+}

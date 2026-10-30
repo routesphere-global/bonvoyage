@@ -53,6 +53,25 @@ non-payload evidence in a new directory and writes a canonical
 release. Run `make oss-candidate-intake-test` for the portable adversarial
 fixtures.
 
+`intake-oss-supply-chain-evidence.mjs` is the next powerless offline handoff.
+It re-verifies an exact candidate-intake tree, then accepts only candidate-root
+bound CycloneDX 1.6 and SPDX 2.3 documents, decoded inventory parity, command
+records, one retained physical Grype database shared by all four scans, and an
+accountable reviewed-finding set for both release artifacts. It rejects changed
+candidates, changed pinned tools, mixed sources, links, duplicate JSON keys,
+extra files, SBOM substitution, invalid-control or decoder failures, database
+or finding divergence, filtered or suppressed matches, stale reviews,
+unreviewed findings and every High or Critical finding. Large candidate and
+database identities are streamed rather than buffered.
+
+A successful run emits one checksum-bound
+`supply-chain-evidence-handoff.json` with status `EVIDENCE_RETAINED`; it
+does not mint a release-gate PASS. It cannot sign an artifact, create
+provenance, admit a release, upload a package or container, create a GitHub
+Release, tag or publish. The input JSON is evidence from separately protected
+producer jobs; it is not proof by itself that those tools ran. Run
+`make oss-supply-chain-evidence-test` for the portable adversarial suite.
+
 `verify-oss-native-install.py` independently admits one complete Ubuntu 24.04
 AMD64 fresh-install evidence set. It binds the exact technical-candidate Debian
 package and clean public-origin build receipt to six ordered lifecycle phases,
