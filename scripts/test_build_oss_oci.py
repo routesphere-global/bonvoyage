@@ -253,6 +253,8 @@ class OssOciBuilderTests(unittest.TestCase):
             directories.append(directory)
         comparison = reproducibility.compare(*directories)
         self.assertTrue(comparison["technical_reproducibility_observed"])
+        self.assertEqual(comparison["platform"], receipt["platform"])
+        self.assertEqual(comparison["version"], receipt["version"])
         self.assertEqual(comparison["builder_image"], receipt["builder_image"])
         self.assertFalse(comparison["hosted_builder_independence_qualified"])
         self.assertFalse(comparison["publishable"])

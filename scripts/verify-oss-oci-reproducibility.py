@@ -87,6 +87,8 @@ def compare(first_directory, second_directory):
         "classification": REPRO_CLASS,
         "outcome": "byte-identical-technical-candidates",
         "source": first["source"],
+        "platform": first["platform"],
+        "version": first["version"],
         "builder_image": first["builder_image"],
         "builders": [first["builder_id"], second["builder_id"]],
         "build_receipts": [
