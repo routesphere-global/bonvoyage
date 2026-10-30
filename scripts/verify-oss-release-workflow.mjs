@@ -18,6 +18,8 @@ const PINNED_ACTION = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+@[a-f0-9]{40}$/u;
 const ACTIONS = Object.freeze({
   checkout: 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',
   setup_node: 'actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1',
+  download_artifact:
+    'actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333',
   cosign_installer:
     'sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6',
   upload_artifact:
@@ -31,6 +33,25 @@ const VERIFY_COMMAND = [
   '--github-ref-type "$GITHUB_REF_TYPE"',
   '--github-ref-name "$GITHUB_REF_NAME"',
   '--github-sha "$GITHUB_SHA"',
+].join(' ');
+const DISCOVER_COMMAND = [
+  'node scripts/discover-oss-release-candidate-runs.mjs',
+  '--repository "$GITHUB_REPOSITORY"',
+  '--tag "$GITHUB_REF_NAME"',
+  '--commit "$GITHUB_SHA"',
+  '--current-run-id "$GITHUB_RUN_ID"',
+  '--github-output "$GITHUB_OUTPUT"',
+].join(' ');
+const INTAKE_COMMAND = [
+  'node scripts/intake-oss-release-candidate.mjs',
+  '--deb-root "$RUNNER_TEMP/release-candidate-input/debian"',
+  '--oci-root "$RUNNER_TEMP/release-candidate-input/oci"',
+  '--output "$RUNNER_TEMP/release-candidate-intake"',
+  '--source-commit "$GITHUB_SHA"',
+  '--source-tag "$GITHUB_REF_NAME"',
+  '--deb-run-id "${{ steps.candidate-runs.outputs.deb_run_id }}"',
+  '--oci-run-id "${{ steps.candidate-runs.outputs.oci_run_id }}"',
+  '--created-at "${{ steps.candidate-runs.outputs.created_at }}"',
 ].join(' ');
 const PROBE_COMMAND = [
   'node scripts/create-oss-release-identity-probe.mjs',
@@ -111,11 +132,12 @@ function sha256File(filePath) {
 function validateContract(contract) {
   exactKeys(contract, [
     'schema_version', 'classification', 'state', 'source', 'execution',
-    'actions', 'identity', 'authority',
+    'actions', 'candidate_intake', 'identity', 'authority',
   ], 'contract');
   requireCondition(contract.schema_version === 1 &&
     contract.classification === CLASSIFICATION &&
-    contract.state === 'identity-foundation', 'unsupported release workflow contract');
+    contract.state === 'candidate-intake-foundation',
+  'unsupported release workflow contract');
 
   exactKeys(contract.source, [
     'repository', 'event', 'ref_type', 'tag_pattern', 'protected_tag_required',
@@ -141,14 +163,16 @@ function validateContract(contract) {
     JSON.stringify({contents: 'read'}), 'workflow permissions must remain read-only');
   requireCondition(JSON.stringify(contract.execution.job_permissions) === JSON.stringify({
     preflight: {contents: 'read'},
+    'candidate-intake': {contents: 'read', actions: 'read'},
     'identity-probe': {contents: 'read', 'id-token': 'write'},
-  }), 'job permissions exceed the identity foundation');
+  }), 'job permissions exceed the candidate intake foundation');
   requireCondition(JSON.stringify(contract.execution.jobs) === JSON.stringify({
     preflight: {timeout_minutes: 5},
+    'candidate-intake': {timeout_minutes: 20},
     'identity-probe': {timeout_minutes: 10},
   }), 'unexpected release job budget');
   requireCondition(contract.execution.artifact_retention_days === 3 &&
-    contract.execution.maximum_billable_job_minutes === 15 &&
+    contract.execution.maximum_billable_job_minutes === 35 &&
     contract.execution.manual_only === true &&
     contract.execution.scheduled_runs === false &&
     contract.execution.self_hosted_runners === false &&
@@ -156,7 +180,8 @@ function validateContract(contract) {
   'release cost or execution boundary changed');
 
   exactKeys(contract.actions, [
-    'checkout', 'setup_node', 'cosign_installer', 'upload_artifact',
+    'checkout', 'setup_node', 'download_artifact', 'cosign_installer',
+    'upload_artifact',
   ], 'contract.actions');
   for (const [name, action] of Object.entries(contract.actions)) {
     requireCondition(typeof action === 'string' && PINNED_ACTION.test(action),
@@ -164,6 +189,47 @@ function validateContract(contract) {
   }
   requireCondition(JSON.stringify(contract.actions) === JSON.stringify(ACTIONS),
     'release action identities changed');
+
+  exactKeys(contract.candidate_intake, [
+    'contract_path', 'discovery_script', 'intake_script', 'workflow_files',
+    'workflow_names', 'artifact_names', 'download_root', 'output_path',
+    'output_artifact', 'exact_source_required', 'required_run_attempt',
+    'caller_selected_run_ids_allowed',
+  ], 'contract.candidate_intake');
+  exactKeys(contract.candidate_intake.workflow_files, ['debian', 'oci'],
+    'contract.candidate_intake.workflow_files');
+  exactKeys(contract.candidate_intake.workflow_names, ['debian', 'oci'],
+    'contract.candidate_intake.workflow_names');
+  exactKeys(contract.candidate_intake.artifact_names, ['debian', 'oci'],
+    'contract.candidate_intake.artifact_names');
+  requireCondition(contract.candidate_intake.contract_path ===
+    'packaging/release/oss-candidate-intake-contract.json' &&
+    contract.candidate_intake.discovery_script ===
+      'scripts/discover-oss-release-candidate-runs.mjs' &&
+    contract.candidate_intake.intake_script ===
+      'scripts/intake-oss-release-candidate.mjs' &&
+    JSON.stringify(contract.candidate_intake.workflow_files) === JSON.stringify({
+      debian: '.github/workflows/oss-deb-reproducibility.yml',
+      oci: '.github/workflows/oss-oci-reproducibility.yml',
+    }) &&
+    JSON.stringify(contract.candidate_intake.workflow_names) === JSON.stringify({
+      debian: 'OSS Debian Reproducibility Candidate',
+      oci: 'OSS OCI Reproducibility Candidate',
+    }) &&
+    JSON.stringify(contract.candidate_intake.artifact_names) === JSON.stringify({
+      debian: ['oss-deb-build-a', 'oss-deb-build-b', 'oss-deb-comparison'],
+      oci: ['oss-oci-build-a', 'oss-oci-build-b', 'oss-oci-comparison'],
+    }) &&
+    contract.candidate_intake.download_root ===
+      '${{ runner.temp }}/release-candidate-input' &&
+    contract.candidate_intake.output_path ===
+      '${{ runner.temp }}/release-candidate-intake' &&
+    contract.candidate_intake.output_artifact ===
+      'oss-release-candidate-intake' &&
+    contract.candidate_intake.exact_source_required === true &&
+    contract.candidate_intake.required_run_attempt === 1 &&
+    contract.candidate_intake.caller_selected_run_ids_allowed === false,
+  'candidate intake boundary changed');
 
   exactKeys(contract.identity, [
     'issuer', 'subject_prefix', 'cosign_version', 'probe_classification',
@@ -186,14 +252,16 @@ function validateContract(contract) {
   'release identity boundary changed');
 
   exactKeys(contract.authority, [
-    'identity_probe_signature_allowed', 'product_artifact_signature_allowed',
-    'product_provenance_allowed', 'release_admitted', 'publishable',
-    'github_release_created', 'package_uploaded', 'container_uploaded',
+    'candidate_intake_allowed', 'identity_probe_signature_allowed',
+    'product_artifact_signature_allowed', 'product_provenance_allowed',
+    'release_admitted', 'publishable', 'github_release_created',
+    'package_uploaded', 'container_uploaded',
   ], 'contract.authority');
-  requireCondition(contract.authority.identity_probe_signature_allowed === true,
-    'identity probe signature must remain explicit');
+  requireCondition(contract.authority.candidate_intake_allowed === true &&
+    contract.authority.identity_probe_signature_allowed === true,
+  'candidate intake and identity probe permissions must remain explicit');
   for (const [field, value] of Object.entries(contract.authority)) {
-    if (field !== 'identity_probe_signature_allowed') {
+    if (!['candidate_intake_allowed', 'identity_probe_signature_allowed'].includes(field)) {
       requireCondition(value === false, `${field} must remain false`);
     }
   }
@@ -235,6 +303,53 @@ function validateRunStep(step, name, command, label) {
     `${label} changed`);
 }
 
+function validateDiscoveryStep(step) {
+  exactKeys(step, ['name', 'id', 'env', 'run'], 'candidate discovery step');
+  exactKeys(step.env, ['GITHUB_TOKEN'], 'candidate discovery environment');
+  requireCondition(step.name === 'Discover exact prior candidate workflow runs' &&
+    step.id === 'candidate-runs' &&
+    step.env.GITHUB_TOKEN === '${{ github.token }}' &&
+    step.run.trimEnd() === DISCOVER_COMMAND,
+  'candidate run discovery boundary changed');
+}
+
+function validateDownloadStep(step, contract, format, artifact, runOutput, label) {
+  exactKeys(step, ['name', 'uses', 'with'], label);
+  exactKeys(step.with, ['name', 'path', 'github-token', 'repository', 'run-id'],
+    `${label} inputs`);
+  const title = artifact.endsWith('build-a')
+    ? `${format === 'debian' ? 'Debian' : 'OCI'} builder A evidence`
+    : artifact.endsWith('build-b')
+      ? `${format === 'debian' ? 'Debian' : 'OCI'} builder B evidence`
+      : `${format === 'debian' ? 'Debian' : 'OCI'} comparison evidence`;
+  requireCondition(step.name === `Download ${title}` &&
+    step.uses === contract.actions.download_artifact &&
+    step.with.name === artifact &&
+    step.with.path === `${contract.candidate_intake.download_root}/${format}/${artifact}` &&
+    step.with['github-token'] === '${{ github.token }}' &&
+    step.with.repository === '${{ github.repository }}' &&
+    step.with['run-id'] === `\${{ steps.candidate-runs.outputs.${runOutput} }}`,
+  `${label} boundary changed`);
+}
+
+function validateCandidateUploadStep(step, contract) {
+  exactKeys(step, ['name', 'uses', 'with'], 'candidate intake upload step');
+  exactKeys(step.with, [
+    'name', 'path', 'if-no-files-found', 'compression-level', 'overwrite',
+    'include-hidden-files', 'retention-days',
+  ], 'candidate intake upload inputs');
+  requireCondition(step.name === 'Upload bounded non-publishing intake evidence' &&
+    step.uses === contract.actions.upload_artifact &&
+    step.with.name === contract.candidate_intake.output_artifact &&
+    step.with.path === contract.candidate_intake.output_path &&
+    step.with['retention-days'] === contract.execution.artifact_retention_days &&
+    step.with['if-no-files-found'] === 'error' &&
+    step.with['compression-level'] === 0 &&
+    step.with.overwrite === false &&
+    step.with['include-hidden-files'] === false,
+  'candidate intake upload boundary changed');
+}
+
 function validateSigningStep(step, contract) {
   exactKeys(step, ['name', 'env', 'run'], 'identity signing step');
   exactKeys(step.env, ['EXPECTED_IDENTITY', 'EXPECTED_ISSUER'],
@@ -268,7 +383,7 @@ function validateUploadStep(step, contract) {
 
 function validateWorkflow(contract, workflow, source) {
   exactKeys(workflow, ['name', 'on', 'permissions', 'concurrency', 'jobs'], 'workflow');
-  requireCondition(workflow.name === 'OSS Release Identity Foundation',
+  requireCondition(workflow.name === 'OSS Release Candidate Intake Foundation',
     'unexpected release workflow name');
   requireCondition(JSON.stringify(workflow.on) ===
     JSON.stringify({workflow_dispatch: null}), 'release workflow must be manual only');
@@ -276,21 +391,28 @@ function validateWorkflow(contract, workflow, source) {
     JSON.stringify(contract.execution.workflow_permissions),
   'release workflow permissions changed');
   requireCondition(workflow.concurrency?.group ===
-    'oss-release-identity-${{ github.ref }}' &&
+    'oss-release-candidate-intake-${{ github.ref }}' &&
     workflow.concurrency?.['cancel-in-progress'] === false,
   'release workflow concurrency changed');
 
-  exactKeys(workflow.jobs, ['preflight', 'identity-probe'], 'workflow.jobs');
+  exactKeys(workflow.jobs, ['preflight', 'candidate-intake', 'identity-probe'],
+    'workflow.jobs');
   const preflight = workflow.jobs.preflight;
+  const candidate = workflow.jobs['candidate-intake'];
   const identity = workflow.jobs['identity-probe'];
   exactKeys(preflight, [
     'name', 'runs-on', 'timeout-minutes', 'environment', 'permissions', 'steps',
   ], 'preflight job');
+  exactKeys(candidate, [
+    'name', 'needs', 'runs-on', 'timeout-minutes', 'environment', 'permissions',
+    'steps',
+  ], 'candidate-intake job');
   exactKeys(identity, [
     'name', 'needs', 'runs-on', 'timeout-minutes', 'environment', 'permissions',
     'steps',
   ], 'identity-probe job');
-  requireCondition(preflight.name === 'Protected identity preflight' &&
+  requireCondition(preflight.name === 'Protected candidate intake preflight' &&
+    candidate.name === 'Replay exact hosted candidate intake' &&
     identity.name === 'Verify keyless workflow identity',
   'release workflow job names changed');
   for (const [name, job] of Object.entries(workflow.jobs)) {
@@ -304,9 +426,11 @@ function validateWorkflow(contract, workflow, source) {
     requireCondition(Array.isArray(job.steps) && job.steps.length > 0,
       `workflow job ${name} requires steps`);
   }
-  requireCondition(identity.needs === 'preflight',
-    'identity probe must depend on preflight');
-  requireCondition(preflight.steps.length === 4 && identity.steps.length === 8,
+  requireCondition(candidate.needs === 'preflight' &&
+    identity.needs === 'candidate-intake',
+  'candidate intake and identity probe dependency order changed');
+  requireCondition(preflight.steps.length === 4 &&
+    candidate.steps.length === 13 && identity.steps.length === 8,
     'release workflow step set changed');
 
   validateCheckoutStep(preflight.steps[0], contract.actions.checkout);
@@ -317,6 +441,30 @@ function validateWorkflow(contract, workflow, source) {
   validateRunStep(preflight.steps[3],
     'Verify the protected manual tag and powerless workflow contract',
     VERIFY_COMMAND, 'preflight verification step');
+
+  validateCheckoutStep(candidate.steps[0], contract.actions.checkout);
+  validateSetupNodeStep(candidate.steps[1], contract.actions.setup_node);
+  validateRunStep(candidate.steps[2],
+    'Install locked release-verifier dependencies', 'npm ci --ignore-scripts',
+    'candidate intake dependency step');
+  validateRunStep(candidate.steps[3],
+    'Reverify the workflow before reading hosted evidence',
+    VERIFY_COMMAND, 'candidate intake verification step');
+  validateDiscoveryStep(candidate.steps[4]);
+  let stepIndex = 5;
+  for (const format of ['debian', 'oci']) {
+    const runOutput = format === 'debian' ? 'deb_run_id' : 'oci_run_id';
+    for (const artifact of contract.candidate_intake.artifact_names[format]) {
+      validateDownloadStep(candidate.steps[stepIndex], contract, format, artifact,
+        runOutput, `candidate download step ${stepIndex}`);
+      stepIndex += 1;
+    }
+  }
+  validateRunStep(candidate.steps[11],
+    'Replay the fail-closed candidate intake', INTAKE_COMMAND,
+    'candidate intake replay step');
+  validateCandidateUploadStep(candidate.steps[12], contract);
+
   validateCheckoutStep(identity.steps[0], contract.actions.checkout);
   validateSetupNodeStep(identity.steps[1], contract.actions.setup_node);
   validateRunStep(identity.steps[2],
@@ -345,6 +493,15 @@ function validateWorkflow(contract, workflow, source) {
     contract.actions.setup_node,
     contract.actions.checkout,
     contract.actions.setup_node,
+    contract.actions.download_artifact,
+    contract.actions.download_artifact,
+    contract.actions.download_artifact,
+    contract.actions.download_artifact,
+    contract.actions.download_artifact,
+    contract.actions.download_artifact,
+    contract.actions.upload_artifact,
+    contract.actions.checkout,
+    contract.actions.setup_node,
     contract.actions.cosign_installer,
     contract.actions.upload_artifact,
   ];
@@ -362,10 +519,14 @@ function validateWorkflow(contract, workflow, source) {
   ];
   for (const value of forbidden) {
     requireCondition(!normalized.includes(value),
-      `release identity foundation contains forbidden authority: ${value}`);
+      `release candidate foundation contains forbidden authority: ${value}`);
   }
+  requireCondition((source.match(/^\s+actions:\s*read\s*$/gmu) || []).length === 1,
+    'GitHub Actions read authority must appear exactly once');
   requireCondition((source.match(/id-token:\s*write/gu) || []).length === 1,
     'OIDC authority must appear exactly once');
+  requireCondition((source.match(/\$\{\{ github\.token \}\}/gu) || []).length === 7,
+    'ephemeral GitHub token use must remain limited to discovery and six downloads');
   requireCondition(source.includes(
     'cosign sign-blob --yes --oidc-provider github-actions --bundle') &&
     source.includes('cosign verify-blob --bundle') &&
@@ -433,6 +594,7 @@ export function verifyReleaseWorkflow(contractPath, workflowPath, options = {}) 
     contract_sha256: sha256File(contractPath),
     workflow_sha256: sha256File(workflowPath),
     identity_subject_prefix: contract.identity.subject_prefix,
+    candidate_intake_allowed: true,
     identity_probe_signature_allowed: true,
     product_artifact_signature_allowed: false,
     product_provenance_allowed: false,
@@ -450,7 +612,7 @@ if (import.meta.url === new URL(`file://${process.argv[1]}`).href) {
       path.resolve(options.contract), path.resolve(options.workflow), options);
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   } catch (error) {
-    process.stderr.write(`OSS release identity workflow rejected: ${error.message}\n`);
+    process.stderr.write(`OSS release candidate workflow rejected: ${error.message}\n`);
     process.exitCode = 1;
   }
 }

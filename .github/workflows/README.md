@@ -29,20 +29,27 @@ silently weakened to fit this cost-bounded workflow. Release automation may be
 added only with the verified-release checkpoint, a protected environment, and
 separate least-privilege review.
 
-## Release workflow identity boundary
+## Release candidate intake and identity boundary
 
-`.github/workflows/release.yml` now establishes only the protected keyless
-workflow identity required by the verified-release contract. It is manual,
-strictly tag-bound, guarded by the `release` environment and limited to
-read-only contents plus one job-scoped `id-token: write` permission. It creates
-and verifies a signature over a fixed generated identity probe. It cannot sign
-a caller-selected or product artifact, generate product provenance, create a
-GitHub Release, upload a package or container, or authorize publication.
+`.github/workflows/release.yml` establishes the protected handoff from hosted
+technical candidates into the later verified-release gates. It is manual,
+strictly tag-bound and guarded by the `release` environment. A read-only intake
+job discovers exactly one successful run-attempt-one Debian workflow and one
+OCI workflow for the same tag and commit, downloads six fixed evidence
+artifacts, and replays the existing fail-closed candidate intake. No caller can
+provide run IDs, artifact names or payload paths.
+
+Only the downstream identity-probe job receives `id-token: write`. It creates
+and verifies a signature over a fixed generated identity probe. The workflow
+cannot sign a caller-selected or product artifact, generate product
+provenance, create a GitHub Release, upload a package or container, or authorize
+publication.
 
 The contract and `scripts/verify-oss-release-workflow.mjs` pin the complete
-workflow boundary, action revisions, Cosign version, evidence paths, timeout,
-retention and false authority fields. Run `make oss-release-workflow-test` for
-the focused adversarial checks.
+workflow boundary, candidate workflow identities, artifact names, action
+revisions, Cosign version, evidence paths, timeout, retention and false
+authority fields. Run `make oss-release-workflow-test` for the focused
+adversarial checks.
 
 The verified release contract requires product signatures whose subject is
 exactly this workflow at `refs/tags/<tag>`. Existing immutable candidates,
@@ -52,8 +59,8 @@ tags must not be moved.
 The hosted Debian and OCI workflows establish reproducible technical-candidate
 bytes only. The first fully signable candidate must be cut from a later commit
 that already contains this separately reviewed workflow and any subsequently
-reviewed product-artifact gates. Activating the identity foundation is a
-distinct checkpoint and does not by itself authorize a product signature,
+reviewed product-artifact gates. Passing candidate intake and the identity
+probe is a distinct checkpoint and does not by itself authorize a product signature,
 provenance statement, GitHub Release, package upload, container upload or
 publication.
 

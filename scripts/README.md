@@ -25,15 +25,22 @@ reports need their original historical verifier, not a relaxed current gate.
 
 Small workflow entrypoints for development, tests, benchmarks, releases, and local operations.
 
-`verify-oss-release-workflow.mjs` pins the manual protected-tag identity
-foundation in `.github/workflows/release.yml`. It allows read-only contents and
-one job-scoped GitHub OIDC token solely to sign and verify the fixed document
-created by `create-oss-release-identity-probe.mjs`. It rejects automatic
-triggers, workflow inputs, secrets, unpinned actions, excessive permissions,
-changed tool or identity pins, product signing, provenance, publication
-commands and authority escalation. The probe binds the public repository,
-exact tag, commit and run while retaining all product-release authority as
-false. Run `make oss-release-workflow-test` for the focused fixtures.
+`verify-oss-release-workflow.mjs` pins the manual protected-tag candidate-intake
+and identity foundation in `.github/workflows/release.yml`. The intake job has
+only read access to repository contents and Actions evidence. The downstream
+identity job alone receives a GitHub OIDC token, solely to sign and verify the
+fixed document created by `create-oss-release-identity-probe.mjs`. The verifier
+rejects automatic triggers, workflow inputs, secrets, unpinned actions,
+excessive permissions, changed tools or identities, product signing,
+provenance, publication commands and authority escalation.
+
+`discover-oss-release-candidate-runs.mjs` queries only fixed GitHub Actions API
+endpoints. It requires exactly one successful run-attempt-one Debian run and
+one OCI run for the exact release tag and commit, both created before the
+current protected release run. It rejects duplicates, pagination, mixed
+source, changed workflow identity, retries and future runs. The ephemeral
+GitHub token is neither accepted as a command argument nor returned in output.
+Run `make oss-release-workflow-test` for both focused adversarial suites.
 
 `intake-oss-release-candidate.mjs` performs the fail-closed offline handoff from
 the hosted Debian and OCI reproducibility workflows. It requires one exact clean

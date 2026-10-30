@@ -43,7 +43,7 @@ help:
 	@echo "  config-authoring-claude-skill-test  Verify the release-bound Claude Code configuration skill"
 	@echo "  dco-signoff-test  Verify pull-request commit sign-off enforcement"
 	@echo "  oss-release-bundle-test  Verify fail-closed release-bundle admission"
-	@echo "  oss-release-workflow-test  Verify the protected keyless identity foundation"
+	@echo "  oss-release-workflow-test  Verify protected candidate intake and keyless identity"
 	@echo "  oss-candidate-intake-test  Verify hosted candidate intake and authority isolation"
 	@echo "  oss-deb-builder-test  Verify public Debian build and reproducibility contracts"
 	@echo "  oss-deb-hosted-contract-test  Verify the protected hosted-build contract"
@@ -118,7 +118,7 @@ oss-release-bundle-test:
 	@node --test scripts/verify-oss-release-bundle.test.mjs
 
 oss-release-workflow-test:
-	@node --test scripts/verify-oss-release-workflow.test.mjs
+	@node --test scripts/discover-oss-release-candidate-runs.test.mjs scripts/verify-oss-release-workflow.test.mjs
 
 oss-candidate-intake-test:
 	@node --test scripts/intake-oss-release-candidate.test.mjs
