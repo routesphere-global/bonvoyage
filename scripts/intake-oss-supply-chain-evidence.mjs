@@ -44,6 +44,8 @@ const COMMIT = /^[a-f0-9]{40}$/u;
 const TAG =
   /^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
+const SHA256_DIGEST = /^sha256:[a-f0-9]{64}$/u;
+const RUN_ID = /^[1-9][0-9]*$/u;
 const DECODER = new TextDecoder('utf-8', {fatal: true});
 const BOOTSTRAP_CONTROL_LIMIT = 64 * 1024 * 1024;
 const FINDING_SEVERITIES = Object.freeze([
@@ -104,6 +106,12 @@ function requireInteger(value, label) {
 function requireSha256(value, label) {
   requireCondition(typeof value === 'string' && SHA256.test(value),
     `${label} must be a lowercase SHA-256 digest`);
+  return value;
+}
+
+function requireSha256Digest(value, label) {
+  requireCondition(typeof value === 'string' && SHA256_DIGEST.test(value),
+    `${label} must be a lowercase sha256: digest`);
   return value;
 }
 
@@ -297,6 +305,52 @@ function validateSource(source, commit, tag, label) {
   `${label} is not the exact clean public source`);
 }
 
+function validateHostedEvidenceArtifacts(value, prefix, label) {
+  const records = requireArray(value, label);
+  requireCondition(records.length === 2, `${label} must contain exactly two records`);
+  const expectedNames = ['a', 'b'].map((suffix) => `${prefix}-build-${suffix}`);
+  records.forEach((record, index) => {
+    exactKeys(record, ['name', 'sha256'], `${label}[${index}]`);
+    requireString(record.name, `${label}[${index}].name`);
+    requireSha256(record.sha256, `${label}[${index}].sha256`);
+  });
+  requireCondition(JSON.stringify(records.map((record) => record.name)) ===
+    JSON.stringify(expectedNames), `${label} names or order changed`);
+}
+
+function validateOciObject(value, fields, label) {
+  exactKeys(value, fields, label);
+  requireInteger(value.bytes, `${label}.bytes`);
+  requireSha256Digest(value.digest, `${label}.digest`);
+  if (fields.includes('diff_id')) {
+    requireSha256Digest(value.diff_id, `${label}.diff_id`);
+  }
+}
+
+function validateHostedArtifactMetadata(artifact, id) {
+  requireCondition(typeof artifact.hosted_run_id === 'string' &&
+    RUN_ID.test(artifact.hosted_run_id),
+  `candidate intake ${id}.hosted_run_id must be a positive decimal string`);
+  const expectedBuilders = ['a', 'b'].map(
+    (suffix) => `github-${artifact.hosted_run_id}-1-${suffix}`);
+  requireCondition(JSON.stringify(requireArray(
+    artifact.builders, `candidate intake ${id}.builders`)) ===
+    JSON.stringify(expectedBuilders),
+  `candidate intake ${id}.builders do not bind the hosted run`);
+  const prefix = id === 'gateway-deb-linux-amd64' ? 'oss-deb' : 'oss-oci';
+  validateHostedEvidenceArtifacts(
+    artifact.hosted_evidence_artifacts, prefix,
+    `candidate intake ${id}.hosted_evidence_artifacts`);
+  if (id === 'gateway-oci-linux-amd64') {
+    validateOciObject(
+      artifact.manifest, ['bytes', 'digest'], `candidate intake ${id}.manifest`);
+    validateOciObject(
+      artifact.config, ['bytes', 'digest'], `candidate intake ${id}.config`);
+    validateOciObject(
+      artifact.layer, ['bytes', 'diff_id', 'digest'], `candidate intake ${id}.layer`);
+  }
+}
+
 function validateContract(contract) {
   exactKeys(contract, [
     'schema_version', 'classification', 'product', 'source_repository', 'platform',
@@ -411,9 +465,19 @@ function validateIntake(root, commit, tag, limits) {
   const actualByPath = new Map(actualFiles.map((record) => [record.path, record]));
   const byId = new Map();
   for (const artifact of requireArray(receipt.artifacts, 'candidate intake artifacts')) {
-    exactKeys(artifact, [
-      'id', 'kind', 'platform', 'path', 'bytes', 'sha256',
-    ], 'candidate intake artifact');
+    requireObject(artifact, 'candidate intake artifact');
+    const id = requireString(artifact.id, 'candidate intake artifact.id');
+    requireCondition([
+      'gateway-deb-linux-amd64', 'gateway-oci-linux-amd64',
+    ].includes(id), 'candidate intake artifact ID changed');
+    const fields = [
+      'id', 'kind', 'platform', 'path', 'bytes', 'sha256', 'hosted_run_id',
+      'builders', 'hosted_evidence_artifacts',
+    ];
+    if (id === 'gateway-oci-linux-amd64') {
+      fields.push('manifest', 'config', 'layer');
+    }
+    exactKeys(artifact, fields, `candidate intake artifact ${id}`);
     requireCondition(!byId.has(artifact.id), 'candidate intake artifact IDs must be unique');
     byId.set(artifact.id, artifact);
   }
@@ -429,6 +493,7 @@ function validateIntake(root, commit, tag, limits) {
       `candidate intake ${id} kind or platform changed`);
     requireInteger(artifact.bytes, `candidate intake ${id}.bytes`);
     requireSha256(artifact.sha256, `candidate intake ${id}.sha256`);
+    validateHostedArtifactMetadata(artifact, id);
     const artifactPath = safeRelative(artifact.path, `${id} path`);
     const payload = actualByPath.get(artifactPath);
     requireCondition(payload !== undefined && payload.bytes === artifact.bytes &&
@@ -609,6 +674,7 @@ function normalizeFinding(match) {
     [vulnerability.id, 'vulnerability id'],
     [vulnerability.namespace, 'vulnerability namespace'],
     [artifact.id, 'artifact package id'],
+    [artifact.purl, 'artifact package URL'],
     [artifact.name, 'artifact name'],
     [artifact.version, 'artifact version'],
     [artifact.type, 'artifact type'],
@@ -621,7 +687,7 @@ function normalizeFinding(match) {
   return {
     id: vulnerability.id,
     namespace: vulnerability.namespace,
-    package_id: artifact.id,
+    package_id: artifact.purl,
     package: artifact.name,
     version: artifact.version,
     type: artifact.type,
@@ -644,6 +710,33 @@ function normalizedFindings(scan) {
   requireCondition(new Set(result.map(findingKey)).size === result.length,
     'scan contains duplicate normalized findings');
   return result;
+}
+
+function validateRetainedDistro(distro, artifact, label) {
+  exactKeys(distro, ['idLike', 'name', 'version'], label);
+  if (artifact.kind === 'debian-package') {
+    requireCondition(distro.name === '' && distro.version === '' && distro.idLike === null,
+      `${label} must retain the standalone Debian-package identity`);
+    return;
+  }
+  requireCondition(distro.name === 'ubuntu' && distro.version === '24.04' &&
+    Array.isArray(distro.idLike) && distro.idLike.length === 1 &&
+    ['debian', 'ubuntu'].includes(distro.idLike[0]),
+  `${label} must retain the Ubuntu 24.04 image identity`);
+}
+
+function summarizeRetainedSbomScan(scan, target, verifiedAt, artifact, label) {
+  const source = requireObject(scan.source, `${label}.source`);
+  exactKeys(source, ['type', 'target'], `${label}.source`);
+  requireCondition(['file', 'directory', 'sbom-file'].includes(source.type) &&
+    source.target === target,
+  `${label}.source is not bound to the retained SBOM target`);
+  validateRetainedDistro(requireObject(scan.distro, `${label}.distro`), artifact,
+    `${label}.distro`);
+  const canonical = structuredClone(scan);
+  canonical.source.type = 'sbom-file';
+  canonical.distro = {name: 'ubuntu', version: '24.04'};
+  return summarize(canonical, target, verifiedAt);
 }
 
 function databaseIdentity(summary) {
@@ -791,7 +884,8 @@ function validateReview({
     ['spdx-2.3-json', 'scan-spdx.json', `/input/${artifact.id}/spdx.json`],
   ].map(([format, file, target]) => {
     const record = read(file, `${artifact.id} ${format} scan`);
-    const summary = summarize(record.value, target, verifiedAt);
+    const summary = summarizeRetainedSbomScan(
+      record.value, target, verifiedAt, artifact, `${artifact.id} ${format} scan`);
     return {
       format, file, target, record, summary,
       findings: normalizedFindings(record.value),

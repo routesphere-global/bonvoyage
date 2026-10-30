@@ -117,7 +117,7 @@ function artifactBinding(artifact) {
   };
 }
 
-function grypeFinding(severity = 'Medium') {
+function grypeFinding(severity = 'Medium', packageId = 'package-1') {
   return {
     vulnerability: {
       id: 'CVE-fixture',
@@ -126,10 +126,11 @@ function grypeFinding(severity = 'Medium') {
       fix: {state: 'not-fixed', versions: []},
     },
     artifact: {
-      id: 'package-1',
+      id: packageId,
       name: 'libc6',
       version: '2.39',
       type: 'deb',
+      purl: 'pkg:deb/ubuntu/libc6@2.39?arch=amd64&distro=ubuntu-24.04',
     },
     matchDetails: [{
       type: 'exact-direct-match',
@@ -140,11 +141,14 @@ function grypeFinding(severity = 'Medium') {
   };
 }
 
-function grypeScan(target, {severity = 'Medium', digest = ARCHIVE_DIGEST} = {}) {
+function grypeScan(target, {
+  severity = 'Medium', digest = ARCHIVE_DIGEST, sourceType = 'sbom-file', distro,
+  packageId = 'package-1',
+} = {}) {
   return {
-    source: {type: 'sbom-file', target},
-    distro: {name: 'ubuntu', version: '24.04'},
-    matches: [grypeFinding(severity)],
+    source: {type: sourceType, target},
+    distro,
+    matches: [grypeFinding(severity, packageId)],
     descriptor: {
       name: 'grype',
       version: '0.116.1',
@@ -181,7 +185,7 @@ function reviewedFinding(severity = 'Medium') {
   return {
     id: 'CVE-fixture',
     namespace: 'ubuntu:distro:ubuntu:24.04',
-    package_id: 'package-1',
+    package_id: 'pkg:deb/ubuntu/libc6@2.39?arch=amd64&distro=ubuntu-24.04',
     package: 'libc6',
     version: '2.39',
     type: 'deb',
@@ -199,19 +203,39 @@ function createCandidate(candidateRoot) {
     'metadata/oss-candidate-intake-contract.json', contractContent);
   const specifications = [
     ['gateway-deb-linux-amd64', 'debian-package',
-      'artifacts/bonvoyage-gateway_1.0.0~rc.8-1_amd64.deb', 'debian candidate\n'],
+      'artifacts/bonvoyage-gateway_1.0.0~rc.8-1_amd64.deb', 'debian candidate\n',
+      '1001', 'oss-deb'],
     ['gateway-oci-linux-amd64', 'oci-image',
-      'artifacts/bonvoyage-gateway-1.0.0-rc.8-linux-amd64.oci.tar', 'oci candidate\n'],
+      'artifacts/bonvoyage-gateway-1.0.0-rc.8-linux-amd64.oci.tar', 'oci candidate\n',
+      '1002', 'oss-oci'],
   ];
-  const artifacts = specifications.map(([id, kind, artifactPath, content]) => {
+  const artifacts = specifications.map(([
+    id, kind, artifactPath, content, runId, evidencePrefix,
+  ]) => {
     const payloadPath = write(candidateRoot, artifactPath, content);
-    return {
+    const artifact = {
       id,
       kind,
       platform: 'linux/amd64',
       path: artifactPath,
       ...identity(payloadPath),
+      hosted_run_id: runId,
+      builders: ['a', 'b'].map((suffix) => `github-${runId}-1-${suffix}`),
+      hosted_evidence_artifacts: ['a', 'b'].map((suffix) => ({
+        name: `${evidencePrefix}-build-${suffix}`,
+        sha256: sha256(`${id}:${suffix}`),
+      })),
     };
+    if (kind === 'oci-image') {
+      artifact.manifest = {bytes: 10, digest: `sha256:${'d'.repeat(64)}`};
+      artifact.config = {bytes: 11, digest: `sha256:${'e'.repeat(64)}`};
+      artifact.layer = {
+        bytes: 12,
+        diff_id: `sha256:${'0'.repeat(64)}`,
+        digest: `sha256:${'f'.repeat(64)}`,
+      };
+    }
+    return artifact;
   });
   writeJson(candidateRoot, 'candidate-intake-receipt.json', {
     schema_version: 1,
@@ -447,12 +471,25 @@ function createReview(reviewRoot, artifact, database) {
 
   const scanSpecifications = [
     ['cyclonedx-1.6-json', 'scan-cyclonedx.json',
-      `/input/${artifact.id}/cyclonedx.json`, identity(cdxPath).sha256],
+      `/input/${artifact.id}/cyclonedx.json`, identity(cdxPath).sha256, 'file'],
     ['spdx-2.3-json', 'scan-spdx.json',
-      `/input/${artifact.id}/spdx.json`, identity(spdxPath).sha256],
+      `/input/${artifact.id}/spdx.json`, identity(spdxPath).sha256, 'directory'],
   ];
-  const scans = scanSpecifications.map(([format, file, target, inputSha]) => {
-    const filePath = writeJson(reviewRoot, `${directory}/${file}`, grypeScan(target));
+  const scans = scanSpecifications.map(([
+    format, file, target, inputSha, sourceType,
+  ]) => {
+    const distro = artifact.kind === 'debian-package' ?
+      {name: '', version: '', idLike: null} :
+      {name: 'ubuntu', version: '24.04',
+        idLike: [format === 'cyclonedx-1.6-json' ? 'debian' : 'ubuntu']};
+    const filePath = writeJson(
+      reviewRoot, `${directory}/${file}`, grypeScan(target, {
+        sourceType,
+        distro,
+        packageId: format === 'cyclonedx-1.6-json' ?
+          'pkg:deb/ubuntu/libc6@2.39?package-id=fixture' :
+          'Package-deb-libc6-fixture',
+      }));
     return {
       format,
       path: file,
@@ -557,6 +594,20 @@ test('rejects candidate substitution and unaccounted intake files', (t) => {
   rejectWithoutOutput(extra, /receipt\.files/u);
 });
 
+test('rejects hosted candidate metadata drift', (t) => {
+  const builder = createFixture(t);
+  replaceJson(path.join(builder.candidateRoot, 'candidate-intake-receipt.json'), (value) => {
+    value.artifacts[0].builders[1] = 'github-1001-1-c';
+  });
+  rejectWithoutOutput(builder, /builders do not bind the hosted run/u);
+
+  const layer = createFixture(t);
+  replaceJson(path.join(layer.candidateRoot, 'candidate-intake-receipt.json'), (value) => {
+    value.artifacts[1].layer.diff_id = '0'.repeat(64);
+  });
+  rejectWithoutOutput(layer, /layer\.diff_id must be a lowercase sha256: digest/u);
+});
+
 test('rejects SBOM substitution and a candidate-root digest mismatch', (t) => {
   const substituted = createFixture(t);
   fs.appendFileSync(evidencePath(
@@ -631,6 +682,24 @@ test('rejects cross-artifact database drift', (t) => {
     });
   }
   rejectWithoutOutput(fixture, /retained database receipt/u);
+});
+
+test('rejects an unrecognized retained scanner source type', (t) => {
+  const fixture = createFixture(t);
+  replaceJson(evidencePath(
+    fixture, 'gateway-deb-linux-amd64', 'scan-cyclonedx.json'), (value) => {
+    value.source.type = 'image';
+  });
+  rejectWithoutOutput(fixture, /source is not bound to the retained SBOM target/u);
+});
+
+test('rejects retained scanner distro drift', (t) => {
+  const fixture = createFixture(t);
+  replaceJson(evidencePath(
+    fixture, 'gateway-oci-linux-amd64', 'scan-spdx.json'), (value) => {
+    value.distro.version = '22.04';
+  });
+  rejectWithoutOutput(fixture, /must retain the Ubuntu 24\.04 image identity/u);
 });
 
 test('rejects physical database substitution', (t) => {
