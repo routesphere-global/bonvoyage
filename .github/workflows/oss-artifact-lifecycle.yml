@@ -185,6 +185,7 @@ jobs:
           github-token: ${{ github.token }}
       - name: Build checksum-bound baseline and candidate intakes
         run: |
+          mkdir -p "$RUNNER_TEMP/intakes"
           node scripts/intake-oss-release-candidate.mjs \
             --deb-root "$RUNNER_TEMP/baseline-deb" \
             --oci-root "$RUNNER_TEMP/baseline-oci" \

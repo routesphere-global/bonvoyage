@@ -114,6 +114,12 @@ test('rejects external artifact substitution and evidence drift', (t) => {
   }
 });
 
+test('rejects omission of the private intake parent directory', (t) => {
+  const paths = changedWorkflows(t, (value) => value.replace(
+    '          mkdir -p "$RUNNER_TEMP/intakes"\n', ''));
+  assert.throws(() => verify(paths));
+});
+
 test('rejects publication signing secrets and error suppression', (t) => {
   for (const injected of [
     '      - run: gh release create v1.0.0\n',
