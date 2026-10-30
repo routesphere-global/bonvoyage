@@ -28,12 +28,24 @@ const WORKFLOWS = {
   debian: {
     name: 'OSS Debian Reproducibility Candidate',
     path: '.github/workflows/oss-deb-reproducibility.yml',
-    artifacts: ['oss-deb-build-a', 'oss-deb-build-b', 'oss-deb-comparison'],
+    baselineArtifacts: [
+      'oss-deb-build-a', 'oss-deb-build-b', 'oss-deb-comparison',
+    ],
+    candidateArtifacts: [
+      'oss-deb-build-a', 'oss-deb-build-b', 'oss-deb-comparison',
+      'oss-deb-provenance',
+    ],
   },
   oci: {
     name: 'OSS OCI Reproducibility Candidate',
     path: '.github/workflows/oss-oci-reproducibility.yml',
-    artifacts: ['oss-oci-build-a', 'oss-oci-build-b', 'oss-oci-comparison'],
+    baselineArtifacts: [
+      'oss-oci-build-a', 'oss-oci-build-b', 'oss-oci-comparison',
+    ],
+    candidateArtifacts: [
+      'oss-oci-build-a', 'oss-oci-build-b', 'oss-oci-comparison',
+      'oss-oci-provenance',
+    ],
   },
 };
 
@@ -107,9 +119,12 @@ function buildRun(kind, baseline = false) {
 
 function artifactResponse(kind, baseline = false) {
   const selectedRun = buildRun(kind, baseline);
+  const expectedArtifacts = baseline
+    ? WORKFLOWS[kind].baselineArtifacts
+    : WORKFLOWS[kind].candidateArtifacts;
   return {
-    total_count: 3,
-    artifacts: WORKFLOWS[kind].artifacts.map((name, index) => ({
+    total_count: expectedArtifacts.length,
+    artifacts: expectedArtifacts.map((name, index) => ({
       id: 50000000000 + index,
       name,
       expired: false,
