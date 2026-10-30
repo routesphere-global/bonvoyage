@@ -10,6 +10,8 @@ import {localObservation, verifyOciBuilderImage} from './verify-oss-oci-builder-
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONTRACT = path.join(ROOT,
   'packaging/release/oci/oss-oci-builder-image-contract.json');
+const HOSTED_CONTRACT = path.join(ROOT,
+  'packaging/release/oci/oss-oci-hosted-build-contract.json');
 const DOCKERFILE = path.join(ROOT, 'deploy/docker/bonvoyage/Dockerfile');
 const ENTRYPOINT = path.join(ROOT, 'scripts/oss-oci-builder-entrypoint.py');
 const WORKFLOW = path.join(ROOT,
@@ -24,13 +26,15 @@ function fixture(t) {
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   const relative = {
     contract: 'packaging/release/oci/oss-oci-builder-image-contract.json',
+    hostedContract: 'packaging/release/oci/oss-oci-hosted-build-contract.json',
     dockerfile: 'deploy/docker/bonvoyage/Dockerfile',
     entrypoint: 'scripts/oss-oci-builder-entrypoint.py',
     workflow: 'packaging/release/oci/oss-oci-reproducibility.workflow.yml',
     receipt: 'packaging/release/oci/oss-oci-builder-image-verification.json',
     activeWorkflow: '.github/workflows/oss-oci-reproducibility.yml',
   };
-  const sources = {contract: CONTRACT, dockerfile: DOCKERFILE, entrypoint: ENTRYPOINT,
+  const sources = {contract: CONTRACT, hostedContract: HOSTED_CONTRACT,
+    dockerfile: DOCKERFILE, entrypoint: ENTRYPOINT,
     workflow: WORKFLOW, receipt: RECEIPT, activeWorkflow: ACTIVE_WORKFLOW};
   const values = {};
   for (const [name, source] of Object.entries(sources)) {
@@ -145,6 +149,24 @@ test('hosted OCI builders retain the hardened runtime boundary', (t) => {
       'source=$RUNNER_TEMP/oss-oci-build-a,target=/workspace/output'],
     ['--env BONVOYAGE_BUILDER_IMAGE=', '--env FLOATING_IMAGE='],
     ['--tmpfs /tmp:rw,nosuid,nodev,noexec', '--tmpfs /tmp:rw'],
+  ]) {
+    const paths = fixture(t);
+    const source = fs.readFileSync(paths.workflow, 'utf8');
+    fs.writeFileSync(paths.workflow, source.replace(replacement[0], replacement[1]));
+    assert.throws(() => verify(paths));
+  }
+});
+
+test('hosted OCI provenance identity remains exact and cannot enter builder jobs', (t) => {
+  for (const replacement of [
+    ['id-token: write', 'id-token: read'],
+    ['actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6',
+      `actions/attest@${'a'.repeat(40)}`],
+    ['  build-a:\n    name:',
+      '  build-a:\n    permissions:\n      id-token: write\n    name:'],
+    ['  provenance:\n    name:', '  provenance:\n    needs: build-a\n    name:'],
+    ['name: OSS OCI Reproducibility Candidate',
+      'name: OSS OCI Reproducibility Candidate\n# docker push is forbidden'],
   ]) {
     const paths = fixture(t);
     const source = fs.readFileSync(paths.workflow, 'utf8');

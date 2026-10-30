@@ -13,6 +13,8 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONTRACT = path.join(ROOT,
   'packaging/release/debian/oss-deb-builder-image-contract.json');
+const HOSTED_CONTRACT = path.join(ROOT,
+  'packaging/release/debian/oss-deb-hosted-build-contract.json');
 const DOCKERFILE = path.join(ROOT, 'deploy/docker/bonvoyage/Dockerfile');
 const ENTRYPOINT = path.join(ROOT, 'scripts/oss-deb-builder-entrypoint.py');
 const WORKFLOW = path.join(ROOT,
@@ -27,6 +29,7 @@ function copyFixture(t) {
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   const paths = {
     contract: 'packaging/release/debian/oss-deb-builder-image-contract.json',
+    hostedContract: 'packaging/release/debian/oss-deb-hosted-build-contract.json',
     dockerfile: 'deploy/docker/bonvoyage/Dockerfile',
     entrypoint: 'scripts/oss-deb-builder-entrypoint.py',
     workflow: 'packaging/release/debian/oss-deb-reproducibility.workflow.yml',
@@ -36,7 +39,7 @@ function copyFixture(t) {
   for (const [name, relative] of Object.entries(paths)) {
     const destination = path.join(root, relative);
     fs.mkdirSync(path.dirname(destination), {recursive: true});
-    fs.copyFileSync({contract: CONTRACT, dockerfile: DOCKERFILE,
+    fs.copyFileSync({contract: CONTRACT, hostedContract: HOSTED_CONTRACT, dockerfile: DOCKERFILE,
       entrypoint: ENTRYPOINT, workflow: WORKFLOW, receipt: RECEIPT,
       activeWorkflow: ACTIVE_WORKFLOW}[name], destination);
     paths[name] = destination;
@@ -147,6 +150,24 @@ test('hosted builders require distinct writable work mounts and exact image iden
       'source=$RUNNER_TEMP/oss-deb-build-a,target=/workspace/output'],
     ['--env BONVOYAGE_BUILDER_IMAGE=', '--env FLOATING_IMAGE='],
     ['--tmpfs /tmp:rw,nosuid,nodev,noexec', '--tmpfs /tmp:rw'],
+  ]) {
+    const fixture = copyFixture(t);
+    const source = fs.readFileSync(fixture.workflow, 'utf8');
+    fs.writeFileSync(fixture.workflow, source.replace(replacement[0], replacement[1]));
+    assert.throws(() => verify(fixture));
+  }
+});
+
+test('hosted provenance identity remains exact and cannot enter builder jobs', (t) => {
+  for (const replacement of [
+    ['id-token: write', 'id-token: read'],
+    ['actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6',
+      `actions/attest@${'a'.repeat(40)}`],
+    ['  build-a:\n    name:',
+      '  build-a:\n    permissions:\n      id-token: write\n    name:'],
+    ['  provenance:\n    name:', '  provenance:\n    needs: build-a\n    name:'],
+    ['name: OSS Debian Reproducibility Candidate',
+      'name: OSS Debian Reproducibility Candidate\n# docker push is forbidden'],
   ]) {
     const fixture = copyFixture(t);
     const source = fs.readFileSync(fixture.workflow, 'utf8');
