@@ -13,7 +13,7 @@ export GOCACHE := $(CURDIR)/.cache/go-build
 	config-authoring-openai-codex-capture-test \
 	config-authoring-openai-codex-skill-test \
 	config-authoring-claude-skill-test \
-	dco-signoff-test oss-release-bundle-test oss-release-workflow-test oss-candidate-intake-test oss-supply-chain-evidence-test oss-deb-builder-test oss-deb-hosted-contract-test \
+	dco-signoff-test oss-release-bundle-test oss-release-workflow-test oss-candidate-intake-test oss-supply-chain-producer-test oss-supply-chain-evidence-test oss-deb-builder-test oss-deb-hosted-contract-test \
 	oss-deb-builder-image-test oss-native-install-verifier-test oss-native-install-collector-test oss-kubernetes-deployment-verifier-test oss-kubernetes-acceptance-runner-test oss-bounded-benchmark-verifier-test oss-bounded-benchmark-runner-test oss-oci-builder-test local-deployment-verifier-test \
 	oss-oci-hosted-contract-test \
 	dataplane-image dataplane-build dataplane-http2-deadline \
@@ -45,6 +45,7 @@ help:
 	@echo "  oss-release-bundle-test  Verify fail-closed release-bundle admission"
 	@echo "  oss-release-workflow-test  Verify protected candidate intake and keyless identity"
 	@echo "  oss-candidate-intake-test  Verify hosted candidate intake and authority isolation"
+	@echo "  oss-supply-chain-producer-test  Verify protected dual-SBOM and vulnerability producers"
 	@echo "  oss-supply-chain-evidence-test  Verify the neutral dual-SBOM and vulnerability evidence handoff"
 	@echo "  oss-deb-builder-test  Verify public Debian build and reproducibility contracts"
 	@echo "  oss-deb-hosted-contract-test  Verify the protected hosted-build contract"
@@ -105,6 +106,7 @@ test-node:
 	@$(MAKE) oss-release-bundle-test
 	@$(MAKE) oss-release-workflow-test
 	@$(MAKE) oss-candidate-intake-test
+	@$(MAKE) oss-supply-chain-producer-test
 	@$(MAKE) oss-supply-chain-evidence-test
 	@$(MAKE) local-deployment-verifier-test
 	@$(MAKE) oss-kubernetes-deployment-verifier-test
@@ -124,6 +126,10 @@ oss-release-workflow-test:
 
 oss-candidate-intake-test:
 	@node --test scripts/intake-oss-release-candidate.test.mjs
+
+oss-supply-chain-producer-test:
+	@node --test scripts/discover-oss-release-intake-run.test.mjs scripts/produce-oss-supply-chain-evidence.test.mjs scripts/verify-oss-supply-chain-producer-workflow.test.mjs
+	@node scripts/verify-oss-supply-chain-producer-workflow.mjs --contract packaging/release/oss-supply-chain-producer-workflow-contract.json --workflow .github/workflows/oss-supply-chain-producers.yml --github-repository routesphere-global/bonvoyage --github-ref-type tag --github-ref-name v1.0.0-rc.9 --github-ref-protected true --github-sha aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa >/dev/null
 
 oss-supply-chain-evidence-test:
 	@node --test scripts/intake-oss-supply-chain-evidence.test.mjs

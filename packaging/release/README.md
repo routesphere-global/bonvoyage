@@ -168,6 +168,36 @@ to verify; it is not proof by itself that a tool executed. Run
 database, reviewer, command, substitution, parity, freshness, severity and
 authority regressions.
 
+## Protected SBOM and vulnerability producers
+
+`oss-supply-chain-producer-workflow-contract.json`,
+`.github/workflows/oss-supply-chain-producers.yml` and
+`scripts/verify-oss-supply-chain-producer-workflow.mjs` pin the protected
+producer boundary. A manual run must start from a protected strict `v*` tag and
+the exact public commit, with the protected-ref state verified at runtime. It
+discovers, rather than accepts from the caller,
+exactly one earlier successful `release.yml` candidate-intake run for that
+same tag and commit.
+
+`scripts/produce-oss-supply-chain-evidence.mjs` has three bounded operations:
+
+1. `prepare-validator` retrieves the commit-pinned official SPDX 2.3 schema
+   and prepares the hash-locked Python 3.12 validator environment;
+2. `sbom` generates, validates, invalid-control tests and decodes CycloneDX
+   1.6 and SPDX 2.3 for both exact candidate artifacts; and
+3. `vulnerability` hydrates one official Grype database and then uses only
+   that retained database for all four offline SBOM scans, after independently
+   verifying the complete SBOM handoff inventory, checksums, roots, normalized
+   package identities and parity.
+
+The producer outputs deterministic reviewer inputs, not `review.json`. It
+cannot replace the named release-security reviewer, suppress findings, apply
+VEX, sign product artifacts, generate product provenance, admit a release,
+create a GitHub Release, upload a package or container, or publish. The human
+review and `scripts/intake-oss-supply-chain-evidence.mjs` remain subsequent
+separate steps. Run `make oss-supply-chain-producer-test` for the complete
+portable producer foundation.
+
 ## Protected candidate intake and keyless identity foundation
 
 `oss-release-identity-workflow-contract.json`,

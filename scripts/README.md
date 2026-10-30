@@ -72,6 +72,31 @@ Release, tag or publish. The input JSON is evidence from separately protected
 producer jobs; it is not proof by itself that those tools ran. Run
 `make oss-supply-chain-evidence-test` for the portable adversarial suite.
 
+`discover-oss-release-intake-run.mjs` selects exactly one prior successful
+run-attempt-one `release.yml` execution for the current protected tag and full
+commit. It queries fixed GitHub Actions endpoints, rejects pagination,
+duplicates, future/current runs and source drift, and writes only the selected
+run ID to `GITHUB_OUTPUT`.
+
+`verify-oss-supply-chain-producer-workflow.mjs` pins the manual protected
+`.github/workflows/oss-supply-chain-producers.yml` boundary: read-only
+permissions, exact action and container digests, candidate discovery, three
+bounded jobs, protected-ref runtime state, exact step shapes, three-day
+evidence retention and no automatic trigger, secret,
+identity token, signature, provenance, release or publication authority.
+
+`produce-oss-supply-chain-evidence.mjs` prepares the pinned SPDX validator,
+produces candidate-root CycloneDX 1.6 and SPDX 2.3 documents with official
+validation plus invalid controls and decoder parity, and scans all four
+artifact/format pairs offline against one retained Grype database. Before the
+scan, it verifies the exact SBOM file inventory, byte identities, candidate
+roots, decoded package completeness and parity, then uses checksum-bound
+private copies across tool execution. It emits
+review inputs but never the accountable human `review.json`. Run
+`make oss-supply-chain-producer-test` for the discovery, producer and workflow
+adversarial suites. A passing producer run is evidence awaiting human review;
+it is not release admission.
+
 `verify-oss-native-install.py` independently admits one complete Ubuntu 24.04
 AMD64 fresh-install evidence set. It binds the exact technical-candidate Debian
 package and clean public-origin build receipt to six ordered lifecycle phases,

@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-oss-supply-chain-producer-workflow-contract",
+  "state": "producer-foundation",
+  "source": {
+    "repository": "https://github.com/routesphere-global/bonvoyage",
+    "event": "workflow_dispatch",
+    "ref_type": "tag",
+    "tag_pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$",
+    "protected_tag_required": true,
+    "exact_commit_required": true
+  },
+  "execution": {
+    "environment": "release",
+    "runner": "ubuntu-24.04",
+    "workflow_permissions": {
+      "contents": "read"
+    },
+    "job_permissions": {
+      "preflight": {
+        "contents": "read",
+        "actions": "read"
+      },
+      "sbom-producer": {
+        "contents": "read",
+        "actions": "read"
+      },
+      "vulnerability-producer": {
+        "contents": "read",
+        "actions": "read"
+      }
+    },
+    "jobs": {
+      "preflight": {
+        "timeout_minutes": 5
+      },
+      "sbom-producer": {
+        "timeout_minutes": 30
+      },
+      "vulnerability-producer": {
+        "timeout_minutes": 30
+      }
+    },
+    "artifact_retention_days": 3,
+    "maximum_billable_job_minutes": 65,
+    "manual_only": true,
+    "scheduled_runs": false,
+    "self_hosted_runners": false,
+    "cancel_in_progress": false
+  },
+  "actions": {
+    "checkout": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "setup_node": "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
+    "download_artifact": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+    "upload_artifact": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+  },
+  "tools": {
+    "syft_image": "anchore/syft:v1.44.0@sha256:86fde6445b483d902fe011dd9f68c4987dd94e07da1e9edc004e3c2422650de6",
+    "cyclonedx_validator_image": "cyclonedx/cyclonedx-cli:0.33.1@sha256:9a37575fb51fcaed3a4c62dddba091c46ffc867712e46bdb6cdf219a7e90a061",
+    "grype_image": "anchore/grype:v0.116.1@sha256:1e71065c0a4cff3e6bd3b8add525ffac4343eb4971694eb90a31cf6d4d3e85db",
+    "python_image": "python:3.12-slim@sha256:1148dbb014615300fa7e713b2f94f550c0d1c69780c0805f84f093ceee34dd0b"
+  },
+  "handoff": {
+    "release_workflow": ".github/workflows/release.yml",
+    "candidate_artifact": "oss-release-candidate-intake",
+    "sbom_artifact": "oss-release-sbom-producer-evidence",
+    "vulnerability_artifact": "oss-release-vulnerability-producer-evidence",
+    "discovery_script": "scripts/discover-oss-release-intake-run.mjs",
+    "producer_script": "scripts/produce-oss-supply-chain-evidence.mjs",
+    "evidence_contract": "packaging/release/oss-supply-chain-evidence-contract.json",
+    "human_review_required": true,
+    "review_generated_by_workflow": false
+  },
+  "authority": {
+    "product_artifact_signature_allowed": false,
+    "product_provenance_allowed": false,
+    "release_admitted": false,
+    "publishable": false,
+    "github_release_created": false,
+    "package_uploaded": false,
+    "container_uploaded": false
+  }
+}
