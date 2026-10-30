@@ -56,6 +56,40 @@ exactly this workflow at `refs/tags/<tag>`. Existing immutable candidates,
 including `v1.0.0-rc.6`, cannot acquire that identity retroactively and their
 tags must not be moved.
 
+## Protected supply-chain evidence producers
+
+`.github/workflows/oss-supply-chain-producers.yml` is the next manual,
+strictly tag-bound protected checkpoint. It discovers exactly one earlier
+successful `release.yml` candidate intake for the same tag and commit. Callers
+cannot choose a run ID, candidate artifact, payload path, scanner database or
+output name. Runtime verification requires GitHub to report the selected tag
+as protected and rejects skipped steps, error suppression, command folding or
+any other uncontracted workflow field.
+
+The SBOM job generates CycloneDX 1.6 and SPDX 2.3 documents for both retained
+candidate artifacts. It validates each document with its separately pinned
+validator, runs invalid-control checks, decodes both formats with the pinned
+Syft image and proves normalized package parity. Every document root binds the
+exact candidate bytes, artifact kind, platform, source commit and source tag.
+
+The vulnerability job hydrates one official Grype database, retains that exact
+database once, then performs four offline scans: both formats for both
+artifacts. Before scanning, it rejects extra or linked evidence, verifies every
+SBOM and decoded-inventory checksum, rechecks both candidate-root bindings and
+requires exact decoded package parity. Checksum-bound private copies keep the
+candidate, SBOM and database pathnames stable across tool execution. It emits
+complete scanner reports and deterministic review inputs.
+It deliberately cannot create the accountable human `review.json`; the
+release-security reviewer must assess every finding separately before the
+existing neutral evidence handoff can accept the set.
+
+All three jobs run in the protected `release` environment with read-only
+repository and Actions permissions. The workflow has no identity token,
+secrets, signing, provenance, release, package, container or publication
+authority. Producer artifacts expire after three days. Run
+`make oss-supply-chain-producer-test` for the focused source-discovery,
+producer and workflow-drift suites.
+
 The hosted Debian and OCI workflows establish reproducible technical-candidate
 bytes only. The first fully signable candidate must be cut from a later commit
 that already contains this separately reviewed workflow and any subsequently

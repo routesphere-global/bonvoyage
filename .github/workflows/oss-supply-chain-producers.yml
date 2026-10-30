@@ -1,0 +1,199 @@
+name: OSS Supply Chain Evidence Producers
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oss-supply-chain-producers-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Discover exact protected candidate intake
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: release
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      candidate_run_id: ${{ steps.candidate-intake.outputs.candidate_run_id }}
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 22.19.0
+      - name: Install locked workflow-verifier dependencies
+        run: npm ci --ignore-scripts
+      - name: Verify the protected producer workflow
+        run: >-
+          node scripts/verify-oss-supply-chain-producer-workflow.mjs
+          --contract packaging/release/oss-supply-chain-producer-workflow-contract.json
+          --workflow .github/workflows/oss-supply-chain-producers.yml
+          --github-repository "$GITHUB_REPOSITORY"
+          --github-ref-type "$GITHUB_REF_TYPE"
+          --github-ref-name "$GITHUB_REF_NAME"
+          --github-ref-protected "$GITHUB_REF_PROTECTED"
+          --github-sha "$GITHUB_SHA"
+      - name: Discover the exact prior candidate intake
+        id: candidate-intake
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          node scripts/discover-oss-release-intake-run.mjs
+          --repository "$GITHUB_REPOSITORY"
+          --tag "$GITHUB_REF_NAME"
+          --commit "$GITHUB_SHA"
+          --current-run-id "$GITHUB_RUN_ID"
+          --github-output "$GITHUB_OUTPUT"
+
+  sbom-producer:
+    name: Produce candidate-root dual SBOM evidence
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: release
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 22.19.0
+      - name: Install locked producer dependencies
+        run: npm ci --ignore-scripts
+      - name: Reverify the producer workflow before consuming evidence
+        run: >-
+          node scripts/verify-oss-supply-chain-producer-workflow.mjs
+          --contract packaging/release/oss-supply-chain-producer-workflow-contract.json
+          --workflow .github/workflows/oss-supply-chain-producers.yml
+          --github-repository "$GITHUB_REPOSITORY"
+          --github-ref-type "$GITHUB_REF_TYPE"
+          --github-ref-name "$GITHUB_REF_NAME"
+          --github-ref-protected "$GITHUB_REF_PROTECTED"
+          --github-sha "$GITHUB_SHA"
+      - name: Download the exact prior candidate intake
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: oss-release-candidate-intake
+          path: ${{ runner.temp }}/candidate-intake
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.candidate_run_id }}
+      - name: Pull pinned SBOM and validator images
+        env:
+          SYFT_IMAGE: anchore/syft:v1.44.0@sha256:86fde6445b483d902fe011dd9f68c4987dd94e07da1e9edc004e3c2422650de6
+          CYCLONEDX_VALIDATOR_IMAGE: cyclonedx/cyclonedx-cli:0.33.1@sha256:9a37575fb51fcaed3a4c62dddba091c46ffc867712e46bdb6cdf219a7e90a061
+          PYTHON_IMAGE: python:3.12-slim@sha256:1148dbb014615300fa7e713b2f94f550c0d1c69780c0805f84f093ceee34dd0b
+        run: |
+          docker pull "$SYFT_IMAGE"
+          docker pull "$CYCLONEDX_VALIDATOR_IMAGE"
+          docker pull "$PYTHON_IMAGE"
+      - name: Prepare the pinned SPDX validator
+        run: >-
+          node scripts/produce-oss-supply-chain-evidence.mjs prepare-validator
+          --output "$RUNNER_TEMP/spdx-validator"
+      - name: Produce dual-SBOM evidence without release authority
+        run: >-
+          node scripts/produce-oss-supply-chain-evidence.mjs sbom
+          --candidate-root "$RUNNER_TEMP/candidate-intake"
+          --validator-root "$RUNNER_TEMP/spdx-validator"
+          --output "$RUNNER_TEMP/sbom-producer"
+          --source-commit "$GITHUB_SHA"
+          --source-tag "$GITHUB_REF_NAME"
+      - name: Upload bounded SBOM producer evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: oss-release-sbom-producer-evidence
+          path: ${{ runner.temp }}/sbom-producer
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 3
+
+  vulnerability-producer:
+    name: Scan all SBOMs against one retained database
+    needs:
+      - preflight
+      - sbom-producer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: release
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 22.19.0
+      - name: Install locked producer dependencies
+        run: npm ci --ignore-scripts
+      - name: Reverify the producer workflow before scanning
+        run: >-
+          node scripts/verify-oss-supply-chain-producer-workflow.mjs
+          --contract packaging/release/oss-supply-chain-producer-workflow-contract.json
+          --workflow .github/workflows/oss-supply-chain-producers.yml
+          --github-repository "$GITHUB_REPOSITORY"
+          --github-ref-type "$GITHUB_REF_TYPE"
+          --github-ref-name "$GITHUB_REF_NAME"
+          --github-ref-protected "$GITHUB_REF_PROTECTED"
+          --github-sha "$GITHUB_SHA"
+      - name: Download the exact prior candidate intake
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: oss-release-candidate-intake
+          path: ${{ runner.temp }}/candidate-intake
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.candidate_run_id }}
+      - name: Download the same-run SBOM producer evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: oss-release-sbom-producer-evidence
+          path: ${{ runner.temp }}/sbom-producer
+      - name: Pull the pinned vulnerability scanner image
+        env:
+          GRYPE_IMAGE: anchore/grype:v0.116.1@sha256:1e71065c0a4cff3e6bd3b8add525ffac4343eb4971694eb90a31cf6d4d3e85db
+        run: docker pull "$GRYPE_IMAGE"
+      - name: Produce one-database offline scan evidence
+        run: >-
+          node scripts/produce-oss-supply-chain-evidence.mjs vulnerability
+          --candidate-root "$RUNNER_TEMP/candidate-intake"
+          --sbom-root "$RUNNER_TEMP/sbom-producer"
+          --output "$RUNNER_TEMP/vulnerability-producer"
+          --source-commit "$GITHUB_SHA"
+          --source-tag "$GITHUB_REF_NAME"
+      - name: Upload bounded vulnerability producer evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: oss-release-vulnerability-producer-evidence
+          path: ${{ runner.temp }}/vulnerability-producer
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 3
