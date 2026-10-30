@@ -1,0 +1,399 @@
+name: OSS Artifact Lifecycle Evidence
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: oss-artifact-lifecycle-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  LIFECYCLE_CONTRACT: packaging/release/oss-artifact-lifecycle-contract.json
+  WORKFLOW_CONTRACT: packaging/release/oss-artifact-lifecycle-workflow-contract.json
+  WORKFLOW_TEMPLATE: packaging/release/oss-artifact-lifecycle.workflow.yml
+
+jobs:
+  preflight:
+    name: Discover exact hosted candidates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: release
+    outputs:
+      baseline_deb_run_id: ${{ steps.discovery.outputs.baseline_deb_run_id }}
+      baseline_oci_run_id: ${{ steps.discovery.outputs.baseline_oci_run_id }}
+      candidate_deb_run_id: ${{ steps.discovery.outputs.candidate_deb_run_id }}
+      candidate_oci_run_id: ${{ steps.discovery.outputs.candidate_oci_run_id }}
+      baseline_created_at: ${{ steps.discovery.outputs.baseline_created_at }}
+      candidate_created_at: ${{ steps.discovery.outputs.candidate_created_at }}
+      baseline_commit: ${{ steps.discovery.outputs.baseline_commit }}
+      baseline_tag: ${{ steps.discovery.outputs.baseline_tag }}
+      candidate_commit: ${{ steps.discovery.outputs.candidate_commit }}
+      candidate_tag: ${{ steps.discovery.outputs.candidate_tag }}
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Use the reviewed Node.js runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+      - name: Install locked workflow-verifier dependencies
+        run: npm ci --ignore-scripts
+      - name: Verify the protected powerless workflow
+        run: >-
+          node scripts/verify-oss-artifact-lifecycle-workflow.mjs
+          --contract "$WORKFLOW_CONTRACT"
+          --workflow "$WORKFLOW_TEMPLATE"
+          --active-workflow .github/workflows/oss-artifact-lifecycle.yml
+          --github-repository "$GITHUB_REPOSITORY"
+          --github-ref-type "$GITHUB_REF_TYPE"
+          --github-ref-name "$GITHUB_REF_NAME"
+          --github-ref-protected "$GITHUB_REF_PROTECTED"
+          --github-sha "$GITHUB_SHA"
+      - name: Discover exact unexpired baseline and candidate artifacts
+        id: discovery
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          node scripts/discover-oss-artifact-lifecycle-runs.mjs
+          --contract "$LIFECYCLE_CONTRACT"
+          --repository "$GITHUB_REPOSITORY"
+          --tag "$GITHUB_REF_NAME"
+          --commit "$GITHUB_SHA"
+          --current-run-id "$GITHUB_RUN_ID"
+          --github-output "$GITHUB_OUTPUT"
+
+  intakes:
+    name: Reconstruct exact baseline and candidate intakes
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: release
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Use the reviewed Node.js runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+      - name: Download baseline Debian builder A
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-deb-build-a
+          path: ${{ runner.temp }}/baseline-deb/oss-deb-build-a
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.baseline_deb_run_id }}
+          github-token: ${{ github.token }}
+      - name: Download baseline Debian builder B
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-deb-build-b
+          path: ${{ runner.temp }}/baseline-deb/oss-deb-build-b
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.baseline_deb_run_id }}
+          github-token: ${{ github.token }}
+      - name: Download baseline Debian comparison
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-deb-comparison
+          path: ${{ runner.temp }}/baseline-deb/oss-deb-comparison
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.baseline_deb_run_id }}
+          github-token: ${{ github.token }}
+      - name: Download baseline OCI builder A
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-oci-build-a
+          path: ${{ runner.temp }}/baseline-oci/oss-oci-build-a
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.baseline_oci_run_id }}
+          github-token: ${{ github.token }}
+      - name: Download baseline OCI builder B
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-oci-build-b
+          path: ${{ runner.temp }}/baseline-oci/oss-oci-build-b
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.baseline_oci_run_id }}
+          github-token: ${{ github.token }}
+      - name: Download baseline OCI comparison
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-oci-comparison
+          path: ${{ runner.temp }}/baseline-oci/oss-oci-comparison
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.baseline_oci_run_id }}
+          github-token: ${{ github.token }}
+      - name: Download candidate Debian builder A
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-deb-build-a
+          path: ${{ runner.temp }}/candidate-deb/oss-deb-build-a
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.candidate_deb_run_id }}
+          github-token: ${{ github.token }}
+      - name: Download candidate Debian builder B
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-deb-build-b
+          path: ${{ runner.temp }}/candidate-deb/oss-deb-build-b
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.candidate_deb_run_id }}
+          github-token: ${{ github.token }}
+      - name: Download candidate Debian comparison
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-deb-comparison
+          path: ${{ runner.temp }}/candidate-deb/oss-deb-comparison
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.candidate_deb_run_id }}
+          github-token: ${{ github.token }}
+      - name: Download candidate OCI builder A
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-oci-build-a
+          path: ${{ runner.temp }}/candidate-oci/oss-oci-build-a
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.candidate_oci_run_id }}
+          github-token: ${{ github.token }}
+      - name: Download candidate OCI builder B
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-oci-build-b
+          path: ${{ runner.temp }}/candidate-oci/oss-oci-build-b
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.candidate_oci_run_id }}
+          github-token: ${{ github.token }}
+      - name: Download candidate OCI comparison
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-oci-comparison
+          path: ${{ runner.temp }}/candidate-oci/oss-oci-comparison
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.candidate_oci_run_id }}
+          github-token: ${{ github.token }}
+      - name: Build checksum-bound baseline and candidate intakes
+        run: |
+          node scripts/intake-oss-release-candidate.mjs \
+            --deb-root "$RUNNER_TEMP/baseline-deb" \
+            --oci-root "$RUNNER_TEMP/baseline-oci" \
+            --output "$RUNNER_TEMP/intakes/baseline" \
+            --source-commit '${{ needs.preflight.outputs.baseline_commit }}' \
+            --source-tag '${{ needs.preflight.outputs.baseline_tag }}' \
+            --deb-run-id '${{ needs.preflight.outputs.baseline_deb_run_id }}' \
+            --oci-run-id '${{ needs.preflight.outputs.baseline_oci_run_id }}' \
+            --created-at '${{ needs.preflight.outputs.baseline_created_at }}'
+          node scripts/intake-oss-release-candidate.mjs \
+            --deb-root "$RUNNER_TEMP/candidate-deb" \
+            --oci-root "$RUNNER_TEMP/candidate-oci" \
+            --output "$RUNNER_TEMP/intakes/candidate" \
+            --source-commit '${{ needs.preflight.outputs.candidate_commit }}' \
+            --source-tag '${{ needs.preflight.outputs.candidate_tag }}' \
+            --deb-run-id '${{ needs.preflight.outputs.candidate_deb_run_id }}' \
+            --oci-run-id '${{ needs.preflight.outputs.candidate_oci_run_id }}' \
+            --created-at '${{ needs.preflight.outputs.candidate_created_at }}'
+      - name: Upload exact lifecycle intakes
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: oss-artifact-lifecycle-intakes
+          path: ${{ runner.temp }}/intakes
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 3
+
+  debian-candidate-fresh:
+    name: Candidate Debian fresh install
+    needs: intakes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: release
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Download same-run lifecycle intakes
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-artifact-lifecycle-intakes
+          path: ${{ runner.temp }}/intakes
+      - name: Exercise exact fresh install and removal
+        run: |
+          sudo python3 -B scripts/collect-oss-artifact-lifecycle-fresh.py \
+            --candidate "$RUNNER_TEMP/intakes/candidate" \
+            --baseline "$RUNNER_TEMP/intakes/baseline" \
+            --evidence /var/tmp/bonvoyage-lifecycle-fresh \
+            --confirm-disposable-host "$(hostname)" \
+            --confirm-retained-state RETAIN_BONVOYAGE_OPERATOR_STATE
+          sudo chown -R "$(id -u):$(id -g)" /var/tmp/bonvoyage-lifecycle-fresh
+      - name: Upload bounded fresh-install evidence
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: oss-artifact-lifecycle-debian-candidate-fresh
+          path: /var/tmp/bonvoyage-lifecycle-fresh
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 3
+
+  debian-transition:
+    name: Debian upgrade rollback and reactivation
+    needs: intakes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: release
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Download same-run lifecycle intakes
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-artifact-lifecycle-intakes
+          path: ${{ runner.temp }}/intakes
+      - name: Exercise upgrade rollback reactivation and removal
+        run: |
+          sudo python3 -B scripts/collect-oss-debian-transition.py \
+            --candidate "$RUNNER_TEMP/intakes/candidate" \
+            --baseline "$RUNNER_TEMP/intakes/baseline" \
+            --evidence /var/tmp/bonvoyage-debian-transition \
+            --confirm-disposable-host "$(hostname)" \
+            --confirm-retained-state RETAIN_BONVOYAGE_OPERATOR_STATE
+          sudo chown -R "$(id -u):$(id -g)" /var/tmp/bonvoyage-debian-transition
+      - name: Upload bounded Debian transition evidence
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: oss-artifact-lifecycle-debian-transition
+          path: /var/tmp/bonvoyage-debian-transition
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 3
+
+  oci-lifecycle:
+    name: OCI replacement rollback and reactivation
+    needs: intakes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    environment: release
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Download same-run lifecycle intakes
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-artifact-lifecycle-intakes
+          path: ${{ runner.temp }}/intakes
+      - name: Exercise replacement rollback reactivation and cleanup
+        run: |
+          sudo python3 -B scripts/collect-oss-oci-lifecycle.py \
+            --candidate "$RUNNER_TEMP/intakes/candidate" \
+            --baseline "$RUNNER_TEMP/intakes/baseline" \
+            --evidence /var/tmp/bonvoyage-oci-lifecycle
+          sudo chown -R "$(id -u):$(id -g)" /var/tmp/bonvoyage-oci-lifecycle
+      - name: Upload bounded OCI lifecycle evidence
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: oss-artifact-lifecycle-oci
+          path: /var/tmp/bonvoyage-oci-lifecycle
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 3
+
+  aggregate:
+    name: Verify the complete lifecycle observation
+    needs:
+      - preflight
+      - intakes
+      - debian-candidate-fresh
+      - debian-transition
+      - oci-lifecycle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release
+    steps:
+      - name: Check out the exact tagged commit without retained credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Use the reviewed Node.js runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+      - name: Download same-run lifecycle intakes
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-artifact-lifecycle-intakes
+          path: ${{ runner.temp }}/intakes
+      - name: Download fresh-install lane
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-artifact-lifecycle-debian-candidate-fresh
+          path: ${{ runner.temp }}/lanes/debian-candidate-fresh
+      - name: Download Debian transition lane
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-artifact-lifecycle-debian-transition
+          path: ${{ runner.temp }}/lanes/debian-transition
+      - name: Download OCI lifecycle lane
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: oss-artifact-lifecycle-oci
+          path: ${{ runner.temp }}/lanes/oci-lifecycle
+      - name: Assemble and independently verify the lifecycle observation
+        run: |
+          CAPTURED_AT="$(node -e 'process.stdout.write(new Date().toISOString())')"
+          node scripts/assemble-oss-artifact-lifecycle.mjs \
+            --contract "$LIFECYCLE_CONTRACT" \
+            --candidate "$RUNNER_TEMP/intakes/candidate" \
+            --baseline "$RUNNER_TEMP/intakes/baseline" \
+            --debian-candidate-fresh "$RUNNER_TEMP/lanes/debian-candidate-fresh" \
+            --debian-transition "$RUNNER_TEMP/lanes/debian-transition" \
+            --oci-lifecycle "$RUNNER_TEMP/lanes/oci-lifecycle" \
+            --output "$RUNNER_TEMP/oss-artifact-lifecycle-evidence" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --captured-at "$CAPTURED_AT"
+          node scripts/verify-oss-artifact-lifecycle.mjs \
+            --contract "$LIFECYCLE_CONTRACT" \
+            --candidate "$RUNNER_TEMP/intakes/candidate" \
+            --baseline "$RUNNER_TEMP/intakes/baseline" \
+            --evidence "$RUNNER_TEMP/oss-artifact-lifecycle-evidence"
+      - name: Upload non-publishing lifecycle evidence
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: oss-artifact-lifecycle-evidence
+          path: ${{ runner.temp }}/oss-artifact-lifecycle-evidence
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 3

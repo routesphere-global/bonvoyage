@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-oss-artifact-lifecycle-workflow-contract",
+  "activation": {
+    "state": "activatable",
+    "template_path": "packaging/release/oss-artifact-lifecycle.workflow.yml",
+    "active_workflow_path": ".github/workflows/oss-artifact-lifecycle.yml",
+    "public_repository_created": true,
+    "repository_settings_verified": true,
+    "protected_release_tags_verified": true
+  },
+  "source": {
+    "repository": "https://github.com/routesphere-global/bonvoyage",
+    "event": "workflow_dispatch",
+    "ref_type": "tag",
+    "tag_pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$",
+    "protected_tag_required": true,
+    "pushed_commit_required": true,
+    "clean_checkout_required": true,
+    "newer_than_baseline_required": true
+  },
+  "execution": {
+    "environment": "release",
+    "runner": "ubuntu-24.04",
+    "platform": "linux/amd64",
+    "node_version": "24",
+    "permissions": {
+      "actions": "read",
+      "contents": "read"
+    },
+    "jobs": {
+      "preflight": {
+        "timeout_minutes": 10
+      },
+      "intakes": {
+        "timeout_minutes": 20
+      },
+      "debian-candidate-fresh": {
+        "timeout_minutes": 30
+      },
+      "debian-transition": {
+        "timeout_minutes": 45
+      },
+      "oci-lifecycle": {
+        "timeout_minutes": 35
+      },
+      "aggregate": {
+        "timeout_minutes": 15
+      }
+    },
+    "artifact_retention_days": 3,
+    "maximum_billable_job_minutes": 155,
+    "manual_only": true,
+    "scheduled_runs": false,
+    "self_hosted_runners": false,
+    "cancel_in_progress": false
+  },
+  "actions": {
+    "checkout": "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+    "setup_node": "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38",
+    "download_artifact": "actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53",
+    "upload_artifact": "actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4"
+  },
+  "runtime_images": {
+    "skopeo": "quay.io/skopeo/stable@sha256:35bf578e3fa75a1f23bbec819fc1bd9745eacb4a0594dea203e426da66e95e5a",
+    "python": "python:3.12-slim@sha256:1148dbb014615300fa7e713b2f94f550c0d1c69780c0805f84f093ceee34dd0b"
+  },
+  "evidence": {
+    "intakes": "oss-artifact-lifecycle-intakes",
+    "lanes": [
+      "oss-artifact-lifecycle-debian-candidate-fresh",
+      "oss-artifact-lifecycle-debian-transition",
+      "oss-artifact-lifecycle-oci"
+    ],
+    "final": "oss-artifact-lifecycle-evidence"
+  },
+  "authority": {
+    "release_admitted": false,
+    "publishable": false,
+    "github_release_created": false,
+    "package_uploaded": false,
+    "container_uploaded": false,
+    "signature_created": false,
+    "provenance_created": false
+  }
+}

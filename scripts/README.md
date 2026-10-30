@@ -140,8 +140,28 @@ the complete ordered phase and check set, and a checksum-bound inventory of all
 raw evidence. It rejects changed baseline bytes, mixed intake identities,
 missing or false checks, unbound evidence, links, repeated attempts and every
 release-authority escalation. Run `make oss-artifact-lifecycle-test` for its
-portable adversarial suite. These tests do not install either artifact, execute
-the privileged hosted lifecycle, admit a release, sign or publish a product.
+portable adversarial suite.
+
+`discover-oss-artifact-lifecycle-runs.mjs` selects only the pinned rollback
+runs and one exact successful run-attempt-one Debian and OCI build for a newer
+protected candidate. It verifies workflow identity, timestamps, source, exact
+artifact names, run binding and expiry through fixed GitHub API endpoints.
+`collect-oss-artifact-lifecycle-fresh.py`,
+`collect-oss-debian-transition.py` and `collect-oss-oci-lifecycle.py` exercise
+the separate fresh, package-transition and container-transition lanes on
+disposable Ubuntu 24.04 AMD64 jobs. `assemble-oss-artifact-lifecycle.mjs`
+accepts only the three checksum-bound same-run lane trees before invoking the
+independent verifier.
+
+`verify-oss-artifact-lifecycle-workflow.mjs` pins the manual workflow's exact
+job graph, protected newer tag, read-only permissions, action commits, runtime
+image digests, download sources, evidence destinations, command hashes,
+timeouts and three-day retention. It rejects template drift, automatic
+triggers, secrets, unapproved actions, error suppression, signing, publication
+and authority escalation. The complete target contains 46 portable cases.
+They do not execute the privileged hosted lifecycle, admit a release, sign or
+publish a product; only a later successful hosted run can provide that
+lifecycle evidence.
 
 `phase4-console-community-package.sh` builds and qualifies the proprietary,
 no-cost Console Free Debian package for Ubuntu 24.04 AMD64. It requires a clean
