@@ -48,7 +48,7 @@
   },
   "builder_image": {
     "repository": "ghcr.io/routesphere-global/bonvoyage-oci-builder",
-    "reference": "ghcr.io/routesphere-global/bonvoyage-oci-builder@sha256:51d38192e3bdd43714b77b30b87908030a0424224aacd75747125186624ada9b",
+    "reference": "ghcr.io/routesphere-global/bonvoyage-oci-builder@sha256:e217afae27d23e24c994198e4bc285fe17936bf483249661b5f89c2f67b5850c",
     "verification_receipt": "packaging/release/oci/oss-oci-builder-image-verification.json",
     "entrypoint": "/usr/local/bin/bonvoyage-oss-oci-builder",
     "network": "none",
