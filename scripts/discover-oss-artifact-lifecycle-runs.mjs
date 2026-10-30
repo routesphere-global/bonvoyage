@@ -22,15 +22,23 @@ const WORKFLOWS = Object.freeze({
   debian: Object.freeze({
     name: 'OSS Debian Reproducibility Candidate',
     path: '.github/workflows/oss-deb-reproducibility.yml',
-    artifacts: Object.freeze([
+    baselineArtifacts: Object.freeze([
       'oss-deb-build-a', 'oss-deb-build-b', 'oss-deb-comparison',
+    ]),
+    candidateArtifacts: Object.freeze([
+      'oss-deb-build-a', 'oss-deb-build-b', 'oss-deb-comparison',
+      'oss-deb-provenance',
     ]),
   }),
   oci: Object.freeze({
     name: 'OSS OCI Reproducibility Candidate',
     path: '.github/workflows/oss-oci-reproducibility.yml',
-    artifacts: Object.freeze([
+    baselineArtifacts: Object.freeze([
       'oss-oci-build-a', 'oss-oci-build-b', 'oss-oci-comparison',
+    ]),
+    candidateArtifacts: Object.freeze([
+      'oss-oci-build-a', 'oss-oci-build-b', 'oss-oci-comparison',
+      'oss-oci-provenance',
     ]),
   }),
 });
@@ -254,10 +262,10 @@ export function selectArtifactLifecycleRuns(options) {
     requireCondition(candidate[kind].id !== baseline[kind].id,
       `${kind} candidate run must differ from the baseline run`);
     validateArtifacts(options.artifactResponses[`baseline_${kind}`],
-      `baseline ${kind}`, baseline[kind], WORKFLOWS[kind].artifacts,
+      `baseline ${kind}`, baseline[kind], WORKFLOWS[kind].baselineArtifacts,
       currentCreated.milliseconds);
     validateArtifacts(options.artifactResponses[`candidate_${kind}`],
-      `candidate ${kind}`, candidate[kind], WORKFLOWS[kind].artifacts,
+      `candidate ${kind}`, candidate[kind], WORKFLOWS[kind].candidateArtifacts,
       currentCreated.milliseconds);
   }
   requireCondition(new Set([
