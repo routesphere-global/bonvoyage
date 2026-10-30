@@ -107,7 +107,7 @@ const RUN_SHA256 = Object.freeze({
   'Discover exact unexpired baseline and candidate artifacts':
     'c2ad5c3af57fe2ec9fd718382909f3f34ee64383f3f8d04f48d33b8a89e217fc',
   'Build checksum-bound baseline and candidate intakes':
-    '3c1dda6d9c5fdb7c1a1b18595cb1418f337f68622e29b9fec20b6e700927b01e',
+    'dedbf527c1249493d23c6499c9163a97899335a1abf8a70677c0663387892192',
   'Exercise exact fresh install and removal':
     'df1df4626cf08bb8d2786ecbdc8a964e4f971e4f8f899643833343252aa4fe34',
   'Exercise upgrade rollback reactivation and removal':
