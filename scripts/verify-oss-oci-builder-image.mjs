@@ -12,14 +12,18 @@ const LOCAL_STATE = 'local-foundation-unpublished';
 const PUBLIC_STATE = 'public-foundation-verified';
 const REPOSITORY = 'ghcr.io/routesphere-global/bonvoyage-oci-builder';
 const ENTRYPOINT = '/usr/local/bin/bonvoyage-oss-oci-builder';
+const FOUNDATION_REFERENCE =
+  `${REPOSITORY}@sha256:51d38192e3bdd43714b77b30b87908030a0424224aacd75747125186624ada9b`;
+const PACKAGING_SNAPSHOT = '20261006T000000Z';
+const ZLIB1G_VERSION = '1:1.3.dfsg-3.1ubuntu2.3';
+const ZLIB1G_SHA256 =
+  '376249c8de139568221dbb242318cc8cb8f02299e3a62b7432948e1754fbddf9';
+const ZLIB1G_DEV_SHA256 =
+  '419902a649e1078f24596cdf31ced9c839519828790f59888056fcdcd58e8a28';
 const IMAGE_ID = /^sha256:[a-f0-9]{64}$/u;
 const IMAGE_REFERENCE = /^(ghcr[.]io\/routesphere-global\/bonvoyage-oci-builder)@sha256:([a-f0-9]{64})$/u;
 const RECEIPT_CLASSIFICATION =
   'routesphere-bonvoyage-oss-oci-builder-image-verification';
-const SNAPSHOT_STAGES = [
-  'libjwt-build', 'nghttp2-build', 'llhttp-build', 'protocol-fuzz-dependencies',
-  're2-build', 'cares-build', 'seastar-build',
-];
 
 function fail(message) {
   throw new Error(message);
@@ -62,7 +66,7 @@ function validateRelativePath(value, label) {
 function validateContract(contract) {
   exactKeys(contract, [
     'schema_version', 'classification', 'state', 'image', 'build', 'runtime',
-    'registry', 'authority',
+    'remediation', 'registry', 'authority',
   ], 'contract');
   requireCondition(contract.schema_version === 1 &&
     contract.classification === CLASSIFICATION &&
@@ -70,16 +74,26 @@ function validateContract(contract) {
   'unsupported OCI builder-image contract');
   const image = object(contract.image, 'contract.image');
   exactKeys(image, [
-    'dockerfile', 'target', 'platform', 'ubuntu_base', 'packaging_snapshot',
+    'dockerfile', 'target', 'platform', 'ubuntu_base', 'foundation_reference',
+    'packaging_snapshot',
     'entrypoint_source', 'entrypoint', 'default_user', 'working_directory',
   ], 'contract.image');
   requireCondition(image.dockerfile === 'deploy/docker/bonvoyage/Dockerfile' &&
     image.target === 'oss-oci-builder' && image.platform === 'linux/amd64' &&
     /^ubuntu:24[.]04@sha256:[a-f0-9]{64}$/u.test(image.ubuntu_base) &&
-    image.packaging_snapshot === '20261029T000000Z' &&
+    image.foundation_reference === FOUNDATION_REFERENCE &&
+    image.packaging_snapshot === PACKAGING_SNAPSHOT &&
     image.entrypoint_source === 'scripts/oss-oci-builder-entrypoint.py' &&
     image.entrypoint === ENTRYPOINT && image.default_user === '65532:65532' &&
     image.working_directory === '/workspace', 'unexpected OCI builder identity');
+  const remediation = object(contract.remediation, 'contract.remediation');
+  exactKeys(remediation, [
+    'zlib1g_version', 'zlib1g_sha256', 'zlib1g_dev_sha256',
+  ], 'contract.remediation');
+  requireCondition(remediation.zlib1g_version === ZLIB1G_VERSION &&
+    remediation.zlib1g_sha256 === ZLIB1G_SHA256 &&
+    remediation.zlib1g_dev_sha256 === ZLIB1G_DEV_SHA256,
+  'unexpected OCI builder remediation identity');
   const build = object(contract.build, 'contract.build');
   exactKeys(build, [
     'source_compiled_at_runtime', 'source_or_binary_embedded', 'build_type',
@@ -168,52 +182,33 @@ function validateDockerfile(contract, source) {
   requireCondition(source.includes(`ARG UBUNTU_IMAGE=${contract.image.ubuntu_base}`),
     'Dockerfile Ubuntu base does not match OCI builder contract');
   requireCondition(source.includes(
-    `ARG UBUNTU_SNAPSHOT=${contract.image.packaging_snapshot}`),
-  'Dockerfile Ubuntu snapshot does not match OCI builder contract');
-  const snapshotMarker = 'FROM ${UBUNTU_IMAGE} AS ubuntu-snapshot';
-  const snapshotStart = source.indexOf(snapshotMarker);
-  const snapshotRemaining = source.slice(snapshotStart + snapshotMarker.length);
-  const snapshotNextStage = snapshotRemaining.search(/^FROM\s+/mu);
-  requireCondition(snapshotStart >= 0 && snapshotNextStage >= 0,
-    'bounded shared Ubuntu snapshot stage required');
-  const snapshotStage = snapshotRemaining.slice(0, snapshotNextStage);
-  for (const marker of [
-    'ARG UBUNTU_SNAPSHOT',
-    `test "${'${UBUNTU_SNAPSHOT}'}" = "${contract.image.packaging_snapshot}"`,
-    'sha256:641de77d8f142cfd62a1a6f964ba67b20754d3337c480efb529d086075a06c9a',
-    'https://archive.ubuntu.com/ubuntu/pool/main/c/ca-certificates/ca-certificates_20240203_all.deb',
-    'dpkg-deb --field /tmp/ca-certificates.deb Package',
-    'dpkg-deb --field /tmp/ca-certificates.deb Version',
-    'dpkg-deb --field /tmp/ca-certificates.deb Architecture',
-    'dpkg-deb --extract /tmp/ca-certificates.deb',
-    'cat /usr/share/ca-certificates/mozilla/*.crt',
-    '> /etc/ssl/certs/ca-certificates.crt',
-    'APT::Update::Error-Mode=any',
-    'snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}',
-    'non-snapshot Ubuntu package index rejected',
-  ]) requireCondition(snapshotStage.includes(marker),
-    `shared Ubuntu snapshot stage is missing ${marker}`);
-  requireCondition(!snapshotStage.includes('apt-get install') &&
-    !snapshotStage.includes('_amd64.deb') && !snapshotStage.includes('_arm64.deb'),
-  'shared Ubuntu snapshot bootstrap must be package-index independent and portable');
-  for (const stageName of SNAPSHOT_STAGES) {
-    requireCondition(source.includes(`FROM ubuntu-snapshot AS ${stageName}`),
-      `${stageName} must inherit the shared Ubuntu snapshot`);
-  }
-  const startMarker = 'FROM oss-deb-builder AS oss-oci-builder';
+    `ARG OSS_OCI_BUILDER_FOUNDATION=${contract.image.foundation_reference}`),
+  'Dockerfile OCI builder foundation does not match the contract');
+  const startMarker = 'FROM ${OSS_OCI_BUILDER_FOUNDATION} AS oss-oci-builder';
   const endMarker = 'FROM scratch AS runtime';
   const start = source.indexOf(startMarker);
   const end = source.indexOf(endMarker, start + startMarker.length);
   requireCondition(start >= 0 && end > start, 'bounded oss-oci-builder stage required');
   const stage = source.slice(start, end);
   for (const marker of [
+    `ADD --checksum=sha256:${contract.remediation.zlib1g_sha256}`,
+    `ADD --checksum=sha256:${contract.remediation.zlib1g_dev_sha256}`,
+    'zlib1g_1.3.dfsg-3.1ubuntu2.3_amd64.deb',
+    'zlib1g-dev_1.3.dfsg-3.1ubuntu2.3_amd64.deb',
+    'dpkg -i /tmp/zlib1g.deb /tmp/zlib1g-dev.deb',
+    `"${contract.remediation.zlib1g_version}"`,
+    'test -z "$(dpkg --audit)"',
     'scripts/build-oss-oci.py', 'scripts/build-runtime-package-index.py',
     contract.image.entrypoint_source, 'packaging/release/oci/oss-oci-image-contract.json',
     `USER ${contract.image.default_user}`, `WORKDIR ${contract.image.working_directory}`,
     `ENTRYPOINT ["${contract.image.entrypoint}"]`,
     'io.routesphere.bonvoyage.role="oss-oci-builder"',
+    `io.routesphere.bonvoyage.ubuntu-snapshot="${contract.image.packaging_snapshot}"`,
+    `io.routesphere.bonvoyage.zlib1g-version="${contract.remediation.zlib1g_version}"`,
     'io.routesphere.bonvoyage.release-authority="false"',
   ]) requireCondition(stage.includes(marker), `OCI builder stage is missing ${marker}`);
+  requireCondition(!stage.includes('apt-get'),
+    'OCI builder remediation must not depend on a live package index');
   for (const forbidden of [
     /COPY\s+(?:--[^\s]+\s+)*dataplane\//u,
     /COPY\s+(?:--[^\s]+\s+)*api\//u,
@@ -282,6 +277,8 @@ function localObservation(contract, inspection) {
     labels['io.routesphere.bonvoyage.role'] === 'oss-oci-builder' &&
     labels['io.routesphere.bonvoyage.ubuntu-snapshot'] ===
     contract.image.packaging_snapshot &&
+    labels['io.routesphere.bonvoyage.zlib1g-version'] ===
+      contract.remediation.zlib1g_version &&
     labels['io.routesphere.bonvoyage.release-authority'] === 'false',
   'local image inspection does not satisfy the OCI builder contract');
   return {

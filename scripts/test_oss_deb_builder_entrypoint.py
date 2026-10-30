@@ -165,14 +165,15 @@ class OssDebBuilderEntrypointTests(unittest.TestCase):
         for name in ("libjwt", "opentelemetry-proto", "seastar"):
             self.assertIn(name, text)
 
-    def test_builder_image_preserves_seastar_license_before_source_cleanup(self):
+    def test_builder_image_uses_source_free_immutable_foundation(self):
         dockerfile = Path(__file__).resolve().parent.parent / "deploy/docker/bonvoyage/Dockerfile"
         stage = dockerfile.read_text().split(
-            "FROM seastar-build AS oss-deb-builder", 1)[1].split("\nFROM ", 1)[0]
-        preserve = "install -D -m 0644 /usr/src/seastar/LICENSE"
-        cleanup = "rm -rf /usr/src/seastar"
-        self.assertIn(preserve, stage)
-        self.assertLess(stage.index(preserve), stage.index(cleanup))
+            "FROM ${OSS_DEB_BUILDER_FOUNDATION} AS oss-deb-builder", 1)[1].split(
+                "\nFROM ", 1)[0]
+        self.assertIn("test -f /opt/seastar/lib/cmake/Seastar/SeastarConfig.cmake", stage)
+        self.assertNotIn("/usr/src/seastar", stage)
+        self.assertNotIn("COPY --from=", stage)
+        self.assertNotIn("apt-get", stage)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,8 @@
 
 ARG UBUNTU_IMAGE=ubuntu:24.04@sha256:561618e2c15bf2397621dd04f96926663a3b5616c189cf7e38db7e82f5c538ea
 ARG UBUNTU_SNAPSHOT=20261029T000000Z
+ARG OSS_DEB_BUILDER_FOUNDATION=ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:f32465ff914634bcb5bbb2ff9271dd1ba0cbb8838be0ab26c696e64d2a17a225
+ARG OSS_OCI_BUILDER_FOUNDATION=ghcr.io/routesphere-global/bonvoyage-oci-builder@sha256:51d38192e3bdd43714b77b30b87908030a0424224aacd75747125186624ada9b
 
 FROM ${UBUNTU_IMAGE} AS ubuntu-snapshot
 
@@ -663,40 +665,33 @@ RUN apt-get update \
        fi
 
 # This target is a compiler and Debian assembler for the exact public source
-# mounted at runtime. It deliberately contains no BonVoyage source or binary.
-FROM seastar-build AS oss-deb-builder
+# mounted at runtime. Its compiler foundation is immutable and source-free; the
+# two checksum-locked zlib packages are the complete CVE remediation delta.
+FROM ${OSS_DEB_BUILDER_FOUNDATION} AS oss-deb-builder
 
-ARG UBUNTU_SNAPSHOT
+USER 0:0
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV CC=gcc-13
-ENV CXX=g++-13
-ENV PKG_CONFIG_PATH=/opt/c-ares/lib/pkgconfig
+ADD --checksum=sha256:376249c8de139568221dbb242318cc8cb8f02299e3a62b7432948e1754fbddf9 \
+    https://archive.ubuntu.com/ubuntu/pool/main/z/zlib/zlib1g_1.3.dfsg-3.1ubuntu2.3_amd64.deb \
+    /tmp/zlib1g.deb
+ADD --checksum=sha256:419902a649e1078f24596cdf31ced9c839519828790f59888056fcdcd58e8a28 \
+    https://archive.ubuntu.com/ubuntu/pool/main/z/zlib/zlib1g-dev_1.3.dfsg-3.1ubuntu2.3_amd64.deb \
+    /tmp/zlib1g-dev.deb
 
-COPY --from=libjwt-build /opt/libjwt /opt/libjwt
-COPY --from=nghttp2-build /opt/nghttp2 /opt/nghttp2
-COPY --from=llhttp-build /opt/llhttp /opt/llhttp
-COPY --from=re2-build /opt/abseil /opt/abseil
-COPY --from=re2-build /opt/re2 /opt/re2
-
-# Package-only additions retain and recheck the shared fail-closed snapshot.
-# The complete installed-package and tool inventory is captured again at runtime.
-RUN test "${UBUNTU_SNAPSHOT}" = "20261029T000000Z" \
-    && grep -Fxq \
-      "URIs: https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}" \
-      /etc/apt/sources.list.d/ubuntu.sources \
-    && apt-get update -o APT::Update::Error-Mode=any \
-    && apt-get indextargets --format '$(URI)' \
-      | sed '/^$/d' | sort -u > /tmp/bonvoyage-apt-index-uris \
-    && test -s /tmp/bonvoyage-apt-index-uris \
-    && if grep -Ev \
-      "^https://snapshot[.]ubuntu[.]com/ubuntu/${UBUNTU_SNAPSHOT}/" \
-      /tmp/bonvoyage-apt-index-uris; then \
-         echo 'non-snapshot Ubuntu package index rejected' >&2; \
-         exit 2; \
-       fi \
-    && apt-get install -y --no-install-recommends \
-      debhelper dpkg-dev fakeroot \
+RUN test "$(dpkg-deb --field /tmp/zlib1g.deb Package)" = "zlib1g" \
+    && test "$(dpkg-deb --field /tmp/zlib1g.deb Version)" = \
+      "1:1.3.dfsg-3.1ubuntu2.3" \
+    && test "$(dpkg-deb --field /tmp/zlib1g.deb Architecture)" = "amd64" \
+    && test "$(dpkg-deb --field /tmp/zlib1g-dev.deb Package)" = "zlib1g-dev" \
+    && test "$(dpkg-deb --field /tmp/zlib1g-dev.deb Version)" = \
+      "1:1.3.dfsg-3.1ubuntu2.3" \
+    && test "$(dpkg-deb --field /tmp/zlib1g-dev.deb Architecture)" = "amd64" \
+    && dpkg -i /tmp/zlib1g.deb /tmp/zlib1g-dev.deb \
+    && test "$(dpkg-query -W -f='${Version}' zlib1g)" = \
+      "1:1.3.dfsg-3.1ubuntu2.3" \
+    && test "$(dpkg-query -W -f='${Version}' zlib1g-dev)" = \
+      "1:1.3.dfsg-3.1ubuntu2.3" \
+    && test -z "$(dpkg --audit)" \
     && command -v cmake \
     && command -v ctest \
     && command -v dh \
@@ -707,9 +702,7 @@ RUN test "${UBUNTU_SNAPSHOT}" = "20261029T000000Z" \
     && command -v protoc \
     && command -v python3 \
     && test -f /opt/seastar/lib/cmake/Seastar/SeastarConfig.cmake \
-    && install -D -m 0644 /usr/src/seastar/LICENSE \
-      /opt/seastar/share/licenses/seastar/LICENSE \
-    && rm -rf /usr/src/seastar /var/lib/apt/lists/* /tmp/*
+    && rm -f /tmp/zlib1g.deb /tmp/zlib1g-dev.deb
 
 COPY scripts/oss-deb-builder-entrypoint.py \
   /usr/local/bin/bonvoyage-oss-deb-builder
@@ -720,34 +713,37 @@ LABEL org.opencontainers.image.title="RouteSphere BonVoyage OSS Debian Builder" 
       org.opencontainers.image.description="Offline Linux AMD64 compiler and Debian technical-candidate assembler" \
       org.opencontainers.image.vendor="RouteSphere" \
       io.routesphere.bonvoyage.role="oss-deb-builder" \
-      io.routesphere.bonvoyage.ubuntu-snapshot="20261029T000000Z" \
+      io.routesphere.bonvoyage.ubuntu-snapshot="20261006T000000Z" \
+      io.routesphere.bonvoyage.zlib1g-version="1:1.3.dfsg-3.1ubuntu2.3" \
       io.routesphere.bonvoyage.release-authority="false"
 
 USER 65532:65532
 WORKDIR /workspace
 ENTRYPOINT ["/usr/local/bin/bonvoyage-oss-deb-builder"]
 
-# This target reuses the source-free compiler foundation but emits one
-# deterministic OCI image layout. It contains no BonVoyage source or binary;
-# the exact public checkout is compiled, tested and assembled only at runtime.
-FROM oss-deb-builder AS oss-oci-builder
+# This target patches the independently published source-free OCI foundation.
+# It contains no BonVoyage source or binary; the exact public checkout is
+# compiled, tested and assembled only at runtime.
+FROM ${OSS_OCI_BUILDER_FOUNDATION} AS oss-oci-builder
 
 USER 0:0
 
-COPY --from=nghttp2-build /opt/nghttp2/share/licenses/nghttp2/COPYING \
-  /opt/bonvoyage-oci/rootfs-static/usr/share/licenses/nghttp2/COPYING
-COPY --from=libjwt-build /opt/libjwt/share/licenses/libjwt/LICENSE \
-  /opt/bonvoyage-oci/rootfs-static/usr/share/licenses/libjwt/LICENSE
-COPY --from=seastar-build /usr/src/seastar/LICENSE \
-  /opt/bonvoyage-oci/rootfs-static/usr/share/licenses/seastar/LICENSE
-COPY --from=cares-build /opt/c-ares/share/licenses/c-ares/LICENSE.md \
-  /opt/bonvoyage-oci/rootfs-static/usr/share/licenses/c-ares/LICENSE.md
-COPY --from=re2-build /opt/abseil/share/licenses/abseil/LICENSE \
-  /opt/bonvoyage-oci/rootfs-static/usr/share/licenses/abseil/LICENSE
-COPY --from=re2-build /opt/re2/share/licenses/re2/LICENSE \
-  /opt/bonvoyage-oci/rootfs-static/usr/share/licenses/re2/LICENSE
-COPY --from=llhttp-build /opt/llhttp/share/licenses/llhttp/LICENSE-MIT \
-  /opt/bonvoyage-oci/rootfs-static/usr/share/licenses/llhttp/LICENSE-MIT
+ADD --checksum=sha256:376249c8de139568221dbb242318cc8cb8f02299e3a62b7432948e1754fbddf9 \
+    https://archive.ubuntu.com/ubuntu/pool/main/z/zlib/zlib1g_1.3.dfsg-3.1ubuntu2.3_amd64.deb \
+    /tmp/zlib1g.deb
+ADD --checksum=sha256:419902a649e1078f24596cdf31ced9c839519828790f59888056fcdcd58e8a28 \
+    https://archive.ubuntu.com/ubuntu/pool/main/z/zlib/zlib1g-dev_1.3.dfsg-3.1ubuntu2.3_amd64.deb \
+    /tmp/zlib1g-dev.deb
+
+RUN test "$(dpkg-deb --field /tmp/zlib1g.deb Package)" = "zlib1g" \
+    && test "$(dpkg-deb --field /tmp/zlib1g-dev.deb Package)" = "zlib1g-dev" \
+    && dpkg -i /tmp/zlib1g.deb /tmp/zlib1g-dev.deb \
+    && test "$(dpkg-query -W -f='${Version}' zlib1g)" = \
+      "1:1.3.dfsg-3.1ubuntu2.3" \
+    && test "$(dpkg-query -W -f='${Version}' zlib1g-dev)" = \
+      "1:1.3.dfsg-3.1ubuntu2.3" \
+    && test -z "$(dpkg --audit)" \
+    && rm -f /tmp/zlib1g.deb /tmp/zlib1g-dev.deb
 
 COPY security/dependencies/nghttp2-1.70.0.json \
   /opt/bonvoyage-oci/rootfs-static/usr/share/bonvoyage/dependencies/nghttp2-1.70.0.json
@@ -788,7 +784,8 @@ LABEL org.opencontainers.image.title="RouteSphere BonVoyage OSS OCI Builder" \
       org.opencontainers.image.description="Offline Linux AMD64 compiler and deterministic OCI technical-candidate assembler" \
       org.opencontainers.image.vendor="RouteSphere" \
       io.routesphere.bonvoyage.role="oss-oci-builder" \
-      io.routesphere.bonvoyage.ubuntu-snapshot="20261029T000000Z" \
+      io.routesphere.bonvoyage.ubuntu-snapshot="20261006T000000Z" \
+      io.routesphere.bonvoyage.zlib1g-version="1:1.3.dfsg-3.1ubuntu2.3" \
       io.routesphere.bonvoyage.release-authority="false"
 
 USER 65532:65532
