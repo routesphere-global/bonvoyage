@@ -25,6 +25,16 @@ reports need their original historical verifier, not a relaxed current gate.
 
 Small workflow entrypoints for development, tests, benchmarks, releases, and local operations.
 
+`verify-oss-release-workflow.mjs` pins the manual protected-tag identity
+foundation in `.github/workflows/release.yml`. It allows read-only contents and
+one job-scoped GitHub OIDC token solely to sign and verify the fixed document
+created by `create-oss-release-identity-probe.mjs`. It rejects automatic
+triggers, workflow inputs, secrets, unpinned actions, excessive permissions,
+changed tool or identity pins, product signing, provenance, publication
+commands and authority escalation. The probe binds the public repository,
+exact tag, commit and run while retaining all product-release authority as
+false. Run `make oss-release-workflow-test` for the focused fixtures.
+
 `intake-oss-release-candidate.mjs` performs the fail-closed offline handoff from
 the hosted Debian and OCI reproducibility workflows. It requires one exact clean
 tagged public source, distinct run IDs, two byte-identical builders per format,
