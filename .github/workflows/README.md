@@ -31,17 +31,30 @@ separate least-privilege review.
 
 ## Release workflow identity boundary
 
-There is currently no active `.github/workflows/release.yml`. The verified
-release contract requires keyless signatures whose subject is exactly that
-workflow at `refs/tags/<tag>`. Existing immutable candidates, including
-`v1.0.0-rc.6`, cannot acquire that identity retroactively and their tags must
-not be moved.
+`.github/workflows/release.yml` now establishes only the protected keyless
+workflow identity required by the verified-release contract. It is manual,
+strictly tag-bound, guarded by the `release` environment and limited to
+read-only contents plus one job-scoped `id-token: write` permission. It creates
+and verifies a signature over a fixed generated identity probe. It cannot sign
+a caller-selected or product artifact, generate product provenance, create a
+GitHub Release, upload a package or container, or authorize publication.
+
+The contract and `scripts/verify-oss-release-workflow.mjs` pin the complete
+workflow boundary, action revisions, Cosign version, evidence paths, timeout,
+retention and false authority fields. Run `make oss-release-workflow-test` for
+the focused adversarial checks.
+
+The verified release contract requires product signatures whose subject is
+exactly this workflow at `refs/tags/<tag>`. Existing immutable candidates,
+including `v1.0.0-rc.6`, cannot acquire that identity retroactively and their
+tags must not be moved.
 
 The hosted Debian and OCI workflows establish reproducible technical-candidate
 bytes only. The first fully signable candidate must be cut from a later commit
-that already contains the separately reviewed, protected and least-privilege
-release workflow. Activating that workflow is a distinct checkpoint and does
-not by itself authorize a GitHub Release, package upload, container upload or
+that already contains this separately reviewed workflow and any subsequently
+reviewed product-artifact gates. Activating the identity foundation is a
+distinct checkpoint and does not by itself authorize a product signature,
+provenance statement, GitHub Release, package upload, container upload or
 publication.
 
 ## Inactive Debian reproducibility candidate
