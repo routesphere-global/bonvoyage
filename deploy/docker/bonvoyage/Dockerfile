@@ -9,11 +9,12 @@ ARG UBUNTU_SNAPSHOT
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Bootstrap HTTPS from the architecture-independent, checksum-locked CA
-# package in the same snapshot. The minimal Ubuntu base intentionally omits the
-# CA bundle, so using apt first would either fail TLS or trust a moving mirror.
-ADD --checksum=sha256:77ecadb27cdb16b44d02ef8fbdfc0630c37ecae0b95a750418aa5e25f534b662 \
-    https://snapshot.ubuntu.com/ubuntu/20261029T000000Z/pool/main/c/ca-certificates/ca-certificates_20240203_all.deb \
+# Bootstrap HTTPS from one architecture-independent CA package whose bytes and
+# package identity are pinned below. BuildKit fetches this object before the
+# minimal Ubuntu base has a CA bundle; all apt indexes and installed packages
+# remain restricted to the immutable snapshot configured later in this stage.
+ADD --checksum=sha256:641de77d8f142cfd62a1a6f964ba67b20754d3337c480efb529d086075a06c9a \
+    https://archive.ubuntu.com/ubuntu/pool/main/c/ca-certificates/ca-certificates_20240203_all.deb \
     /tmp/ca-certificates.deb
 
 # Every package-producing stage inherits one immutable Ubuntu package universe.

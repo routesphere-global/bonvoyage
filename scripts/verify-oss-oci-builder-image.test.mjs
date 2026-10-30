@@ -119,6 +119,10 @@ test('builder stage rejects product source, binaries and authority', (t) => {
       'cp /tmp/bonvoyage-dataplane /opt/bonvoyage/bin/bonvoyage-dataplane'],
     ['FROM ubuntu-snapshot AS seastar-build', 'FROM ${UBUNTU_IMAGE} AS seastar-build'],
     ['ca-certificates_20240203_all.deb', 'ca-certificates_20240203_amd64.deb'],
+    ['641de77d8f142cfd62a1a6f964ba67b20754d3337c480efb529d086075a06c9a',
+      'c2fdbca9d1a811c06e854ecc817cb26100e3022bb06f5642119ff67cc145a7c6'],
+    ['https://archive.ubuntu.com/ubuntu/pool/main/c/ca-certificates/',
+      'https://snapshot.ubuntu.com/ubuntu/20261029T000000Z/pool/main/c/ca-certificates/'],
     ['dpkg-deb --field /tmp/ca-certificates.deb Version', 'true'],
   ]) {
     const paths = fixture(t);
