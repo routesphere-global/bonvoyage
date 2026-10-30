@@ -149,7 +149,10 @@ artifact names, run binding and expiry through fixed GitHub API endpoints.
 `collect-oss-artifact-lifecycle-fresh.py`,
 `collect-oss-debian-transition.py` and `collect-oss-oci-lifecycle.py` exercise
 the separate fresh, package-transition and container-transition lanes on
-disposable Ubuntu 24.04 AMD64 jobs. `assemble-oss-artifact-lifecycle.mjs`
+disposable Ubuntu 24.04 AMD64 jobs. The Debian transition lane requires each
+package upgrade or downgrade to stop the existing service cleanly without
+starting a new invocation; only a subsequent explicit operator start may
+activate the newly installed payload. `assemble-oss-artifact-lifecycle.mjs`
 accepts only the three checksum-bound same-run lane trees before invoking the
 independent verifier.
 

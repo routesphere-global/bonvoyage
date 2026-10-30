@@ -11,6 +11,27 @@ SPEC.loader.exec_module(MODULE)
 
 
 class DebianTransitionStructureTest(unittest.TestCase):
+    def test_package_transition_requires_clean_stop_without_new_invocation(self):
+        previous = {
+            "fields": {"InvocationID": "baseline-invocation"},
+            "process": {"pid": 1234},
+        }
+        fields = {
+            "ActiveState": "inactive",
+            "MainPID": "0",
+            "Result": "success",
+            "ExecMainCode": "1",
+            "ExecMainStatus": "0",
+            "NRestarts": "0",
+            "InvocationID": "baseline-invocation",
+        }
+        self.assertTrue(MODULE.clean_package_transition_stop(fields, previous, False))
+        self.assertFalse(MODULE.clean_package_transition_stop(
+            {**fields, "InvocationID": "unexpected-new-invocation"}, previous, False))
+        self.assertFalse(MODULE.clean_package_transition_stop(
+            {**fields, "ActiveState": "active", "MainPID": "5678"}, previous, False))
+        self.assertFalse(MODULE.clean_package_transition_stop(fields, previous, True))
+
     def test_phase_writer_rejects_missing_checks_and_emits_canonical_evidence(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
