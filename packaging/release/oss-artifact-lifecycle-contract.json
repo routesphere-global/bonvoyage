@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-oss-artifact-lifecycle-contract",
+  "product": "RouteSphere BonVoyage API Gateway",
+  "source_repository": "https://github.com/routesphere-global/bonvoyage",
+  "platform": "linux/amd64",
+  "baseline": {
+    "source": {
+      "commit": "78e7cc798eab902a6cc87b7063b6bc2ef09284da",
+      "tag": "v1.0.0-rc.6"
+    },
+    "hosted_runs": {
+      "debian": "40984886786",
+      "oci": "40984894383"
+    },
+    "artifacts": [
+      {
+        "id": "gateway-deb-linux-amd64",
+        "kind": "debian-package",
+        "bytes": 50001186,
+        "sha256": "f0676644c9b0be7bd87bd4920c194d6e9e606eb243d4c7c3f9cce06f3889d61c"
+      },
+      {
+        "id": "gateway-oci-linux-amd64",
+        "kind": "oci-image",
+        "bytes": 80209920,
+        "sha256": "2d7234e270025267932863cb83808f6fb9ca9267f3c176670575d2db9dcb8f64"
+      }
+    ]
+  },
+  "runner": {
+    "provider": "github-actions",
+    "operating_system": "ubuntu-24.04",
+    "architecture": "amd64",
+    "required_run_attempt": "1",
+    "jobs": [
+      "debian-candidate-fresh",
+      "debian-transition",
+      "oci-lifecycle"
+    ]
+  },
+  "artifacts": [
+    {
+      "id": "gateway-deb-linux-amd64",
+      "kind": "debian-package",
+      "transition": "package-upgrade-rollback-reactivate",
+      "phases": [
+        {
+          "id": "candidate-fresh-install",
+          "required_checks": [
+            "package_identity_exact",
+            "payload_identity_exact",
+            "service_inactive_after_install",
+            "commissioned_non_root",
+            "fixed_route_exact",
+            "proxied_route_exact",
+            "runtime_error_counters_zero"
+          ]
+        },
+        {
+          "id": "upgrade-from-baseline",
+          "required_checks": [
+            "baseline_active",
+            "candidate_package_installed",
+            "service_not_implicitly_restarted",
+            "candidate_activated_after_explicit_restart",
+            "fixed_route_exact",
+            "proxied_route_exact",
+            "automatic_restarts_zero"
+          ]
+        },
+        {
+          "id": "rollback-to-baseline",
+          "required_checks": [
+            "baseline_package_restored",
+            "service_not_implicitly_restarted",
+            "baseline_activated_after_explicit_restart",
+            "traffic_restored",
+            "automatic_restarts_zero"
+          ]
+        },
+        {
+          "id": "candidate-reactivation",
+          "required_checks": [
+            "candidate_package_restored",
+            "candidate_activated_after_explicit_restart",
+            "traffic_restored",
+            "automatic_restarts_zero"
+          ]
+        },
+        {
+          "id": "shutdown-remove",
+          "required_checks": [
+            "graceful_stop",
+            "process_absent",
+            "package_absent",
+            "package_payload_absent",
+            "operator_state_retained"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gateway-oci-linux-amd64",
+      "kind": "oci-image",
+      "transition": "container-replacement-rollback-reactivate",
+      "phases": [
+        {
+          "id": "candidate-fresh-start",
+          "required_checks": [
+            "archive_identity_exact",
+            "image_manifest_exact",
+            "hardened_runtime_exact",
+            "fixed_route_exact",
+            "proxied_route_exact",
+            "runtime_error_counters_zero"
+          ]
+        },
+        {
+          "id": "replace-baseline-with-candidate",
+          "required_checks": [
+            "baseline_digest_active",
+            "candidate_digest_active",
+            "old_container_absent",
+            "fixed_route_exact",
+            "proxied_route_exact"
+          ]
+        },
+        {
+          "id": "rollback-to-baseline",
+          "required_checks": [
+            "candidate_container_absent",
+            "baseline_digest_active",
+            "traffic_restored"
+          ]
+        },
+        {
+          "id": "candidate-reactivation",
+          "required_checks": [
+            "baseline_container_absent",
+            "candidate_digest_active",
+            "traffic_restored"
+          ]
+        },
+        {
+          "id": "shutdown-remove",
+          "required_checks": [
+            "graceful_stop",
+            "container_absent",
+            "qualification_network_absent",
+            "loaded_candidate_image_absent",
+            "loaded_baseline_image_absent"
+          ]
+        }
+      ]
+    }
+  ],
+  "authority": {
+    "release_admitted": false,
+    "publishable": false,
+    "github_release_created": false,
+    "package_uploaded": false,
+    "container_uploaded": false,
+    "signature_created": false,
+    "provenance_created": false
+  }
+}

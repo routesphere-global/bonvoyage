@@ -320,6 +320,38 @@ controlled two-route source is
 collector candidate has not yet run on Ubuntu; fixture success is not native
 installation evidence.
 
+## Exact Gateway artifact lifecycle foundation
+
+`oss-artifact-lifecycle-contract.json` and
+`scripts/verify-oss-artifact-lifecycle.mjs` define the fail-closed evidence
+boundary for the remaining Gateway package and OCI lifecycle requirement. The
+contract pins `v1.0.0-rc.6` as the immutable rollback baseline, including its
+source commit, protected Debian and OCI hosted-build run IDs, artifact byte
+counts and SHA-256 identities.
+
+The future hosted execution has two non-substitutable lanes. A fresh lane must
+install or start the exact candidate on a pristine Ubuntu 24.04 AMD64 runner. A
+transition lane must begin with the exact pinned baseline, move to a strictly
+newer and byte-distinct candidate, prove candidate traffic and state, roll back
+to the baseline and prove baseline traffic and state, reactivate the candidate,
+then stop and remove it cleanly. Debian and OCI retain separate ordered phase
+and check sets. Reinstalling the same artifact cannot satisfy upgrade or
+rollback.
+
+Every observation must bind the candidate and baseline intake receipts, exact
+GitHub Actions runner identity, run attempt one, and every raw evidence file by
+path, size and SHA-256. The verifier rejects linked or extra files, changed
+baseline bytes, mixed identities, phase drift, false checks, repeated attempts,
+unbound evidence and any assertion of release admission, signing, provenance or
+publication. Run `make oss-artifact-lifecycle-test` for the 14 portable
+adversarial cases.
+
+This checkpoint establishes the contract and independent verifier only. It has
+not yet executed package installation, OCI start/replacement, upgrade, rollback,
+reactivation or removal on hosted Ubuntu. No lifecycle gate, release gate or
+publication authority is granted until a separately reviewed collector and
+protected hosted run satisfy this exact contract.
+
 ## Protected hosted Debian contract
 
 `debian/oss-deb-hosted-build-contract.json`,
