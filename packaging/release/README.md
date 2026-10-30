@@ -91,6 +91,44 @@ node scripts/verify-oss-release-bundle.mjs \
   --require-publishable
 ```
 
+## Hosted technical-candidate intake
+
+`oss-candidate-intake-contract.json` and
+`scripts/intake-oss-release-candidate.mjs` provide the narrow handoff from the
+two hosted reproducibility workflows into later release gates. The intake
+requires one clean tagged public commit, distinct Debian and OCI workflow runs,
+two isolated builders per format, byte-identical outputs, exact hosted receipt
+bindings and successful compiled tests. It rejects links, extra files, mixed
+runs, changed receipts, changed payloads and every release or publication
+claim.
+
+Run the intake only with separately downloaded GitHub Actions artifacts:
+
+```bash
+node scripts/intake-oss-release-candidate.mjs \
+  --deb-root DOWNLOADED_DEBIAN_ARTIFACTS \
+  --oci-root DOWNLOADED_OCI_ARTIFACTS \
+  --output NEW_PRIVATE_INTAKE_DIRECTORY \
+  --source-commit FULL_COMMIT \
+  --source-tag v1.0.0-rc.N \
+  --deb-run-id DEBIAN_RUN_ID \
+  --oci-run-id OCI_RUN_ID \
+  --created-at 2026-10-30T05:00:00.000Z
+```
+
+The output retains one verified copy of each candidate, all non-payload
+evidence and a canonical checksum-bound intake receipt. The tool has no network,
+signing, upload, GitHub Release, package-publication or container-publication
+authority. A passing intake is therefore reproducibility evidence, not a
+release.
+
+Historical candidate `v1.0.0-rc.6` passed this intake, but it predates the
+protected `.github/workflows/release.yml` identity required by the keyless
+signature contract. Its immutable tag will not be moved or retroactively
+relabeled. The first candidate eligible for signing and complete admission must
+be created from a later commit that already contains the reviewed release
+workflow.
+
 ## Required artifact gates
 
 Each artifact must independently pass:

@@ -25,6 +25,17 @@ reports need their original historical verifier, not a relaxed current gate.
 
 Small workflow entrypoints for development, tests, benchmarks, releases, and local operations.
 
+`intake-oss-release-candidate.mjs` performs the fail-closed offline handoff from
+the hosted Debian and OCI reproducibility workflows. It requires one exact clean
+tagged public source, distinct run IDs, two byte-identical builders per format,
+successful compiled tests and checksum-bound hosted receipts. It rejects mixed
+runs, changed bytes, links, extra files, authority escalation and intake
+contract drift. A successful run retains one payload per format plus all
+non-payload evidence in a new directory and writes a canonical
+`candidate-intake-receipt.json`. It never signs, uploads, publishes or admits a
+release. Run `make oss-candidate-intake-test` for the portable adversarial
+fixtures.
+
 `verify-oss-native-install.py` independently admits one complete Ubuntu 24.04
 AMD64 fresh-install evidence set. It binds the exact technical-candidate Debian
 package and clean public-origin build receipt to six ordered lifecycle phases,

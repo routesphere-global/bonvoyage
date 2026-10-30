@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "classification": "routesphere-bonvoyage-oss-candidate-intake-contract",
+  "product": "RouteSphere BonVoyage API Gateway",
+  "source_repository": "https://github.com/routesphere-global/bonvoyage",
+  "platform": "linux/amd64",
+  "artifacts": [
+    {
+      "id": "gateway-deb-linux-amd64",
+      "kind": "debian-package",
+      "workflow": "OSS Debian Reproducibility Candidate",
+      "input_prefix": "oss-deb"
+    },
+    {
+      "id": "gateway-oci-linux-amd64",
+      "kind": "oci-image",
+      "workflow": "OSS OCI Reproducibility Candidate",
+      "input_prefix": "oss-oci"
+    }
+  ],
+  "required_builders": [
+    "a",
+    "b"
+  ],
+  "required_run_attempt": "1",
+  "authority": {
+    "release_admitted": false,
+    "publishable": false,
+    "github_release_created": false,
+    "package_uploaded": false,
+    "container_uploaded": false,
+    "signature_created": false,
+    "provenance_created": false
+  }
+}
