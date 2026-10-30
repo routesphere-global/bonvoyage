@@ -3,14 +3,15 @@ title: Preview an immutable configuration artifact
 description: Compile BonVoyage YAML offline and inspect its deterministic artifact identity, resource counts, and optional redacted changes.
 ---
 
-The pre-release `bonvoyage-config preview` operation compiles one complete
+The release-matched `bonvoyage-config preview` source operation compiles one complete
 configuration with the installed BonVoyage compiler and summarizes the exact
 immutable artifact that compilation produced. It runs offline, returns no
 source document or scalar values, and cannot contact or change a gateway.
 
-:::caution[Pre-release command slice]
-`preview` is implemented and tested in source, but packaging it into an
-approved public release remains pending. An accepted local preview proves
+:::note[Source command]
+`preview` and the other configuration-authoring operations are released and
+tested as source commands invoked with `go run`; do not assume a separate
+binary package. An accepted local preview proves
 compiler acceptance only. It does not prove delivery, ACK, activation, or
 served traffic.
 :::

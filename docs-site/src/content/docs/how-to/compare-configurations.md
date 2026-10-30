@@ -3,15 +3,15 @@ title: Compare configurations offline
 description: Review deterministic, redacted changes between two accepted BonVoyage configurations by compiled meaning.
 ---
 
-The pre-release `bonvoyage-config diff` operation compiles a baseline and a
+The release-matched `bonvoyage-config diff` source operation compiles a baseline and a
 proposed configuration with the installed BonVoyage compiler, then reports
 which configuration paths changed. It does not print old or new scalar values,
 contact a gateway, or authorize an apply.
 
-:::caution[Pre-release command slice]
-`diff` is implemented and tested in source, but packaging it into an approved
-public release remains pending. `migrate` and immutable-artifact `preview` are
-implemented as separate source operations.
+:::note[Source command]
+`diff` and the other configuration-authoring operations are released and
+tested as source commands. These examples invoke them with `go run` from the
+release source tree; do not assume a separate binary package.
 :::
 
 ## Compare the shipped examples

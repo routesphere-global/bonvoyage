@@ -5,11 +5,11 @@ with a C++/Seastar data plane and a Go control plane. It is designed around
 shard-local request ownership, immutable configuration snapshots, bounded
 failure behavior, and evidence-led release engineering.
 
-> **Release-candidate notice:** BonVoyage-owned source and public documentation
-> in this repository are licensed under Apache License 2.0. No signed or
-> supported BonVoyage 1.0 artifact has been published yet. Treat current source
-> builds as evaluation candidates until the release page identifies an exact
-> admitted version, checksums, signatures, provenance, SBOMs, and support scope.
+> **Current release:** [BonVoyage v1.0.0](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.0)
+> is the first public release. BonVoyage-owned source and public documentation
+> are licensed under Apache License 2.0. Use the exact Gateway packages,
+> checksums, signatures, provenance, SBOMs, and platform scope published with
+> that release rather than an unverified local or third-party build.
 
 ## What standalone means
 
@@ -26,9 +26,9 @@ registration, subscription, or connection to a hosted RouteSphere service.
 Users can build and run the Apache-2.0 software directly from this repository.
 
 Console Free is an optional, no-cost proprietary companion distributed as a
-release-matched binary package. It is also intended to run without product
-registration, a RouteSphere account, or a subscription. When an admitted
-Console package is available, it will be attached to the matching
+release-matched binary package. It also runs without product registration, a
+RouteSphere account, or a subscription. An admitted Console package is
+attached to its matching
 [BonVoyage GitHub release](https://github.com/routesphere-global/bonvoyage/releases).
 If a release has no Console package, no supported public Console package exists
 for that version. See [Get Console Free](https://docs.routesphere.global/console/get-console-free/)
@@ -65,7 +65,8 @@ its documentation are reserved for the Enterprise offer.
 ### Control plane
 
 - Immutable snapshot compilation and validation.
-- Pre-release offline `bonvoyage-config validate`, fail-closed `format`, static
+- Release-matched source commands for offline `bonvoyage-config validate`,
+  fail-closed `format`, static
   release-matched `explain`, redacted compiled-semantic `diff`, and explicit
   fail-closed `migrate` and immutable-artifact `preview` source commands with
   deterministic machine output.
@@ -88,13 +89,13 @@ founder or commercial records are not part of this repository.
 
 | Area | Status |
 | --- | --- |
-| Release state | Licensed source; first signed release pending |
+| Release state | [v1.0.0 published](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.0) with exact release assets and evidence |
 | Public license | Apache License 2.0 for BonVoyage-owned source and documentation |
-| Production support | Not yet provided |
-| Core proxy path | Implemented and under clean-room release validation |
-| Standalone Go control plane | Implemented and under clean-room release validation |
-| Public performance package | Pending sanitized evidence publication |
-| Proprietary Console | Source not included; first public Console Free package pending |
+| Production support | Community issue intake; no human-response or incident-response SLA |
+| Core proxy path | Released in v1.0.0 |
+| Standalone Go control plane | Released as source in v1.0.0 |
+| Public performance package | Scoped, evidence-bound results; no universal or dedicated-hardware claim |
+| Proprietary Console | Source not included; matching Console Free package published with v1.0.0 |
 
 ## Quick start
 
@@ -105,7 +106,7 @@ Seastar data plane.
 docker compose -f deploy/compose/local.yml up --build --detach --wait
 ```
 
-The evaluation profile publishes its traffic, metrics, and admin listeners on
+The local profile publishes its traffic, metrics, and admin listeners on
 host loopback only. Run the bounded verifier after all roles are ready:
 
 ```bash

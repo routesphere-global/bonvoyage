@@ -3,15 +3,15 @@ title: Explain a configuration field offline
 description: Read reviewed, release-matched help for one BonVoyage configuration path without loading a document.
 ---
 
-The pre-release `bonvoyage-config explain` operation returns concise field help
+The release-matched `bonvoyage-config explain` source operation returns concise field help
 from a reviewed catalog embedded in the installed command. It is deterministic
 and offline. It does not read a YAML document, standard input, environment
 secrets, runtime state, or telemetry, and it cannot apply a configuration.
 
-:::caution[Pre-release command slice]
-`explain` is implemented and tested in source, but packaging it into an
-approved public release remains pending. `diff`, `migrate`, and
-immutable-artifact `preview` are separate implemented source operations.
+:::note[Source command]
+`explain` and the other configuration-authoring operations are released and
+tested as source commands. These examples invoke them with `go run` from the
+release source tree; do not assume a separate binary package.
 :::
 
 ## Explain one field

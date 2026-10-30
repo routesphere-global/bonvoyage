@@ -10,11 +10,12 @@ control plane. Its operating model keeps request ownership shard-local, turns
 declarative configuration into immutable snapshots, and makes rejected changes
 visible through validation and ACK/NACK outcomes.
 
-:::caution[Pre-release documentation]
-This site describes the staging candidate for the first public release. It is
-not yet a supported production release. BonVoyage-owned public source and
-documentation are licensed under Apache License 2.0, while signed release
-artifacts, checksums, provenance, SBOMs, and support scope remain pending.
+:::note[Current release]
+This site documents
+[BonVoyage v1.0.0](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.0),
+the first public release. BonVoyage-owned source and documentation are licensed
+under Apache License 2.0. Download exact packages, checksums, Gateway
+signatures, provenance, SBOMs, and platform scope from the release page.
 :::
 
 ## Run the local stack

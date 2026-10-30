@@ -27,11 +27,11 @@ The generated [configuration diagnostics](../configuration-diagnostics/)
 map every stable reason code to release-matched presentation and remediation
 guidance without making runtime message text part of the compatibility API.
 
-:::caution[Incremental implementation]
-All six offline operations are implemented and tested in the pre-release source
-tree, so the machine contract is marked `implemented`. They are not yet
-approved packaged-release commands; clean-source export acceptance and release
-packaging remain separate gates.
+:::note[Released source commands]
+All six offline operations are implemented and tested in the v1.0.0 source
+release, so the machine contract is marked `implemented`. The documented
+examples invoke them with `go run`; they are not presented as a separate binary
+package.
 :::
 
 ## One authority
@@ -143,4 +143,4 @@ Continue with [Validate a configuration](../../how-to/validate-configuration/),
 [Compare configurations](../../how-to/compare-configurations/), or
 [Migrate a configuration](../../how-to/migrate-configuration/), or
 [Preview a configuration](../../how-to/preview-configuration/) for the exact
-pre-release command syntax and machine exit codes.
+release-matched source command syntax and machine exit codes.
