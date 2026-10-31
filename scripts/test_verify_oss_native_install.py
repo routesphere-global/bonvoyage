@@ -263,6 +263,26 @@ class NativeInstallVerifierTests(unittest.TestCase):
         self.assertFalse(report["release_admitted"])
         self.assertFalse(report["publishable"])
 
+    def test_requires_runtime_identity_observation_in_command_journal(self):
+        version_index = verifier.COMMAND_IDS.index("installed-binary-version")
+        self.assertEqual(
+            verifier.COMMAND_IDS[version_index - 1],
+            "installed-package-files",
+        )
+        self.assertEqual(
+            verifier.COMMAND_IDS[version_index + 1],
+            "installed-service-enabled",
+        )
+        path = self.evidence / "raw/commands.jsonl"
+        records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+        records.pop(version_index)
+        path.write_text("\n".join(json.dumps(item) for item in records) + "\n",
+                        encoding="utf-8")
+        self.observation["evidence_files"] = self.evidence_records()
+        self.write_observation()
+        with self.assertRaisesRegex(verifier.Rejected, "command journal length mismatch"):
+            self.verify()
+
     def test_rejects_incomplete_or_failed_command_journal(self):
         path = self.evidence / "raw/commands.jsonl"
         records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]

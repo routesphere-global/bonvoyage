@@ -126,6 +126,7 @@ COMMAND_IDS = [
     "install-daemon-reload",
     "installed-package-status",
     "installed-package-files",
+    "installed-binary-version",
     "installed-service-enabled",
     "installed-service-active",
     "installed-service-properties",
