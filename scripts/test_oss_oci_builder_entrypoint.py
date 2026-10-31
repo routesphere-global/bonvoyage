@@ -117,11 +117,15 @@ class OssOciBuilderEntrypointTests(unittest.TestCase):
     def test_docker_target_is_source_free_and_non_authoritative(self):
         dockerfile = Path(__file__).resolve().parent.parent / "deploy/docker/bonvoyage/Dockerfile"
         text = dockerfile.read_text()
-        self.assertIn("FROM oss-deb-builder AS oss-oci-builder", text)
-        stage = text.split("FROM oss-deb-builder AS oss-oci-builder", 1)[1].split("\nFROM ", 1)[0]
+        marker = "FROM ${OSS_OCI_BUILDER_FOUNDATION} AS oss-oci-builder"
+        self.assertIn(marker, text)
+        stage = text.split(marker, 1)[1].split("\nFROM ", 1)[0]
         self.assertNotIn("COPY dataplane/", stage)
         self.assertNotIn("COPY api/", stage)
         self.assertNotIn("bonvoyage-build", stage)
+        self.assertNotIn("/usr/src/bonvoyage", stage.replace(
+            "test ! -e /usr/src/bonvoyage", ""))
+        self.assertNotIn("apt-get", stage)
         self.assertIn('io.routesphere.bonvoyage.role="oss-oci-builder"', stage)
         self.assertIn('io.routesphere.bonvoyage.release-authority="false"', stage)
         self.assertIn("USER 65532:65532", stage)

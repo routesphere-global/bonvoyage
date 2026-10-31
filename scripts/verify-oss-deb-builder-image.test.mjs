@@ -65,6 +65,7 @@ function inspection() {
       Labels: {
         'io.routesphere.bonvoyage.role': 'oss-deb-builder',
         'io.routesphere.bonvoyage.ubuntu-snapshot': '20261006T000000Z',
+        'io.routesphere.bonvoyage.zlib1g-version': '1:1.3.dfsg-3.1ubuntu2.3',
         'io.routesphere.bonvoyage.release-authority': 'false',
       },
     },
@@ -89,6 +90,10 @@ test('public registry identity and authority must remain exact and powerless', (
     (value) => { value.registry.reference = 'ghcr.io/routesphere-global/bonvoyage-debian-builder:latest'; },
     (value) => { value.registry.external_verification_receipt = null; },
     (value) => { value.registry.anonymous_pull_verified = false; },
+    (value) => { value.image.foundation_reference = value.registry.reference.replace(/.$/u, '0'); },
+    (value) => { value.remediation.zlib1g_sha256 = '0'.repeat(64); },
+    (value) => { value.remediation.zlib1g_dev_sha256 = '0'.repeat(64); },
+    (value) => { value.remediation.zlib1g_version = '1:1.3.dfsg-3.1ubuntu2.2'; },
     (value) => { value.authority.publishable = true; },
   ]) {
     const fixture = copyFixture(t);
@@ -114,17 +119,27 @@ test('unpublished foundation rejects an active hosted workflow', (t) => {
   assert.equal(result.registry_reference_verified, false);
 });
 
-test('builder stage rejects embedded product source and floating package indexes', (t) => {
+test('builder stage rejects changed foundations, package bytes and embedded source', (t) => {
   for (const replacement of [
     ['COPY scripts/oss-deb-builder-entrypoint.py', 'COPY dataplane/ /usr/src/bonvoyage/dataplane/\nCOPY scripts/oss-deb-builder-entrypoint.py'],
     ['COPY scripts/oss-deb-builder-entrypoint.py', 'RUN test ! -e /opt/bonvoyage\nCOPY scripts/oss-deb-builder-entrypoint.py'],
-    ['APT::Update::Error-Mode=any', 'APT::Update::Error-Mode=none'],
+    ['sha256:f32465ff914634bcb5bbb2ff9271dd1ba0cbb8838be0ab26c696e64d2a17a225',
+      `sha256:${'0'.repeat(64)}`],
+    ['376249c8de139568221dbb242318cc8cb8f02299e3a62b7432948e1754fbddf9',
+      '0'.repeat(64)],
+    ['419902a649e1078f24596cdf31ced9c839519828790f59888056fcdcd58e8a28',
+      '0'.repeat(64)],
+    ['zlib1g_1.3.dfsg-3.1ubuntu2.3_amd64.deb',
+      'zlib1g_1.3.dfsg-3.1ubuntu2.2_amd64.deb'],
+    ['dpkg-deb --field /tmp/zlib1g.deb Package', 'apt-get update'],
     ['io.routesphere.bonvoyage.release-authority="false"',
       'io.routesphere.bonvoyage.release-authority="true"'],
   ]) {
     const fixture = copyFixture(t);
     const source = fs.readFileSync(fixture.dockerfile, 'utf8');
-    fs.writeFileSync(fixture.dockerfile, source.replace(replacement[0], replacement[1]));
+    const mutated = source.replace(replacement[0], replacement[1]);
+    assert.notEqual(mutated, source, `missing mutation fixture ${replacement[0]}`);
+    fs.writeFileSync(fixture.dockerfile, mutated);
     assert.throws(() => verify(fixture));
   }
 });
