@@ -194,6 +194,7 @@ jobs:
             --source-tag '${{ needs.preflight.outputs.baseline_tag }}' \
             --deb-run-id '${{ needs.preflight.outputs.baseline_deb_run_id }}' \
             --oci-run-id '${{ needs.preflight.outputs.baseline_oci_run_id }}' \
+            --allow-legacy-runtime-identity-absence true \
             --created-at '${{ needs.preflight.outputs.baseline_created_at }}'
           node scripts/intake-oss-release-candidate.mjs \
             --deb-root "$RUNNER_TEMP/candidate-deb" \

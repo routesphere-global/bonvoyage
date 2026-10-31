@@ -122,6 +122,16 @@ signing, upload, GitHub Release, package-publication or container-publication
 authority. A passing intake is therefore reproducibility evidence, not a
 release.
 
+The artifact-lifecycle workflow alone invokes the intake with
+`--allow-legacy-runtime-identity-absence true`, and only for its immutable
+rollback baseline: `v1.0.0-rc.6`, commit
+`78e7cc798eab902a6cc87b7063b6bc2ef09284da`, Debian run `40984886786` and OCI
+run `40984894383`. The option fails closed for any other source or run, requires
+all four historical builder runtime-identity fields to be absent, and retains a
+checksum-bound record of the exception. It is never supplied to the candidate
+intake, so current and future candidates must carry the complete runtime
+identity.
+
 Historical candidate `v1.0.0-rc.6` passed this intake, but it predates the
 protected `.github/workflows/release.yml` identity required by the keyless
 signature contract. Its immutable tag will not be moved or retroactively

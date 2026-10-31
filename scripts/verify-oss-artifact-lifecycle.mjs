@@ -17,6 +17,16 @@ const INTAKE_CLASSIFICATION =
 const OBSERVATION_CLASSIFICATION =
   'routesphere-bonvoyage-oss-artifact-lifecycle-observation';
 const PUBLIC_REPOSITORY = 'https://github.com/routesphere-global/bonvoyage';
+const LEGACY_RUNTIME_IDENTITY_CLASSIFICATION =
+  'routesphere-bonvoyage-legacy-runtime-identity-absence';
+const LEGACY_RUNTIME_IDENTITY_EVIDENCE =
+  'evidence/legacy-runtime-identity-absence.json';
+const LEGACY_RUNTIME_IDENTITY_BASELINE = Object.freeze({
+  commit: '78e7cc798eab902a6cc87b7063b6bc2ef09284da',
+  tag: 'v1.0.0-rc.6',
+  debian_run_id: '40984886786',
+  oci_run_id: '40984894383',
+});
 const POWERLESS_FIELDS = Object.freeze([
   'release_admitted',
   'publishable',
@@ -202,6 +212,47 @@ function validatePowerless(authority, label) {
   }
 }
 
+function validateLegacyRuntimeIdentityAbsence(root, filesByPath, label) {
+  const retained = filesByPath.get(LEGACY_RUNTIME_IDENTITY_EVIDENCE);
+  if (retained === undefined) return null;
+  const record = readCanonicalJson(
+    path.join(root, LEGACY_RUNTIME_IDENTITY_EVIDENCE),
+    `${label} legacy runtime identity evidence`);
+  requireCondition(record.bytes === retained.bytes && record.sha256 === retained.sha256,
+    `${label} legacy runtime identity evidence is not bound by the intake inventory`);
+  const evidence = record.value;
+  exactKeys(evidence, [
+    'schema_version', 'classification', 'scope', 'source', 'hosted_runs',
+    'runtime_identity', 'authority',
+  ], `${label} legacy runtime identity evidence`);
+  requireCondition(evidence.schema_version === 1 &&
+    evidence.classification === LEGACY_RUNTIME_IDENTITY_CLASSIFICATION &&
+    evidence.scope === 'historical-lifecycle-baseline-only',
+  `${label} legacy runtime identity evidence identity changed`);
+  exactKeys(evidence.source, ['repository', 'commit', 'tag', 'dirty'],
+    `${label} legacy runtime identity source`);
+  requireCondition(evidence.source.repository === PUBLIC_REPOSITORY &&
+    COMMIT.test(evidence.source.commit) && TAG.test(evidence.source.tag) &&
+    evidence.source.dirty === false,
+  `${label} legacy runtime identity source is invalid`);
+  exactKeys(evidence.hosted_runs, ['debian', 'oci'],
+    `${label} legacy runtime identity hosted runs`);
+  requireCondition(RUN_ID.test(evidence.hosted_runs.debian) &&
+    RUN_ID.test(evidence.hosted_runs.oci) &&
+    evidence.hosted_runs.debian !== evidence.hosted_runs.oci,
+  `${label} legacy runtime identity hosted runs are invalid`);
+  exactKeys(evidence.runtime_identity, ['debian', 'oci'],
+    `${label} legacy runtime identity states`);
+  requireCondition(JSON.stringify(evidence.runtime_identity) === JSON.stringify({
+    debian: ['absent', 'absent'],
+    oci: ['absent', 'absent'],
+  }), `${label} legacy runtime identity states must record four absent builder fields`);
+  exactKeys(evidence.authority, POWERLESS_FIELDS,
+    `${label} legacy runtime identity authority`);
+  validatePowerless(evidence.authority, `${label} legacy runtime identity authority`);
+  return evidence;
+}
+
 function uniqueStrings(values, label) {
   const result = requireArray(values, label).map((value, index) =>
     requireString(value, `${label}[${index}]`));
@@ -376,6 +427,8 @@ function validateIntake(root, label) {
   requireCondition(JSON.stringify(actual) === JSON.stringify(files),
     `${label} intake tree does not match its retained inventory`);
   const filesByPath = new Map(files.map((file) => [file.path, file]));
+  const legacyRuntimeIdentityAbsence = validateLegacyRuntimeIdentityAbsence(
+    root, filesByPath, label);
 
   exactKeys(receipt.contract, ['path', 'bytes', 'sha256'], `${label} intake contract`);
   const intakeContractPath = safeRelative(
@@ -413,6 +466,7 @@ function validateIntake(root, label) {
     receiptSha256: receiptRecord.sha256,
     source: receipt.source,
     artifacts,
+    legacyRuntimeIdentityAbsence,
   };
 }
 
@@ -447,9 +501,28 @@ function validateBaseline(contract, contractInfo, baseline) {
       artifact.hostedRunId === expectedRuns.get(artifact.id),
     `baseline artifact ${artifact.id} does not match the pinned hosted identity`);
   }
+  const legacyBaseline = contract.baseline.source.commit ===
+    LEGACY_RUNTIME_IDENTITY_BASELINE.commit &&
+    contract.baseline.source.tag === LEGACY_RUNTIME_IDENTITY_BASELINE.tag &&
+    contract.baseline.hosted_runs.debian ===
+      LEGACY_RUNTIME_IDENTITY_BASELINE.debian_run_id &&
+    contract.baseline.hosted_runs.oci === LEGACY_RUNTIME_IDENTITY_BASELINE.oci_run_id;
+  if (legacyBaseline) {
+    const evidence = requireObject(baseline.legacyRuntimeIdentityAbsence,
+      'baseline legacy runtime identity evidence');
+    requireCondition(JSON.stringify(evidence.source) === JSON.stringify(baseline.source) &&
+      evidence.hosted_runs.debian === contract.baseline.hosted_runs.debian &&
+      evidence.hosted_runs.oci === contract.baseline.hosted_runs.oci,
+    'baseline legacy runtime identity evidence does not match the pinned lifecycle baseline');
+  } else {
+    requireCondition(baseline.legacyRuntimeIdentityAbsence === null,
+      'legacy runtime identity evidence is only valid for the exact pinned lifecycle baseline');
+  }
 }
 
 function validateCandidate(contractInfo, baseline, candidate) {
+  requireCondition(candidate.legacyRuntimeIdentityAbsence === null,
+    'candidate intake must not use the legacy runtime identity exception');
   exactSet(candidate.artifacts.map((artifact) => artifact.id),
     contractInfo.artifacts.map((artifact) => artifact.id), 'candidate artifact IDs');
   const specifications = new Map(
