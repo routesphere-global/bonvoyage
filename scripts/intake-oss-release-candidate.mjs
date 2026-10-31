@@ -38,6 +38,16 @@ const CONTRACT_AUTHORITY_FIELDS = [
   'signature_created',
   'provenance_created',
 ];
+const LEGACY_RUNTIME_IDENTITY_BASELINE = Object.freeze({
+  commit: '78e7cc798eab902a6cc87b7063b6bc2ef09284da',
+  tag: 'v1.0.0-rc.6',
+  debian_run_id: '40984886786',
+  oci_run_id: '40984894383',
+});
+const LEGACY_RUNTIME_IDENTITY_CLASSIFICATION =
+  'routesphere-bonvoyage-legacy-runtime-identity-absence';
+const LEGACY_RUNTIME_IDENTITY_EVIDENCE =
+  'evidence/legacy-runtime-identity-absence.json';
 const SHA256 = /^[a-f0-9]{64}$/u;
 const COMMIT = /^[a-f0-9]{40}$/u;
 const TAG = /^v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/u;
@@ -175,7 +185,12 @@ function checkAuthorityFalse(record, label) {
   }
 }
 
-function checkRuntimeIdentity(record, expectedSource, label) {
+function checkRuntimeIdentity(record, expectedSource, label, allowLegacyAbsence = false) {
+  if (record === undefined) {
+    requireCondition(allowLegacyAbsence,
+      `${label} runtime identity must be an object`);
+    return 'absent';
+  }
   exactKeys(record, [
     'command', 'dataplane_version', 'release_version', 'stderr_sha256',
     'stdout_sha256', 'upstream_http1_client',
@@ -189,6 +204,7 @@ function checkRuntimeIdentity(record, expectedSource, label) {
   `${label} runtime release identity does not match the source tag`);
   checkSha(record.stdout_sha256, `${label} runtime identity stdout`);
   checkSha(record.stderr_sha256, `${label} runtime identity stderr`);
+  return 'present';
 }
 
 function checkCandidate(actualPath, candidate, label) {
@@ -230,7 +246,7 @@ function checkBuildReceiptHashes(technical, files, label) {
   }
 }
 
-function validateDebian(root, identity, runId) {
+function validateDebian(root, identity, runId, allowLegacyRuntimeIdentityAbsence = false) {
   const technicalPath = path.join(root,
     'oss-deb-comparison/reproducibility-receipt.json');
   const hostedPath = path.join(root,
@@ -290,13 +306,16 @@ function validateDebian(root, identity, runId) {
   const expectedBuilders = ['a', 'b'].map((builder) => `github-${runId}-1-${builder}`);
   requireCondition(JSON.stringify(technical.value.builders) === JSON.stringify(expectedBuilders),
     'Debian technical builder identities changed');
+  const runtimeIdentityStates = [];
   for (let index = 0; index < 2; index += 1) {
     const label = `Debian builder ${index === 0 ? 'a' : 'b'}`;
     checkAuthorityFalse(builds[index], `${label} receipt`);
     checkAuthorityFalse(executions[index], `${label} execution`);
     checkSource(builds[index].source, identity, `${label} source`);
     checkSource(executions[index].source, identity, `${label} execution source`);
-    checkRuntimeIdentity(executions[index].runtime_identity, identity, label);
+    runtimeIdentityStates.push(checkRuntimeIdentity(
+      executions[index].runtime_identity, identity, label,
+      allowLegacyRuntimeIdentityAbsence));
     requireCondition(builds[index].builder_id === expectedBuilders[index] &&
       executions[index].builder_id === expectedBuilders[index] &&
       builds[index].technical_candidate_built === true &&
@@ -316,6 +335,9 @@ function validateDebian(root, identity, runId) {
     path.join(root, `oss-deb-build-b/${candidate.path}`), candidate, 'Debian builder b package');
   requireCondition(first.sha256 === second.sha256 && first.bytes === second.bytes,
     'Debian builder outputs are not byte-identical');
+  requireCondition(!allowLegacyRuntimeIdentityAbsence ||
+    runtimeIdentityStates.every((state) => state === 'absent'),
+  'legacy baseline exception requires absent runtime identity from both Debian builders');
   return {
     artifact: {
       id: 'gateway-deb-linux-amd64',
@@ -330,10 +352,11 @@ function validateDebian(root, identity, runId) {
     },
     payload: path.join(root, `oss-deb-build-a/${candidate.path}`),
     evidence: expectedFiles.filter((value) => !value.endsWith(`/${candidate.path}`)),
+    runtimeIdentityStates,
   };
 }
 
-function validateOci(root, identity, runId) {
+function validateOci(root, identity, runId, allowLegacyRuntimeIdentityAbsence = false) {
   const technicalPath = path.join(root,
     'oss-oci-comparison/reproducibility-receipt.json');
   const hostedPath = path.join(root,
@@ -390,11 +413,14 @@ function validateOci(root, identity, runId) {
   const expectedBuilders = ['a', 'b'].map((builder) => `github-${runId}-1-${builder}`);
   requireCondition(JSON.stringify(technical.value.builders) === JSON.stringify(expectedBuilders),
     'OCI technical builder identities changed');
+  const runtimeIdentityStates = [];
   for (let index = 0; index < 2; index += 1) {
     const label = `OCI builder ${index === 0 ? 'a' : 'b'}`;
     checkAuthorityFalse(builds[index], `${label} execution`);
     checkSource(builds[index].source, identity, `${label} source`);
-    checkRuntimeIdentity(builds[index].runtime_identity, identity, label);
+    runtimeIdentityStates.push(checkRuntimeIdentity(
+      builds[index].runtime_identity, identity, label,
+      allowLegacyRuntimeIdentityAbsence));
     requireCondition(builds[index].builder_id === expectedBuilders[index] &&
       builds[index].technical_candidate_built === true &&
       builds[index].compiled_tests_passed === true &&
@@ -411,6 +437,9 @@ function validateOci(root, identity, runId) {
     path.join(root, `oss-oci-build-b/${candidate.path}`), candidate, 'OCI builder b archive');
   requireCondition(first.sha256 === second.sha256 && first.bytes === second.bytes,
     'OCI builder outputs are not byte-identical');
+  requireCondition(!allowLegacyRuntimeIdentityAbsence ||
+    runtimeIdentityStates.every((state) => state === 'absent'),
+  'legacy baseline exception requires absent runtime identity from both OCI builders');
   return {
     artifact: {
       id: 'gateway-oci-linux-amd64',
@@ -428,6 +457,7 @@ function validateOci(root, identity, runId) {
     },
     payload: path.join(root, `oss-oci-build-a/${candidate.path}`),
     evidence: expectedFiles.filter((value) => !value.endsWith(`/${candidate.path}`)),
+    runtimeIdentityStates,
   };
 }
 
@@ -490,6 +520,7 @@ export function intakeReleaseCandidate({
   ociRunId,
   createdAt,
   contractPath = DEFAULT_CONTRACT,
+  allowLegacyRuntimeIdentityAbsence = false,
 }) {
   requireCondition(COMMIT.test(sourceCommit ?? ''), 'source commit must be lowercase Git SHA-1');
   requireCondition(TAG.test(sourceTag ?? ''), 'source tag must be strict v-prefixed SemVer');
@@ -500,11 +531,22 @@ export function intakeReleaseCandidate({
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(createdAt),
   'created-at must be a canonical millisecond UTC timestamp');
   requireCondition(debRunId !== ociRunId, 'Debian and OCI runs must be distinct');
+  requireCondition(typeof allowLegacyRuntimeIdentityAbsence === 'boolean',
+    'legacy runtime identity exception must be boolean');
+  if (allowLegacyRuntimeIdentityAbsence) {
+    requireCondition(sourceCommit === LEGACY_RUNTIME_IDENTITY_BASELINE.commit &&
+      sourceTag === LEGACY_RUNTIME_IDENTITY_BASELINE.tag &&
+      debRunId === LEGACY_RUNTIME_IDENTITY_BASELINE.debian_run_id &&
+      ociRunId === LEGACY_RUNTIME_IDENTITY_BASELINE.oci_run_id,
+    'legacy runtime identity exception is restricted to the exact pinned lifecycle baseline');
+  }
   const contractRecord = readCanonicalJson(path.resolve(contractPath), 'intake contract');
   validateContract(contractRecord.value);
   const expectedSource = {commit: sourceCommit, tag: sourceTag};
-  const debian = validateDebian(path.resolve(debRoot), expectedSource, debRunId);
-  const oci = validateOci(path.resolve(ociRoot), expectedSource, ociRunId);
+  const debian = validateDebian(path.resolve(debRoot), expectedSource, debRunId,
+    allowLegacyRuntimeIdentityAbsence);
+  const oci = validateOci(path.resolve(ociRoot), expectedSource, ociRunId,
+    allowLegacyRuntimeIdentityAbsence);
 
   const destination = path.resolve(output);
   requireCondition(!fs.existsSync(destination), 'output directory must not already exist');
@@ -522,6 +564,33 @@ export function intakeReleaseCandidate({
       copyExclusive(path.join(root, relative),
         path.join(destination, 'evidence', scope, relative));
     }
+  }
+  if (allowLegacyRuntimeIdentityAbsence) {
+    const evidencePath = path.join(destination, LEGACY_RUNTIME_IDENTITY_EVIDENCE);
+    const evidence = {
+      schema_version: 1,
+      classification: LEGACY_RUNTIME_IDENTITY_CLASSIFICATION,
+      scope: 'historical-lifecycle-baseline-only',
+      source: {
+        repository: PUBLIC_REPOSITORY,
+        commit: sourceCommit,
+        tag: sourceTag,
+        dirty: false,
+      },
+      hosted_runs: {
+        debian: debRunId,
+        oci: ociRunId,
+      },
+      runtime_identity: {
+        debian: debian.runtimeIdentityStates,
+        oci: oci.runtimeIdentityStates,
+      },
+      authority: contractRecord.value.authority,
+    };
+    fs.mkdirSync(path.dirname(evidencePath), {recursive: true, mode: 0o700});
+    fs.writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, {
+      flag: 'wx', mode: 0o600,
+    });
   }
 
   const receipt = {
@@ -584,10 +653,15 @@ function parseArguments(argv) {
   for (const name of required) {
     requireCondition(options[name] !== undefined, `${name} is required`);
   }
-  const allowed = new Set([...required, '--contract']);
+  const allowed = new Set([
+    ...required, '--contract', '--allow-legacy-runtime-identity-absence',
+  ]);
   for (const name of Object.keys(options)) {
     requireCondition(allowed.has(name), `unknown argument ${name}`);
   }
+  const legacyRuntimeIdentity = options['--allow-legacy-runtime-identity-absence'];
+  requireCondition(legacyRuntimeIdentity === undefined || legacyRuntimeIdentity === 'true',
+    '--allow-legacy-runtime-identity-absence must be true when supplied');
   return {
     debRoot: options['--deb-root'],
     ociRoot: options['--oci-root'],
@@ -598,6 +672,7 @@ function parseArguments(argv) {
     ociRunId: options['--oci-run-id'],
     createdAt: options['--created-at'],
     contractPath: options['--contract'] ?? DEFAULT_CONTRACT,
+    allowLegacyRuntimeIdentityAbsence: legacyRuntimeIdentity === 'true',
   };
 }
 

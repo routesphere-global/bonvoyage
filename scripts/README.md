@@ -72,6 +72,15 @@ non-payload evidence in a new directory and writes a canonical
 release. Run `make oss-candidate-intake-test` for the portable adversarial
 fixtures.
 
+The optional `--allow-legacy-runtime-identity-absence true` argument is not a
+general compatibility mode. It is accepted only for the immutable
+`v1.0.0-rc.6` lifecycle rollback baseline at commit
+`78e7cc798eab902a6cc87b7063b6bc2ef09284da` and hosted runs `40984886786` and
+`40984894383`. All four historical builder runtime-identity fields must be
+absent, and the intake retains that absence in checksum-bound, powerless
+evidence. Current and future candidates remain subject to the normal strict
+runtime-identity contract.
+
 `intake-oss-supply-chain-evidence.mjs` is the next powerless offline handoff.
 It re-verifies an exact candidate-intake tree, then accepts only candidate-root
 bound CycloneDX 1.6 and SPDX 2.3 documents, decoded inventory parity, command

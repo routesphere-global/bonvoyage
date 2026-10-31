@@ -12,6 +12,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_CONTRACT = path.join(
   ROOT, 'packaging/release/oss-artifact-lifecycle-contract.json');
 const REPOSITORY = 'https://github.com/routesphere-global/bonvoyage';
+const LEGACY_COMMIT = '78e7cc798eab902a6cc87b7063b6bc2ef09284da';
+const LEGACY_TAG = 'v1.0.0-rc.6';
+const LEGACY_RUN_IDS = Object.freeze({debian: '40984886786', oci: '40984894383'});
 const AUTHORITY = Object.freeze({
   release_admitted: false,
   publishable: false,
@@ -50,7 +53,13 @@ function inventory(root, excluded = new Set()) {
   return result.sort((left, right) => left.path.localeCompare(right.path));
 }
 
-function createIntake(root, {commit, tag, runIds, artifactBodies}) {
+function createIntake(root, {
+  commit,
+  tag,
+  runIds,
+  artifactBodies,
+  legacyRuntimeIdentityAbsence = false,
+}) {
   const metadataPath = path.join(root, 'metadata/oss-candidate-intake-contract.json');
   writeJson(metadataPath, {schema_version: 1, classification: 'test-intake-contract'});
   const specifications = [
@@ -83,8 +92,22 @@ function createIntake(root, {commit, tag, runIds, artifactBodies}) {
       hosted_run_id: specification.runId,
     };
   });
-  const metadata = fileIdentity(metadataPath);
   const source = {repository: REPOSITORY, commit, tag, dirty: false};
+  if (legacyRuntimeIdentityAbsence) {
+    writeJson(path.join(root, 'evidence/legacy-runtime-identity-absence.json'), {
+      schema_version: 1,
+      classification: 'routesphere-bonvoyage-legacy-runtime-identity-absence',
+      scope: 'historical-lifecycle-baseline-only',
+      source,
+      hosted_runs: runIds,
+      runtime_identity: {
+        debian: ['absent', 'absent'],
+        oci: ['absent', 'absent'],
+      },
+      authority: {...AUTHORITY},
+    });
+  }
+  const metadata = fileIdentity(metadataPath);
   const receipt = {
     schema_version: 1,
     classification: 'routesphere-bonvoyage-oss-candidate-intake-receipt',
@@ -101,7 +124,10 @@ function createIntake(root, {commit, tag, runIds, artifactBodies}) {
   };
   const receiptPath = path.join(root, 'candidate-intake-receipt.json');
   writeJson(receiptPath, receipt);
-  return {source, artifacts, receiptPath, receiptSha256: fileIdentity(receiptPath).sha256};
+  return {
+    source, artifacts, receipt, receiptPath,
+    receiptSha256: fileIdentity(receiptPath).sha256,
+  };
 }
 
 function summary(intake) {
@@ -119,6 +145,8 @@ function makeFixture({
   candidateTag = 'v1.0.0-rc.2',
   candidateCommit = 'b'.repeat(40),
   candidateSame = false,
+  legacyBaseline = false,
+  legacyCandidateEvidence = false,
 } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bonvoyage-lifecycle-test-'));
   const baselineRoot = path.join(root, 'baseline');
@@ -136,23 +164,26 @@ function makeFixture({
     debian: Buffer.from('candidate-debian'),
     oci: Buffer.from('candidate-oci'),
   };
+  const baselineRunIds = legacyBaseline ? LEGACY_RUN_IDS : {debian: '101', oci: '102'};
   const baseline = createIntake(baselineRoot, {
-    commit: 'a'.repeat(40),
-    tag: baselineTag,
-    runIds: {debian: '101', oci: '102'},
+    commit: legacyBaseline ? LEGACY_COMMIT : 'a'.repeat(40),
+    tag: legacyBaseline ? LEGACY_TAG : baselineTag,
+    runIds: baselineRunIds,
     artifactBodies: baselineBodies,
+    legacyRuntimeIdentityAbsence: legacyBaseline,
   });
   const candidate = createIntake(candidateRoot, {
     commit: candidateCommit,
     tag: candidateTag,
     runIds: {debian: '201', oci: '202'},
     artifactBodies: candidateBodies,
+    legacyRuntimeIdentityAbsence: legacyCandidateEvidence,
   });
 
   const contract = JSON.parse(fs.readFileSync(DEFAULT_CONTRACT, 'utf8'));
   contract.baseline = {
     source: {commit: baseline.source.commit, tag: baseline.source.tag},
-    hosted_runs: {debian: '101', oci: '102'},
+    hosted_runs: baselineRunIds,
     artifacts: baseline.artifacts.map(({id, kind, bytes, sha256: digest}) => ({
       id, kind, bytes, sha256: digest,
     })),
@@ -237,6 +268,35 @@ test('accepts exact fresh, upgrade, rollback, reactivation and removal evidence'
   assert.equal(report.release_admitted, false);
   assert.equal(report.publishable, false);
   assert.equal(report.artifacts.length, 2);
+});
+
+test('accepts the retained exception only for the exact historical baseline', () => {
+  const fixture = makeFixture({
+    legacyBaseline: true,
+    candidateTag: 'v1.0.0',
+  });
+  assert.equal(verify(fixture).lifecycle_qualified, true);
+});
+
+test('requires retained legacy evidence for the exact historical baseline', () => {
+  const fixture = makeFixture({
+    legacyBaseline: true,
+    candidateTag: 'v1.0.0',
+  });
+  fs.unlinkSync(path.join(
+    fixture.baselineRoot, 'evidence/legacy-runtime-identity-absence.json'));
+  fs.rmdirSync(path.join(fixture.baselineRoot, 'evidence'));
+  fixture.baseline.receipt.files = inventory(
+    fixture.baselineRoot, new Set(['candidate-intake-receipt.json']));
+  writeJson(fixture.baseline.receiptPath, fixture.baseline.receipt);
+  assert.throws(() => verify(fixture),
+    /baseline legacy runtime identity evidence must be an object/);
+});
+
+test('rejects legacy runtime-identity evidence from a candidate intake', () => {
+  const fixture = makeFixture({legacyCandidateEvidence: true});
+  assert.throws(() => verify(fixture),
+    /candidate intake must not use the legacy runtime identity exception/);
 });
 
 test('rejects a candidate tag that is not newer than the rollback baseline', () => {

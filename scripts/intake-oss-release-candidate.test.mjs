@@ -13,6 +13,10 @@ const TAG = 'v1.0.0-rc.7';
 const DEB_RUN = '41000000001';
 const OCI_RUN = '41000000002';
 const CREATED_AT = '2026-10-30T04:00:00.000Z';
+const LEGACY_COMMIT = '78e7cc798eab902a6cc87b7063b6bc2ef09284da';
+const LEGACY_TAG = 'v1.0.0-rc.6';
+const LEGACY_DEB_RUN = '40984886786';
+const LEGACY_OCI_RUN = '40984894383';
 const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONTRACT = path.join(
   REPOSITORY_ROOT, 'packaging/release/oss-candidate-intake-contract.json');
@@ -36,11 +40,11 @@ function writeJson(root, relative, value) {
   return write(root, relative, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function source() {
+function source(commit = COMMIT, tag = TAG) {
   return {
     repository: 'https://github.com/routesphere-global/bonvoyage',
-    commit: COMMIT,
-    tag: TAG,
+    commit,
+    tag,
     dirty: false,
   };
 }
@@ -49,19 +53,25 @@ function powerless() {
   return {release_admitted: false, publishable: false};
 }
 
-function runtimeIdentity() {
+function runtimeIdentity(tag = TAG) {
   return {
     command: ['/work/output/.internal/install/bin/bonvoyage-dataplane',
       '--smp', '1', '--memory', '256M', '--version'],
     dataplane_version: '0.2.0',
-    release_version: TAG.slice(1),
+    release_version: tag.slice(1),
     upstream_http1_client: 'seastar-reference',
     stdout_sha256: '8'.repeat(64),
     stderr_sha256: '9'.repeat(64),
   };
 }
 
-function createFixture(t) {
+function createFixture(t, {
+  commit = COMMIT,
+  tag = TAG,
+  debRun = DEB_RUN,
+  ociRun = OCI_RUN,
+  includeRuntimeIdentity = true,
+} = {}) {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'bonvoyage-intake-'));
   t.after(() => fs.rmSync(temporary, {recursive: true, force: true}));
   const debRoot = path.join(temporary, 'deb');
@@ -78,7 +88,7 @@ function createFixture(t) {
     sha256: sha256(debBytes),
     version: '1.0.0~rc.7-1',
   };
-  const debBuilderIds = ['a', 'b'].map((suffix) => `github-${DEB_RUN}-1-${suffix}`);
+  const debBuilderIds = ['a', 'b'].map((suffix) => `github-${debRun}-1-${suffix}`);
   const debBuildReceiptPaths = ['a', 'b'].map((suffix, index) => {
     const directory = `oss-deb-build-${suffix}`;
     write(debRoot, `${directory}/${debPackage.path}`, debBytes);
@@ -94,15 +104,15 @@ function createFixture(t) {
         path: debPackage.path,
         sha256: debPackage.sha256,
       },
-      runtime_identity: runtimeIdentity(),
-      source: source(),
+      ...(includeRuntimeIdentity ? {runtime_identity: runtimeIdentity(tag)} : {}),
+      source: source(commit, tag),
       technical_candidate_built: true,
       ...powerless(),
     });
     return writeJson(debRoot, `${directory}/build-receipt.json`, {
       builder_id: debBuilderIds[index],
       package: debPackage,
-      source: source(),
+      source: source(commit, tag),
       technical_candidate_built: true,
       ...powerless(),
     });
@@ -110,7 +120,7 @@ function createFixture(t) {
   const debTechnical = {
     classification: 'routesphere-bonvoyage-oss-deb-reproducibility',
     outcome: 'byte-identical-technical-candidates',
-    source: source(),
+    source: source(commit, tag),
     builders: debBuilderIds,
     build_receipts: debBuildReceiptPaths.map((file, index) => ({
       builder_id: debBuilderIds[index],
@@ -126,10 +136,10 @@ function createFixture(t) {
   writeJson(debRoot, 'oss-deb-comparison/hosted-reproducibility-receipt.json', {
     classification: 'routesphere-bonvoyage-oss-deb-hosted-reproducibility',
     outcome: 'byte-identical-hosted-technical-candidates',
-    source: source(),
+    source: source(commit, tag),
     workflow: {
       name: 'OSS Debian Reproducibility Candidate',
-      run_id: DEB_RUN,
+      run_id: debRun,
       run_attempt: '1',
       jobs: ['build-a', 'build-b', 'compare'],
     },
@@ -157,7 +167,7 @@ function createFixture(t) {
     digest: `sha256:${'f'.repeat(64)}`,
     diff_id: `sha256:${'0'.repeat(64)}`,
   };
-  const ociBuilderIds = ['a', 'b'].map((suffix) => `github-${OCI_RUN}-1-${suffix}`);
+  const ociBuilderIds = ['a', 'b'].map((suffix) => `github-${ociRun}-1-${suffix}`);
   const ociBuildReceiptPaths = ['a', 'b'].map((suffix, index) => {
     const directory = `oss-oci-build-${suffix}`;
     write(ociRoot, `${directory}/${ociArchive.path}`, ociBytes);
@@ -172,8 +182,8 @@ function createFixture(t) {
       config,
       layer,
       manifest,
-      runtime_identity: runtimeIdentity(),
-      source: source(),
+      ...(includeRuntimeIdentity ? {runtime_identity: runtimeIdentity(tag)} : {}),
+      source: source(commit, tag),
       technical_candidate_built: true,
       ...powerless(),
     });
@@ -181,7 +191,7 @@ function createFixture(t) {
   const ociTechnical = {
     classification: 'routesphere-bonvoyage-oss-oci-reproducibility',
     outcome: 'byte-identical-technical-candidates',
-    source: source(),
+    source: source(commit, tag),
     builders: ociBuilderIds,
     build_receipts: ociBuildReceiptPaths.map((file, index) => ({
       builder_id: ociBuilderIds[index],
@@ -200,10 +210,10 @@ function createFixture(t) {
   writeJson(ociRoot, 'oss-oci-comparison/hosted-reproducibility-receipt.json', {
     classification: 'routesphere-bonvoyage-oss-oci-hosted-reproducibility',
     outcome: 'byte-identical-hosted-technical-candidates',
-    source: source(),
+    source: source(commit, tag),
     workflow: {
       name: 'OSS OCI Reproducibility Candidate',
-      run_id: OCI_RUN,
+      run_id: ociRun,
       run_attempt: '1',
       jobs: ['build-a', 'build-b', 'compare'],
     },
@@ -220,7 +230,10 @@ function createFixture(t) {
     hosted_builder_independence_qualified: true,
     ...powerless(),
   });
-  return {temporary, debRoot, ociRoot, output, debPackage, ociArchive};
+  return {
+    temporary, debRoot, ociRoot, output, debPackage, ociArchive,
+    commit, tag, debRun, ociRun,
+  };
 }
 
 function run(fixture, overrides = {}) {
@@ -228,10 +241,10 @@ function run(fixture, overrides = {}) {
     debRoot: fixture.debRoot,
     ociRoot: fixture.ociRoot,
     output: fixture.output,
-    sourceCommit: COMMIT,
-    sourceTag: TAG,
-    debRunId: DEB_RUN,
-    ociRunId: OCI_RUN,
+    sourceCommit: fixture.commit,
+    sourceTag: fixture.tag,
+    debRunId: fixture.debRun,
+    ociRunId: fixture.ociRun,
     createdAt: CREATED_AT,
     ...overrides,
   });
@@ -288,6 +301,60 @@ test('rejects stale runtime product identity from a builder execution', (t) => {
   execution.runtime_identity.release_version = '0.2.0';
   fs.writeFileSync(executionPath, `${JSON.stringify(execution, null, 2)}\n`);
   assert.throws(() => run(fixture), /runtime release identity does not match/u);
+  assert.equal(fs.existsSync(fixture.output), false);
+});
+
+test('rejects missing runtime identity from an ordinary candidate', (t) => {
+  const fixture = createFixture(t, {includeRuntimeIdentity: false});
+  assert.throws(() => run(fixture), /runtime identity must be an object/u);
+  assert.equal(fs.existsSync(fixture.output), false);
+});
+
+test('retains the exact legacy baseline runtime-identity absence', (t) => {
+  const fixture = createFixture(t, {
+    commit: LEGACY_COMMIT,
+    tag: LEGACY_TAG,
+    debRun: LEGACY_DEB_RUN,
+    ociRun: LEGACY_OCI_RUN,
+    includeRuntimeIdentity: false,
+  });
+  const result = run(fixture, {allowLegacyRuntimeIdentityAbsence: true});
+  assert.equal(result.status, 'PASS');
+  const evidencePath = path.join(
+    fixture.output, 'evidence/legacy-runtime-identity-absence.json');
+  const evidence = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
+  assert.equal(evidence.classification,
+    'routesphere-bonvoyage-legacy-runtime-identity-absence');
+  assert.deepEqual(evidence.runtime_identity, {
+    debian: ['absent', 'absent'],
+    oci: ['absent', 'absent'],
+  });
+  assert.equal(evidence.authority.release_admitted, false);
+  assert.equal(evidence.authority.publishable, false);
+});
+
+test('confines the legacy exception to the exact pinned baseline', (t) => {
+  const fixture = createFixture(t, {includeRuntimeIdentity: false});
+  assert.throws(() => run(fixture, {allowLegacyRuntimeIdentityAbsence: true}),
+    /restricted to the exact pinned lifecycle baseline/u);
+  assert.equal(fs.existsSync(fixture.output), false);
+});
+
+test('rejects mixed runtime identity under the legacy exception', (t) => {
+  const fixture = createFixture(t, {
+    commit: LEGACY_COMMIT,
+    tag: LEGACY_TAG,
+    debRun: LEGACY_DEB_RUN,
+    ociRun: LEGACY_OCI_RUN,
+    includeRuntimeIdentity: false,
+  });
+  const executionPath = path.join(fixture.debRoot,
+    'oss-deb-build-a/builder-execution.json');
+  const execution = JSON.parse(fs.readFileSync(executionPath, 'utf8'));
+  execution.runtime_identity = runtimeIdentity(LEGACY_TAG);
+  fs.writeFileSync(executionPath, `${JSON.stringify(execution, null, 2)}\n`);
+  assert.throws(() => run(fixture, {allowLegacyRuntimeIdentityAbsence: true}),
+    /requires absent runtime identity from both Debian builders/u);
   assert.equal(fs.existsSync(fixture.output), false);
 });
 
