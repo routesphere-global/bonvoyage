@@ -1127,7 +1127,7 @@ if(BUILD_TESTING)
     )
     set_tests_properties(bonvoyage-dataplane-version PROPERTIES
       PASS_REGULAR_EXPRESSION
-        "RouteSphere BonVoyage dataplane 0.2.0 release=0.2.0"
+        "RouteSphere BonVoyage dataplane ${PROJECT_VERSION} release=${BONVOYAGE_RELEASE_VERSION}"
       TIMEOUT 20
     )
   endif()
