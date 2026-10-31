@@ -3,7 +3,7 @@ title: Validate a configuration offline
 description: Compile one BonVoyage YAML document locally and consume its deterministic machine result.
 ---
 
-The v1.0.0 source release includes the bounded offline-validation operation of
+The v1.0.4 source release includes the bounded offline-validation operation of
 the BonVoyage configuration-authoring command. It invokes the
 same Go snapshot compiler that creates the immutable data-plane artifact. It
 does not contact a gateway, inspect runtime state, or authorize an apply.

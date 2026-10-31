@@ -9,7 +9,7 @@ BonVoyage YAML while keeping the installed `bonvoyage-config` command as the
 semantic authority.
 
 :::note[Release and model boundary]
-This page describes the wrapper package in the v1.0.0 source release for local
+This page describes the wrapper package in the v1.0.4 source release for local
 Claude Code. Package tests do not constitute a pass by a particular Claude
 model. The package does not claim execution inside claude.ai or the Claude API
 sandbox.

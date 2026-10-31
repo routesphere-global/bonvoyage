@@ -14,8 +14,8 @@ Apache-2.0 BonVoyage repository.
 
 Console Free packages are published with admitted BonVoyage versions on the
 [BonVoyage GitHub Releases page](https://github.com/routesphere-global/bonvoyage/releases).
-The first package is attached to
-[BonVoyage v1.0.0](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.0).
+The current package is attached to
+[BonVoyage v1.0.4](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.4).
 
 For the initial supported platform, select the Ubuntu 24.04 AMD64 Debian
 package whose version matches the gateway release you intend to operate. The
