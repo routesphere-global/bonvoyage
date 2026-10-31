@@ -443,9 +443,9 @@ limited to the exact source mount; wildcard safe-directory configuration is
 rejected.
 
 The public source-free builder is pinned to
-`ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:f0b5bdd396cabe4f96f07840780f2b621cb6983feed28f2e28b78a73a9c0e1be`.
+`ghcr.io/routesphere-global/bonvoyage-debian-builder@sha256:34c900a9678853d5985cd457568a9daa6d5e8290d894279184fbdc920d913111`.
 Its registry manifest, anonymous pull and local image identity were verified on
-2026-10-30. That verification proves the exact execution image is independently
+2026-10-31. That verification proves the exact execution image is independently
 retrievable; it does not grant license approval, release admission, signing,
 provenance or product publication authority.
 
@@ -469,9 +469,9 @@ capabilities, `no-new-privileges`, a read-only source mount, separate empty
 work/output mounts and a no-execute temporary filesystem.
 
 The public source-free OCI builder is pinned to
-`ghcr.io/routesphere-global/bonvoyage-oci-builder@sha256:e217afae27d23e24c994198e4bc285fe17936bf483249661b5f89c2f67b5850c`.
+`ghcr.io/routesphere-global/bonvoyage-oci-builder@sha256:8be7cc0ab8db9b4f1f491ba0aa9df84b06f6b33ffc7640b314ded72be288e861`.
 Its registry manifest, anonymous pull and local image identity were verified on
-2026-10-30. That verification establishes the independently retrievable
+2026-10-31. That verification establishes the independently retrievable
 execution image only; it does not make a BonVoyage runtime image publishable.
 
 The assembler emits one deterministic gzip layer and one Linux AMD64 manifest.
