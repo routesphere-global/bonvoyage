@@ -209,6 +209,11 @@ class NativeInstallVerifierTests(unittest.TestCase):
                 "sha256": digest(package_data),
                 "build_receipt_sha256": digest(receipt_data),
                 "installed_binary_sha256": self.binary_digest,
+                "runtime_identity": {
+                    "dataplane_version": "0.2.0",
+                    "release_version": "1.0.0",
+                    "upstream_http1_client": "seastar-reference",
+                },
             },
             "phases": [
                 {

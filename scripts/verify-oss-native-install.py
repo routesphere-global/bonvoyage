@@ -59,6 +59,7 @@ PHASE_CHECKS = {
     "installed-inactive": [
         "package_identity_exact",
         "payload_identity_exact",
+        "runtime_release_identity_exact",
         "service_account_non_root",
         "state_modes_safe",
         "service_disabled",
@@ -623,7 +624,7 @@ def verify(contract_path: Path, evidence: Path, package: Path, receipt_path: Pat
 
     package_record = exact_keys(observation["package"], {
         "name", "version", "architecture", "bytes", "sha256",
-        "build_receipt_sha256", "installed_binary_sha256",
+        "build_receipt_sha256", "installed_binary_sha256", "runtime_identity",
     }, "package observation")
     positive_int(package_record["bytes"], "observed package size")
     require(package_record["name"] == TARGET["package"] and
@@ -636,6 +637,16 @@ def verify(contract_path: Path, evidence: Path, package: Path, receipt_path: Pat
             "observed package identity mismatch")
     require(VERSION.fullmatch(package_record["version"]) is not None,
             "invalid installed package version")
+    runtime_identity = exact_keys(package_record["runtime_identity"], {
+        "dataplane_version", "release_version", "upstream_http1_client",
+    }, "runtime identity")
+    require(VERSION.fullmatch(runtime_identity["dataplane_version"]) is not None and
+            runtime_identity["release_version"] == source["tag"][1:] and
+            VERSION.fullmatch(runtime_identity["release_version"]) is not None and
+            re.fullmatch(r"[A-Za-z0-9._-]{1,64}",
+                         runtime_identity["upstream_http1_client"]) is not None,
+            "observed runtime release identity mismatch")
+    safe_text(runtime_identity["upstream_http1_client"], "upstream HTTP/1 client", 64)
 
     validate_phases(observation["phases"])
 

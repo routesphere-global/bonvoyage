@@ -50,6 +50,7 @@
           "required_checks": [
             "package_identity_exact",
             "payload_identity_exact",
+            "runtime_release_identity_exact",
             "service_inactive_after_install",
             "commissioned_non_root",
             "fixed_route_exact",
@@ -112,6 +113,7 @@
             "archive_identity_exact",
             "image_manifest_exact",
             "hardened_runtime_exact",
+            "runtime_release_identity_exact",
             "fixed_route_exact",
             "proxied_route_exact",
             "runtime_error_counters_zero"
