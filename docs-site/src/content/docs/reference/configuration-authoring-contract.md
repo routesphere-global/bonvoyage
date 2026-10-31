@@ -28,7 +28,7 @@ map every stable reason code to release-matched presentation and remediation
 guidance without making runtime message text part of the compatibility API.
 
 :::note[Released source commands]
-All six offline operations are implemented and tested in the v1.0.0 source
+All six offline operations are implemented and tested in the v1.0.4 source
 release, so the machine contract is marked `implemented`. The documented
 examples invoke them with `go run`; they are not presented as a separate binary
 package.

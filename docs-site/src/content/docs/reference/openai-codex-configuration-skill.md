@@ -9,7 +9,7 @@ verify BonVoyage YAML while keeping the installed `bonvoyage-config` command
 as the semantic authority.
 
 :::note[Release and model boundary]
-This page describes the wrapper package in the v1.0.0 source release. Package
+This page describes the wrapper package in the v1.0.4 source release. Package
 tests do not constitute a pass by a particular language model. Use the exact
 release source and its release-matched local command.
 :::

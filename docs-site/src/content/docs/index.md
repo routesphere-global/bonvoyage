@@ -12,10 +12,11 @@ visible through validation and ACK/NACK outcomes.
 
 :::note[Current release]
 This site documents
-[BonVoyage v1.0.0](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.0),
-the first public release. BonVoyage-owned source and documentation are licensed
-under Apache License 2.0. Download exact packages, checksums, Gateway
-signatures, provenance, SBOMs, and platform scope from the release page.
+[BonVoyage v1.0.4](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.4),
+the current checksum-bound public release. BonVoyage-owned source and
+documentation are licensed under Apache License 2.0. Download exact packages,
+checksums, Gateway signatures, provenance, SBOMs, and platform scope from the
+release page.
 :::
 
 ## Run the local stack

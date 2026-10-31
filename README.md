@@ -5,9 +5,9 @@ with a C++/Seastar data plane and a Go control plane. It is designed around
 shard-local request ownership, immutable configuration snapshots, bounded
 failure behavior, and evidence-led release engineering.
 
-> **Current release:** [BonVoyage v1.0.0](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.0)
-> is the first public release. BonVoyage-owned source and public documentation
-> are licensed under Apache License 2.0. Use the exact Gateway packages,
+> **Current release:** [BonVoyage v1.0.4](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.4)
+> is the current checksum-bound public release. BonVoyage-owned source and
+> public documentation are licensed under Apache License 2.0. Use the exact Gateway packages,
 > checksums, signatures, provenance, SBOMs, and platform scope published with
 > that release rather than an unverified local or third-party build.
 
@@ -89,13 +89,13 @@ founder or commercial records are not part of this repository.
 
 | Area | Status |
 | --- | --- |
-| Release state | [v1.0.0 published](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.0) with exact release assets and evidence |
+| Release state | [v1.0.4 published](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.4) with exact release assets and evidence |
 | Public license | Apache License 2.0 for BonVoyage-owned source and documentation |
 | Production support | Community issue intake; no human-response or incident-response SLA |
-| Core proxy path | Released in v1.0.0 |
-| Standalone Go control plane | Released as source in v1.0.0 |
+| Core proxy path | Included in the current v1.0.4 release |
+| Standalone Go control plane | Included as source in the current v1.0.4 release |
 | Public performance package | Scoped, evidence-bound results; no universal or dedicated-hardware claim |
-| Proprietary Console | Source not included; matching Console Free package published with v1.0.0 |
+| Proprietary Console | Source not included; matching Console Free package published with v1.0.4 |
 
 ## Quick start
 
