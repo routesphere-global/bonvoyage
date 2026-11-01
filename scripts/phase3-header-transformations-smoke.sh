@@ -421,7 +421,6 @@ dataplane/src/runtime_snapshot.cc
 dataplane/tests/header_transformations_test.cc
 dataplane/tests/runtime_snapshot_test.cc
 deploy/docker/bonvoyage/Dockerfile
-docs/architecture/decisions/0024-bounded-route-header-transformations.md
 scripts/phase3-header-transformations-client.py
 scripts/phase3-header-transformations-smoke.sh
 scripts/test-fixture-secrets.sh

@@ -468,7 +468,6 @@ dataplane/src/main.cc
 dataplane/tests/access_log_runtime_test.cc
 dataplane/tests/access_log_test.cc
 deploy/docker/bonvoyage/Dockerfile
-observability/grafana/dashboards/bonvoyage-decision-console.json
 observability/logging/events.yaml
 observability/prometheus/rules/bonvoyage-alerts.yml
 observability/prometheus/rules/bonvoyage-recording-rules.yml
@@ -476,7 +475,6 @@ observability/telemetry-contract.yaml
 scripts/phase3-http2-smoke.sh
 scripts/test-fixture-secrets.sh
 tests/fixtures/phase3-http2.yaml
-website/scripts/validate-project.cjs
 EOF
   while IFS= read -r source_file; do
     if command -v sha256sum >/dev/null 2>&1; then

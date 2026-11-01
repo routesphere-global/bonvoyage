@@ -336,7 +336,6 @@ dataplane/include/bonvoyage/runtime/runtime_snapshot.hh
 dataplane/src/gateway.cc
 dataplane/src/runtime_snapshot.cc
 dataplane/tests/runtime_snapshot_test.cc
-docs/architecture/decisions/0023-bounded-static-route-redirects.md
 scripts/phase3-redirect-client.py
 scripts/phase3-redirect-smoke.sh
 scripts/test-fixture-secrets.sh

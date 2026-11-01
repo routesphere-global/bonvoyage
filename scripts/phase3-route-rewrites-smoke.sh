@@ -382,7 +382,6 @@ dataplane/src/runtime_snapshot.cc
 dataplane/tests/http2_request_validation_test.cc
 dataplane/tests/route_rewrite_test.cc
 dataplane/tests/runtime_snapshot_test.cc
-docs/architecture/decisions/0025-bounded-route-host-path-rewrites.md
 scripts/phase3-route-rewrites-client.py
 scripts/phase3-route-rewrites-smoke.sh
 scripts/test-fixture-secrets.sh

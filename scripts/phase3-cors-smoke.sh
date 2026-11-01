@@ -317,27 +317,11 @@ dataplane/tests/listener_lifecycle_test.cc
 dataplane/tests/runtime_snapshot_test.cc
 deploy/docker/upstream/server.py
 deploy/docker/bonvoyage/Dockerfile
-docs/architecture/config-snapshots.md
-docs/architecture/decisions/0021-bounded-route-level-cors.md
-docs/architecture/request-lifecycle.md
-docs/architecture/security-model.md
-docs/architecture/system-model.md
-docs/implementation/development-evidence-lineage.md
-docs/implementation/phase-3-cors-policy.md
-docs/implementation/phase-3-cors-lifetime-hardening.md
-docs/implementation/phases-and-milestones.md
-docs/index.md
-docs/requirements/feature-matrix.md
-docs/requirements/product-requirements.md
-docs/research/simulation-test-catalog.md
-docs/research/use-case-development-traceability.md
-docs/security/threat-model.md
 scripts/phase3-cors-client.py
 scripts/phase3-cors-smoke.sh
 scripts/test-fixture-secrets.sh
 scripts/build-dataplane-sanitized.sh
 tests/fixtures/phase3-cors.yaml
-website/sidebars.js
 EOF
 while IFS= read -r source_file; do hash_file "$source_file"; done \
   <"$stage_dir/source-files.txt" >"$stage_dir/source-checksums.sha256"

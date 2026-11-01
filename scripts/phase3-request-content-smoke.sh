@@ -348,26 +348,11 @@ dataplane/tests/request_content_policy_test.cc
 dataplane/tests/runtime_snapshot_test.cc
 deploy/docker/bonvoyage/Dockerfile
 deploy/docker/upstream/server.py
-docs/architecture/config-snapshots.md
-docs/architecture/decisions/0022-bounded-route-request-content-policy.md
-docs/architecture/request-lifecycle.md
-docs/architecture/security-model.md
-docs/architecture/system-model.md
-docs/implementation/development-evidence-lineage.md
-docs/implementation/phase-3-request-content-policy.md
-docs/implementation/phases-and-milestones.md
-docs/index.md
-docs/requirements/feature-matrix.md
-docs/requirements/product-requirements.md
-docs/research/simulation-test-catalog.md
-docs/research/use-case-development-traceability.md
-docs/security/threat-model.md
 scripts/build-dataplane-sanitized.sh
 scripts/phase3-request-content-client.py
 scripts/phase3-request-content-smoke.sh
 scripts/test-fixture-secrets.sh
 tests/fixtures/phase3-request-content.yaml
-website/sidebars.js
 EOF
 while IFS= read -r source_file; do hash_file "$source_file"; done \
   <"$stage_dir/source-files.txt" >"$stage_dir/source-checksums.sha256"

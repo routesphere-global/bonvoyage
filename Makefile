@@ -2,6 +2,7 @@ SHELL := /bin/sh
 export GOCACHE := $(CURDIR)/.cache/go-build
 
 .PHONY: help dependencies test test-go test-node test-python fmt-check \
+	public-replay-source-manifest-test \
 	config-authoring-contract-test config-authoring-cli-test config-authoring-corpus-test \
 	config-authoring-cross-surface-contract-test \
 	config-authoring-windows-large-input-test \
@@ -26,6 +27,7 @@ help:
 	@echo ""
 	@echo "  dependencies   Install pinned JavaScript tooling"
 	@echo "  test           Run portable Go, Node.js, and Python contract tests"
+	@echo "  public-replay-source-manifest-test  Verify replay evidence manifests reference exported files"
 	@echo "  config-authoring-contract-test  Verify the versioned authoring UX contract"
 	@echo "  config-authoring-cli-test  Verify all offline authoring operations and result schema"
 	@echo "  config-authoring-corpus-test  Replay the versioned shared authoring corpus"
@@ -91,6 +93,7 @@ test-go:
 test-node:
 	@npm test
 	@node --test scripts/go-security-baseline.test.mjs
+	@$(MAKE) public-replay-source-manifest-test
 	@$(MAKE) config-authoring-contract-test
 	@$(MAKE) config-authoring-cli-test
 	@$(MAKE) config-authoring-corpus-test
@@ -129,6 +132,9 @@ test-node:
 
 oss-release-bundle-test:
 	@node --test scripts/verify-oss-release-bundle.test.mjs
+
+public-replay-source-manifest-test:
+	@node --test scripts/public-replay-source-manifests.test.mjs
 
 oss-release-workflow-test:
 	@node --test scripts/discover-oss-release-candidate-runs.test.mjs scripts/verify-oss-release-workflow.test.mjs
