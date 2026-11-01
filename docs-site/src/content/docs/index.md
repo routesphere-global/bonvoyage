@@ -41,6 +41,7 @@ and troubleshooting checks.
 
 | Goal | Start with |
 | --- | --- |
+| Install the published Gateway or Console artifacts | [Install the v1.0.4 release](getting-started/install-release/) |
 | Evaluate locally | [Requirements](getting-started/requirements/) and [Docker quickstart](getting-started/quickstart/) |
 | Verify a running stack | [Verify a local deployment](how-to/verify-local-deployment/) |
 | Validate desired-state YAML offline | [Validate a configuration](how-to/validate-configuration/) |

@@ -17,6 +17,12 @@ Console Free packages are published with admitted BonVoyage versions on the
 The current package is attached to
 [BonVoyage v1.0.4](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.4).
 
+The exact current filename is:
+
+```text
+bonvoyage-console_1.0.4-1_amd64.deb
+```
+
 For the initial supported platform, select the Ubuntu 24.04 AMD64 Debian
 package whose version matches the gateway release you intend to operate. The
 release assets and notes identify the exact filename, checksum, retained build
@@ -41,6 +47,11 @@ gateway source snapshot implies a matching Console package.
 The package is intended for local or private-network operation. Installation
 does not create an account, transmit a registration record, or enable a hosted
 control plane.
+
+Use [Install the v1.0.4 release](/getting-started/install-release/) for exact
+anonymous download, checksum verification, package installation, and version
+confirmation commands. The package remains stopped after installation and
+ships no default login.
 
 ## Continue the setup
 

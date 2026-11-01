@@ -99,6 +99,14 @@ founder or commercial records are not part of this repository.
 
 ## Quick start
 
+To install the checksum-bound Ubuntu 24.04 AMD64 Gateway package, OCI archive,
+or optional Console Free package, follow the
+[v1.0.4 release installation guide](https://docs.routesphere.global/getting-started/install-release/).
+It verifies the selected artifact before installation and keeps the native
+services stopped until the operator explicitly supplies reviewed state.
+
+To build and evaluate the complete local example from source, continue below.
+
 Prerequisites: Docker with Compose v2 and enough local resources to build the
 Seastar data plane.
 

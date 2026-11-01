@@ -21,6 +21,7 @@ export default defineConfig({
           items: [
             { label: 'Documentation home', slug: 'index' },
             { label: 'Requirements', slug: 'getting-started/requirements' },
+            { label: 'Install the v1.0.4 release', slug: 'getting-started/install-release' },
           ],
         },
         {
