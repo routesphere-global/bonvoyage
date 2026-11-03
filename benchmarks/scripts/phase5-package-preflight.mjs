@@ -5,7 +5,8 @@ import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {buildPackagePlacement} from './phase5-package-placement.mjs';
+import {buildPackagePlacement, renderPackageUnit} from
+  './phase5-package-placement.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const FILES = ['aio-capacity.conf', 'bonvoyage-resources.conf',
@@ -42,7 +43,7 @@ export function verifyPlacementBundle(directory) {
     /^[0-9a-f]{40}$/u.test(plan.source_commit) && SHA256.test(plan.binary_sha256),
   'placement identity or evidence class invalid');
   const sourceUnit = fs.readFileSync(path.join(ROOT, 'packaging/systemd/bonvoyage.service'), 'utf8');
-  const installedUnit = sourceUnit.replace('/usr/local/bin/bonvoyage-dataplane', BINARY);
+  const installedUnit = renderPackageUnit(sourceUnit);
   const rebuilt = buildPackagePlacement({sourceUnit, installedUnit,
     onlineCpus: plan.online_cpus, gatewayCpus: plan.gateway_cpus, irqCpus: plan.irq_cpus,
     binarySha256: plan.binary_sha256, seastarMemoryMiB: plan.seastar_memory_mib,

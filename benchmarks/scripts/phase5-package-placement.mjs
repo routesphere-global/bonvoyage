@@ -10,6 +10,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const SOURCE_UNIT = path.join(ROOT, 'packaging/systemd/bonvoyage.service');
 const SOURCE_BINARY = '/usr/local/bin/bonvoyage-dataplane';
 const PACKAGE_BINARY = '/usr/bin/bonvoyage-dataplane';
+const SOURCE_DOCUMENTATION = 'https://docs.routesphere.io/bonvoyage/';
+const PACKAGE_DOCUMENTATION = 'https://docs.routesphere.global/';
 const PACKAGE_FRAGMENT = '/usr/lib/systemd/system/bonvoyage.service';
 const SHA256 = /^[0-9a-f]{64}$/u;
 const CAMPAIGN_ROOT = /^\/run\/bonvoyage-perf06\/[a-z0-9][a-z0-9-]{0,63}$/u;
@@ -91,14 +93,24 @@ function runtimeArtifacts(input) {
     hosts_file: input.runtimeHostsFile};
 }
 
+export function renderPackageUnit(sourceUnit) {
+  requireValue(typeof sourceUnit === 'string',
+    'source unit contents are required');
+  requireValue(sourceUnit.split(SOURCE_BINARY).length === 2,
+    'source unit does not contain exactly one dataplane path');
+  requireValue(sourceUnit.split(SOURCE_DOCUMENTATION).length === 2,
+    'source unit does not contain exactly one documentation URL');
+  return sourceUnit
+    .replace(SOURCE_BINARY, PACKAGE_BINARY)
+    .replace(SOURCE_DOCUMENTATION, PACKAGE_DOCUMENTATION);
+}
+
 export function buildPackagePlacement(input) {
   const sourceUnit = input.sourceUnit;
   const installedUnit = input.installedUnit;
   requireValue(typeof sourceUnit === 'string' && typeof installedUnit === 'string',
     'both unit contents are required');
-  requireValue(sourceUnit.split(SOURCE_BINARY).length === 2,
-    'source unit does not contain exactly one dataplane path');
-  const expectedUnit = sourceUnit.replace(SOURCE_BINARY, PACKAGE_BINARY);
+  const expectedUnit = renderPackageUnit(sourceUnit);
   requireValue(installedUnit === expectedUnit,
     'installed package unit differs from reviewed source rendering');
   const starts = expectedUnit.split('\n').filter((line) => line.startsWith('ExecStart='));

@@ -10,6 +10,7 @@ import {fileURLToPath} from 'node:url';
 import {createPolicyRuntimeBundle, sealPolicyCampaignBundle,
   verifyPolicyCampaignBundle, verifyPolicyRuntimeBundle} from
   './phase5-policy-campaign.mjs';
+import {renderPackageUnit} from './phase5-package-placement.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const sha256 = (value) => crypto.createHash('sha256').update(value).digest('hex');
@@ -93,8 +94,7 @@ function fixture(t, mutateInput) {
     fs.readFileSync(path.join(signing, 'phase3-jwks.json')));
   const sourceUnit = fs.readFileSync(path.join(root,
     'packaging/systemd/bonvoyage.service'), 'utf8');
-  const installedUnit = Buffer.from(sourceUnit.replace(
-    '/usr/local/bin/bonvoyage-dataplane', '/usr/bin/bonvoyage-dataplane'));
+  const installedUnit = Buffer.from(renderPackageUnit(sourceUnit));
   const result = sealPolicyCampaignBundle({root: directory, input: value,
     installedUnit, sourceCommit: '2'.repeat(40)});
   return {directory, input: value, result};

@@ -6,15 +6,15 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import test from 'node:test';
-import {buildPackagePlacement} from './phase5-package-placement.mjs';
+import {buildPackagePlacement, renderPackageUnit} from
+  './phase5-package-placement.mjs';
 import {capturePlacementState, evaluatePlacementPreflight,
   verifyPlacementBundle} from './phase5-package-preflight.mjs';
 import {cleanGitIdentityEnvironment} from './test-git-identity.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const sourceUnit = fs.readFileSync(path.join(root, 'packaging/systemd/bonvoyage.service'), 'utf8');
-const packageUnit = sourceUnit.replace('/usr/local/bin/bonvoyage-dataplane',
-  '/usr/bin/bonvoyage-dataplane');
+const packageUnit = renderPackageUnit(sourceUnit);
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 const binarySha = 'b'.repeat(64);
 

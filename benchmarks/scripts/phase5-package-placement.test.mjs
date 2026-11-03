@@ -6,14 +6,14 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import test from 'node:test';
-import {buildPackagePlacement} from './phase5-package-placement.mjs';
+import {buildPackagePlacement, renderPackageUnit} from
+  './phase5-package-placement.mjs';
 import {cleanGitIdentityEnvironment} from './test-git-identity.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const sourceUnit = fs.readFileSync(path.join(root,
   'packaging/systemd/bonvoyage.service'), 'utf8');
-const installedUnit = sourceUnit.replace('/usr/local/bin/bonvoyage-dataplane',
-  '/usr/bin/bonvoyage-dataplane');
+const installedUnit = renderPackageUnit(sourceUnit);
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
 function fixture(overrides = {}) {
@@ -27,7 +27,7 @@ function fixture(overrides = {}) {
 test('8-core package plan is identity-bound and separates the eight IRQ CPUs', () => {
   const {plan, files} = buildPackagePlacement(fixture());
   assert.equal(plan.package_unit_sha256,
-    '5f46acf80375a023ea06fac38f3b8d75774a41ea1361ed1a2518c880dd7aa6e7');
+    '6ae10606bf93b5894c610ae1980f83e83d48cf2e057124c7b9065dd69a664e3a');
   assert.equal(plan.expected_fragment_path,
     '/usr/lib/systemd/system/bonvoyage.service');
   assert.equal(plan.install_targets['bonvoyage-runtime.conf'],
@@ -131,6 +131,10 @@ test('PERF-06 placement binds private runtime artifacts and rolls back cleanly',
 });
 
 test('foreign package unit, CPU overlap and memory mistakes fail closed', () => {
+  assert.throws(() => buildPackagePlacement(fixture({installedUnit:
+    installedUnit.replace('https://docs.routesphere.global/',
+      'https://docs.routesphere.io/bonvoyage/')})),
+  /differs from reviewed source/u);
   assert.throws(() => buildPackagePlacement(fixture({installedUnit:
     installedUnit.replace('--log-to-syslog 1', '--log-to-syslog 0')})),
   /differs from reviewed source/u);
