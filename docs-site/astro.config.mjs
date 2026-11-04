@@ -34,6 +34,7 @@ export default defineConfig({
           items: [
             { label: 'Verify a local deployment', slug: 'how-to/verify-local-deployment' },
             { label: 'Verify a Kubernetes deployment', slug: 'how-to/verify-kubernetes-deployment' },
+            { label: 'Operate observability', slug: 'how-to/operate-observability' },
             { label: 'Reproduce the bounded benchmark', slug: 'how-to/reproduce-bounded-benchmark' },
             { label: 'Validate a configuration', slug: 'how-to/validate-configuration' },
             { label: 'Format a configuration', slug: 'how-to/format-configuration' },
@@ -41,6 +42,15 @@ export default defineConfig({
             { label: 'Compare configurations', slug: 'how-to/compare-configurations' },
             { label: 'Migrate a configuration', slug: 'how-to/migrate-configuration' },
             { label: 'Preview a configuration', slug: 'how-to/preview-configuration' },
+          ],
+        },
+        {
+          label: 'Evidence',
+          items: [
+            { label: 'v1.0.4 post-release replay', slug: 'performance/v1-0-4-post-release-replay' },
+            { label: 'Current performance evidence', link: 'https://routesphere.global/performance/' },
+            { label: 'Historical comparison archive', link: 'https://routesphere.global/performance-history/' },
+            { label: 'Release evidence', link: 'https://routesphere.global/release-evidence/' },
           ],
         },
         {
