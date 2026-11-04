@@ -90,6 +90,13 @@ retained slightly lower primary latency and consumed less measured application
 CPU at this point; BonVoyage retained materially lower memory and descriptor
 use.
 
+![Grafana replay of the six retained 480K Stage C measurements.](../../../assets/screenshots/performance/v104-stage-c-c03-grafana-480k-retained-20261105.jpg)
+
+This dashboard capture replays six checksum-verified per-run result summaries
+through a local Prometheus/Grafana stack. It is not live AWS telemetry or raw
+time-series sampling from the original load interval; the table and retained
+run records remain the evidence authority.
+
 ## Supplemental 600K diagnostic
 
 The 600,000 offered-RPS point was a supplemental shared-EC2 diagnostic outside
@@ -116,6 +123,14 @@ The 600K result shows that NGINX's lower average application CPU coexisted with
 non-compliant tails despite the same 24-CPU allowance. It does not prove why.
 Claims about scheduler stalls, lock contention, kernel behavior, or an internal
 scaling bottleneck would require separate profiling evidence.
+
+![Grafana replay of the six retained 600K Stage C measurements.](../../../assets/screenshots/performance/v104-stage-c-c03-grafana-600k-retained-20261105.jpg)
+
+The dashboard reports four accepted measurements: all three BonVoyage
+repetitions and NGINX repetition 2. The two rejected NGINX tail repetitions
+remain visible. This is a local visualization of retained
+`shared-vm-directional` summaries, not live AWS telemetry, a capacity result,
+or a universal ranking.
 
 ## Policy, protocol, and recovery outcomes
 
