@@ -35,13 +35,13 @@ jobs:
       candidate_tag: ${{ steps.discovery.outputs.candidate_tag }}
     steps:
       - name: Check out the exact tagged commit without retained credentials
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.sha }}
       - name: Use the reviewed Node.js runtime
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '24'
       - name: Install locked workflow-verifier dependencies
@@ -78,17 +78,17 @@ jobs:
     environment: release
     steps:
       - name: Check out the exact tagged commit without retained credentials
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.sha }}
       - name: Use the reviewed Node.js runtime
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '24'
       - name: Download baseline Debian builder A
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-deb-build-a
           path: ${{ runner.temp }}/baseline-deb/oss-deb-build-a
@@ -96,7 +96,7 @@ jobs:
           run-id: ${{ needs.preflight.outputs.baseline_deb_run_id }}
           github-token: ${{ github.token }}
       - name: Download baseline Debian builder B
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-deb-build-b
           path: ${{ runner.temp }}/baseline-deb/oss-deb-build-b
@@ -104,7 +104,7 @@ jobs:
           run-id: ${{ needs.preflight.outputs.baseline_deb_run_id }}
           github-token: ${{ github.token }}
       - name: Download baseline Debian comparison
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-deb-comparison
           path: ${{ runner.temp }}/baseline-deb/oss-deb-comparison
@@ -112,7 +112,7 @@ jobs:
           run-id: ${{ needs.preflight.outputs.baseline_deb_run_id }}
           github-token: ${{ github.token }}
       - name: Download baseline OCI builder A
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-oci-build-a
           path: ${{ runner.temp }}/baseline-oci/oss-oci-build-a
@@ -120,7 +120,7 @@ jobs:
           run-id: ${{ needs.preflight.outputs.baseline_oci_run_id }}
           github-token: ${{ github.token }}
       - name: Download baseline OCI builder B
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-oci-build-b
           path: ${{ runner.temp }}/baseline-oci/oss-oci-build-b
@@ -128,7 +128,7 @@ jobs:
           run-id: ${{ needs.preflight.outputs.baseline_oci_run_id }}
           github-token: ${{ github.token }}
       - name: Download baseline OCI comparison
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-oci-comparison
           path: ${{ runner.temp }}/baseline-oci/oss-oci-comparison
@@ -136,7 +136,7 @@ jobs:
           run-id: ${{ needs.preflight.outputs.baseline_oci_run_id }}
           github-token: ${{ github.token }}
       - name: Download candidate Debian builder A
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-deb-build-a
           path: ${{ runner.temp }}/candidate-deb/oss-deb-build-a
@@ -144,7 +144,7 @@ jobs:
           run-id: ${{ needs.preflight.outputs.candidate_deb_run_id }}
           github-token: ${{ github.token }}
       - name: Download candidate Debian builder B
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-deb-build-b
           path: ${{ runner.temp }}/candidate-deb/oss-deb-build-b
@@ -152,7 +152,7 @@ jobs:
           run-id: ${{ needs.preflight.outputs.candidate_deb_run_id }}
           github-token: ${{ github.token }}
       - name: Download candidate Debian comparison
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-deb-comparison
           path: ${{ runner.temp }}/candidate-deb/oss-deb-comparison
@@ -160,7 +160,7 @@ jobs:
           run-id: ${{ needs.preflight.outputs.candidate_deb_run_id }}
           github-token: ${{ github.token }}
       - name: Download candidate OCI builder A
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-oci-build-a
           path: ${{ runner.temp }}/candidate-oci/oss-oci-build-a
@@ -168,7 +168,7 @@ jobs:
           run-id: ${{ needs.preflight.outputs.candidate_oci_run_id }}
           github-token: ${{ github.token }}
       - name: Download candidate OCI builder B
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-oci-build-b
           path: ${{ runner.temp }}/candidate-oci/oss-oci-build-b
@@ -176,7 +176,7 @@ jobs:
           run-id: ${{ needs.preflight.outputs.candidate_oci_run_id }}
           github-token: ${{ github.token }}
       - name: Download candidate OCI comparison
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-oci-comparison
           path: ${{ runner.temp }}/candidate-oci/oss-oci-comparison
@@ -206,7 +206,7 @@ jobs:
             --oci-run-id '${{ needs.preflight.outputs.candidate_oci_run_id }}' \
             --created-at '${{ needs.preflight.outputs.candidate_created_at }}'
       - name: Upload exact lifecycle intakes
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: oss-artifact-lifecycle-intakes
           path: ${{ runner.temp }}/intakes
@@ -224,13 +224,13 @@ jobs:
     environment: release
     steps:
       - name: Check out the exact tagged commit without retained credentials
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.sha }}
       - name: Download same-run lifecycle intakes
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-artifact-lifecycle-intakes
           path: ${{ runner.temp }}/intakes
@@ -244,7 +244,7 @@ jobs:
             --confirm-retained-state RETAIN_BONVOYAGE_OPERATOR_STATE
           sudo chown -R "$(id -u):$(id -g)" /var/tmp/bonvoyage-lifecycle-fresh
       - name: Upload bounded fresh-install evidence
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: oss-artifact-lifecycle-debian-candidate-fresh
           path: /var/tmp/bonvoyage-lifecycle-fresh
@@ -262,13 +262,13 @@ jobs:
     environment: release
     steps:
       - name: Check out the exact tagged commit without retained credentials
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.sha }}
       - name: Download same-run lifecycle intakes
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-artifact-lifecycle-intakes
           path: ${{ runner.temp }}/intakes
@@ -282,7 +282,7 @@ jobs:
             --confirm-retained-state RETAIN_BONVOYAGE_OPERATOR_STATE
           sudo chown -R "$(id -u):$(id -g)" /var/tmp/bonvoyage-debian-transition
       - name: Upload bounded Debian transition evidence
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: oss-artifact-lifecycle-debian-transition
           path: /var/tmp/bonvoyage-debian-transition
@@ -300,13 +300,13 @@ jobs:
     environment: release
     steps:
       - name: Check out the exact tagged commit without retained credentials
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.sha }}
       - name: Download same-run lifecycle intakes
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-artifact-lifecycle-intakes
           path: ${{ runner.temp }}/intakes
@@ -318,7 +318,7 @@ jobs:
             --evidence /var/tmp/bonvoyage-oci-lifecycle
           sudo chown -R "$(id -u):$(id -g)" /var/tmp/bonvoyage-oci-lifecycle
       - name: Upload bounded OCI lifecycle evidence
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: oss-artifact-lifecycle-oci
           path: /var/tmp/bonvoyage-oci-lifecycle
@@ -341,32 +341,32 @@ jobs:
     environment: release
     steps:
       - name: Check out the exact tagged commit without retained credentials
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.sha }}
       - name: Use the reviewed Node.js runtime
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '24'
       - name: Download same-run lifecycle intakes
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-artifact-lifecycle-intakes
           path: ${{ runner.temp }}/intakes
       - name: Download fresh-install lane
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-artifact-lifecycle-debian-candidate-fresh
           path: ${{ runner.temp }}/lanes/debian-candidate-fresh
       - name: Download Debian transition lane
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-artifact-lifecycle-debian-transition
           path: ${{ runner.temp }}/lanes/debian-transition
       - name: Download OCI lifecycle lane
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: oss-artifact-lifecycle-oci
           path: ${{ runner.temp }}/lanes/oci-lifecycle
@@ -390,7 +390,7 @@ jobs:
             --baseline "$RUNNER_TEMP/intakes/baseline" \
             --evidence "$RUNNER_TEMP/oss-artifact-lifecycle-evidence"
       - name: Upload non-publishing lifecycle evidence
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: oss-artifact-lifecycle-evidence
           path: ${{ runner.temp }}/oss-artifact-lifecycle-evidence
