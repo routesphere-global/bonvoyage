@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 
 import {verifyProductSigningWorkflow} from './verify-oss-product-signing-workflow.mjs';
 
