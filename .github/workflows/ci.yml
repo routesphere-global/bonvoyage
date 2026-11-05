@@ -30,10 +30,13 @@ jobs:
           persist-credentials: false
       - name: Verify Developer Certificate of Origin sign-offs
         if: github.event_name == 'pull_request'
+        env:
+          BONVOYAGE_PULL_REQUEST_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: >-
           node scripts/verify-dco-signoffs.mjs
           --base "${{ github.event.pull_request.base.sha }}"
           --head "${{ github.event.pull_request.head.sha }}"
+          --pull-request-author "$BONVOYAGE_PULL_REQUEST_AUTHOR"
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:

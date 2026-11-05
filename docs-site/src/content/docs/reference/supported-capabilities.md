@@ -1,10 +1,11 @@
 ---
 title: Supported capabilities
-description: Current implementation scope and explicit boundaries for the first BonVoyage OSS candidate.
+description: Shipped v1.0.4 capabilities and explicit OSS, Enterprise, and later boundaries.
 ---
 
-This page describes implemented source scope. Final supported-platform and
-release claims belong to the exact published release notes and artifacts.
+This page describes the public BonVoyage `v1.0.4` boundary. Exact artifact
+identities and release notes remain authoritative for installation; this page
+separates shipped behavior from planned OSS and Enterprise work.
 
 ## Traffic and policy
 
@@ -24,8 +25,12 @@ release claims belong to the exact published release notes and artifacts.
 - Go control-plane validation, preview, ACK/NACK distribution, activation, and
   rollback primitives.
 - Prometheus metrics, bounded access logging, and OpenTelemetry trace export.
-- Docker, native Ubuntu package inputs, Kubernetes manifests, benchmark tools,
-  security checks, and plan-first Linux host tuning.
+- Docker, a native Ubuntu package, an OCI archive, Kubernetes Deployment
+  manifests, benchmark tools, security checks, and plan-first Linux host
+  tuning inspection.
+- Deterministic offline `validate`, `format`, `explain`, `diff`, `migrate`, and
+  `preview` configuration operations.
+- Release-matched ChatGPT/Codex and Claude Code configuration skills.
 
 ## Boundaries that remain explicit
 
@@ -35,6 +40,9 @@ release claims belong to the exact published release notes and artifacts.
 | SSE | Incremental forwarding is implemented; production-scale concurrent slow-consumer and event-cadence qualification remains release evidence work. |
 | Certificates | One certificate/key pair per TLS listener; no per-domain SNI certificate selector or certificate-upload API. |
 | Fleet operations | The OSS control plane provides standalone primitives; enterprise multi-tenant fleet governance is separate. |
+| Rate limits | Route-local shard-aware protection is shipped; exact distributed/global quota contracts are Enterprise. |
+| Kubernetes packaging | Deployment, Service, PDB, and network policies ship; Helm, DaemonSet mode, and Gateway API translation remain OSS improvements. |
+| Other OSS improvements | Proxy Protocol, request mirroring, locality/priority failover, and dynamic endpoint or customer-secret inputs are not shipped in v1.0.4. |
 | Management API | Console Free uses an internal management service, but the public product does not publish a supported endpoint, SDK, external automation, or third-party UI contract. Supported programmatic management documentation is Enterprise scope. |
 | Performance | Results apply only to their recorded source, artifact, configuration, workload, and environment. |
 | Dedicated hardware | Bare-metal NUMA, PCIe, NIC queue, and IRQ advantages require physical-topology qualification. |
