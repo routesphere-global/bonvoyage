@@ -6,7 +6,7 @@ import {test} from 'node:test';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GO_VERSION = '1.26.10';
-const GRPC_VERSION = '1.83.2';
+const GRPC_VERSION = '1.85.0';
 const X_NET_VERSION = '0.62.0';
 const GO_IMAGE =
   'golang:1.26.10-bookworm@sha256:23ce71337b726608afb1bc00986e630a05034a87a87ea1fc2cd1ae5cf33387eb';

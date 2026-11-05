@@ -86,7 +86,7 @@ test('rejects trigger permission runner action and timeout drift', (t) => {
     (value) => value.replace('runs-on: ubuntu-24.04', 'runs-on: self-hosted'),
     (value) => value.replace('timeout-minutes: 45', 'timeout-minutes: 46'),
     (value) => value.replace(
-      'actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803',
+      'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',
       'actions/checkout@v6'),
     (value) => value.replace('persist-credentials: false', 'persist-credentials: true'),
   ];
