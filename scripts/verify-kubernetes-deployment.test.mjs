@@ -6,7 +6,7 @@ import {spawnSync} from 'node:child_process';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
 
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const verifier = path.join(root, 'scripts', 'verify-kubernetes-deployment.mjs');
@@ -117,7 +117,10 @@ test('the fixture uses revisioned configuration and a containment rollout', () =
 
   const invalid = yaml.load(fs.readFileSync(
     path.join(fixture, 'configmap-invalid.yaml'), 'utf8'));
-  assert.throws(() => yaml.load(invalid.data['local.yaml']), /unexpected end|missed comma/i);
+  assert.throws(
+    () => yaml.load(invalid.data['local.yaml']),
+    /unexpected end|missed comma|deficient indentation/i,
+  );
 });
 
 test('the base defaults gateway ingress to deny and scopes diagnostics', () => {
