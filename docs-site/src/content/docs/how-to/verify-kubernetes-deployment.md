@@ -140,3 +140,28 @@ never deletes a cluster that was present before preflight.
 This gate is local functional evidence. It does not establish throughput,
 production capacity, multi-node availability, benchmark reproducibility, or
 release admission.
+
+## Accepted public-main replay
+
+On November 5, 2026, the lifecycle gate completed from an anonymous clone of
+public `main` at commit
+`1ccf3cea29f43d467e0035610e302e67eb9c9994`. The environment used Ubuntu
+24.04 AMD64, Node.js 22.23.4, `kind` 0.33.0, and the pinned Kubernetes 1.37.0
+node image.
+
+All 54 focused tests passed: 37 read-only verifier tests and 17 lifecycle-runner
+tests. The live replay then completed all six phases:
+
+1. preflight and controlled image-identity checks;
+2. a two-replica hardened baseline;
+3. a zero-unavailable upgrade to the accepted `v2` configuration;
+4. rejection of a malformed candidate while both healthy replicas and service
+   traffic remained available;
+5. exact rollback to the `v1` baseline; and
+6. namespace and disposable-cluster teardown.
+
+This is source-built evidence for the exact public commit. It is not a tagged
+public-artifact installation result, a throughput or capacity result, a
+multi-node availability claim, or a release-admission record. Raw
+infrastructure captures remain private; the public contract, commands,
+versions, outcome, and boundaries are recorded here for independent review.

@@ -37,6 +37,26 @@ bounded release evidence for the published artifacts.
 | F: recovery | Upstream failure, overload admission, same-process recovery, and NACK/rollback/corrected activation completed | Confirms the tested failure and immutable-configuration transitions, not continuous-availability certification. |
 | G: observability supplement | Prometheus and OTLP failure-isolation cases passed | Confirms bounded telemetry isolation and recovery; it creates no SLO, billing, or capacity claim. |
 
+## Kubernetes lifecycle supplement
+
+After the A-G release-matched campaign, the public `main` source at
+`1ccf3cea29f43d467e0035610e302e67eb9c9994` completed a separate disposable
+Kubernetes lifecycle replay on November 5, 2026. All 54 focused verifier and
+runner tests passed, followed by six live phases: preflight, a two-replica
+baseline, zero-unavailable configuration upgrade, malformed-candidate
+rejection, exact rollback, and teardown.
+
+The important operational result was containment: the malformed configuration
+did not replace the accepted snapshot, both healthy replicas remained
+available, and service traffic continued before exact rollback to the baseline.
+
+This supplement is source-built evidence for the named public commit on
+disposable `kind` with Ubuntu 24.04 AMD64. It is not an additional replay stage,
+a tagged public-artifact installation result, a throughput or capacity result,
+multi-node availability evidence, or release admission. See
+[Verify a Kubernetes deployment](../../how-to/verify-kubernetes-deployment/)
+for the public contract, commands, versions, and boundaries.
+
 ## Test conditions and acceptance
 
 The campaign used shared AWS `c7a.8xlarge` instances in `ap-southeast-1` with
@@ -154,6 +174,7 @@ The campaign supports these bounded conclusions:
 3. At the matched 480K header-transform point, both systems passed; NGINX had slightly lower latency and consumed less measured application CPU, while BonVoyage used materially less memory and fewer descriptors.
 4. At the supplemental 600K point, BonVoyage retained a substantially lower and more repeatable tail distribution while preserving the same successful request semantics. NGINX's lower measured application CPU did not translate into p99 gate compliance in two repetitions.
 5. BonVoyage's reactor model consumed more measured application CPU at these points. That is not a cost-per-request or energy-efficiency win, but neither can a lower CPU value be called efficient when the associated latency objective is missed.
+6. The separate public-main Kubernetes replay contained a rejected configuration candidate, preserved healthy traffic, and completed exact rollback across the bounded disposable lifecycle.
 
 The campaign does **not** prove universal superiority, maximum capacity,
 dedicated-hardware behavior, production sizing, infrastructure savings,

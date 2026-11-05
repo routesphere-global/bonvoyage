@@ -27,6 +27,7 @@ release page.
 | [Current performance evidence](https://routesphere.global/performance/) | Curated current-release results, test conditions, resource trade-offs, acceptance gates, and limitations. |
 | [Historical comparison archive](https://routesphere.global/performance-history/) | Earlier NGINX and Envoy engineering measurements, kept separate from the public v1.0.4 replay. |
 | [Release evidence](https://routesphere.global/release-evidence/) | Artifact identities, verification material, SBOMs, provenance, assessments, and the A-G proof map. |
+| [Kubernetes lifecycle replay](how-to/verify-kubernetes-deployment/#accepted-public-main-replay) | Clean-source installation, controlled upgrade, rejected-candidate containment, exact rollback, and teardown for the named public-main commit. |
 | [Supported capabilities](reference/supported-capabilities/) | Shipped v1.0.4 behavior and explicit OSS, Console Free, Enterprise, and later boundaries. |
 
 The current v1.0.4 replay contains an accepted BonVoyage/NGINX comparison.
@@ -59,6 +60,7 @@ and troubleshooting checks.
 | --- | --- |
 | Evaluate locally | [Requirements](getting-started/requirements/) and [Docker quickstart](getting-started/quickstart/) |
 | Verify a running stack | [Verify a local deployment](how-to/verify-local-deployment/) |
+| Verify the disposable Kubernetes lifecycle | [Verify a Kubernetes deployment](how-to/verify-kubernetes-deployment/) |
 | Operate metrics, dashboards, alerts, and traces | [Operate Prometheus, Grafana, and OpenTelemetry](how-to/operate-observability/) |
 | Validate desired-state YAML offline | [Validate a configuration](how-to/validate-configuration/) |
 | Format accepted YAML without changing its meaning | [Format a configuration](how-to/format-configuration/) |
