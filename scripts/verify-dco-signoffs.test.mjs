@@ -79,6 +79,68 @@ test('rejects a sign-off belonging to another identity', () => {
   );
 });
 
+test('accepts the canonical Dependabot identity on a Dependabot-authored pull request', () => {
+  const root = repository();
+  const base = git(root, ['rev-parse', 'HEAD']);
+  const head = commit(root, 'dependency', 'dependency update', {
+    name: 'dependabot[bot]',
+    email: '49699333+dependabot[bot]@users.noreply.github.com',
+  });
+  const result = verifyRange({
+    base,
+    head,
+    repository: root,
+    pullRequestAuthor: 'dependabot[bot]',
+  });
+  assert.deepEqual(result.exempted, [head]);
+});
+
+test('rejects an unsigned Dependabot identity outside a Dependabot-authored pull request', () => {
+  const root = repository();
+  const base = git(root, ['rev-parse', 'HEAD']);
+  const head = commit(root, 'dependency', 'dependency update', {
+    name: 'dependabot[bot]',
+    email: '49699333+dependabot[bot]@users.noreply.github.com',
+  });
+  assert.throws(
+    () => verifyRange({base, head, repository: root}),
+    new RegExp(head),
+  );
+});
+
+test('rejects a lookalike bot identity on a Dependabot-authored pull request', () => {
+  const root = repository();
+  const base = git(root, ['rev-parse', 'HEAD']);
+  const head = commit(root, 'dependency', 'dependency update', {
+    name: 'dependabot[bot]',
+    email: 'dependabot[bot]@example.test',
+  });
+  assert.throws(
+    () => verifyRange({
+      base,
+      head,
+      repository: root,
+      pullRequestAuthor: 'dependabot[bot]',
+    }),
+    new RegExp(head),
+  );
+});
+
+test('still requires sign-off for human commits added to a Dependabot pull request', () => {
+  const root = repository();
+  const base = git(root, ['rev-parse', 'HEAD']);
+  const head = commit(root, 'human', 'unsigned human change');
+  assert.throws(
+    () => verifyRange({
+      base,
+      head,
+      repository: root,
+      pullRequestAuthor: 'dependabot[bot]',
+    }),
+    new RegExp(head),
+  );
+});
+
 test('uses the merge base when the target branch advances', () => {
   const root = repository();
   const branchPoint = git(root, ['rev-parse', 'HEAD']);

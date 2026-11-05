@@ -158,10 +158,26 @@ function validatePod(pod, contract, expectedConfigMap, expectedImages) {
   requireValue(pod.status?.podIP, `${podName} has no pod IP`);
   requireValue(pod.metadata?.uid, `${podName} has no UID`);
   validateSecurity(pod, contract);
-  deepExact(pod.metadata?.labels, {
+  const requiredLabels = {
     'app.kubernetes.io/name': 'bonvoyage',
     'app.kubernetes.io/component': 'gateway',
-  }, `${podName} labels`);
+  };
+  const podLabels = pod.metadata?.labels;
+  requireValue(podLabels && typeof podLabels === 'object' &&
+    !Array.isArray(podLabels), `${podName} labels are absent`);
+  for (const [key, value] of Object.entries(requiredLabels)) {
+    exact(podLabels[key], value, `${podName} label ${key}`);
+  }
+  const allowedLabelNames = new Set([
+    ...Object.keys(requiredLabels),
+    'pod-template-hash',
+  ]);
+  deepExact(Object.keys(podLabels)
+    .filter(key => !allowedLabelNames.has(key))
+    .sort(), [], `${podName} unexpected labels`);
+  requireValue(/^[A-Za-z0-9](?:[-_.A-Za-z0-9]{0,61}[A-Za-z0-9])?$/.test(
+    podLabels['pod-template-hash'] || ''),
+  `${podName} pod-template-hash label is absent or invalid`);
 
   const configVolume = named(pod.spec?.volumes, 'config', `${podName} volume`);
   exact(configVolume.configMap?.name, expectedConfigMap,
@@ -389,7 +405,10 @@ function scopedDiagnosticPolicy(value, accessLabel, port, label) {
 
 const defaultDenyPolicy = policy(networkPolicyContract.default_deny,
   'gateway default-deny policy');
-deepExact(defaultDenyPolicy.spec?.ingress, [],
+const defaultDenyIngress = defaultDenyPolicy.spec?.ingress;
+requireValue(defaultDenyIngress === undefined || Array.isArray(defaultDenyIngress),
+  'gateway default-deny ingress rules must be omitted or an array');
+deepExact(defaultDenyIngress ?? [], [],
   'gateway default-deny ingress rules');
 const dataPolicy = policy(networkPolicyContract.data, 'gateway data policy');
 const dataIngress = dataPolicy.spec?.ingress || [];
