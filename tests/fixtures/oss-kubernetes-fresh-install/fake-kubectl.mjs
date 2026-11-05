@@ -50,8 +50,16 @@ function gatewayPod(name, uid, ip) {
     {name: 'admin', containerPort: 9901},
   ];
   if (mode === 'host-port') dataplanePorts[2].hostPort = 9901;
+  const labels = {
+    ...gatewayLabels(),
+    'pod-template-hash': '54cb49dc9b',
+  };
+  if (mode === 'missing-pod-template-hash') delete labels['pod-template-hash'];
+  if (mode === 'unexpected-pod-label') {
+    labels['routesphere.global/unexpected'] = 'true';
+  }
   return {
-    metadata: {name, uid, labels: gatewayLabels()},
+    metadata: {name, uid, labels},
     spec: {
       hostNetwork: mode === 'host-network',
       automountServiceAccountToken: false,
@@ -291,7 +299,10 @@ if (args[0] === '-n' && command === 'get' && resource === 'networkpolicy') {
     }];
   }
   if (name === 'bonvoyage-default-deny-ingress') {
-    base.spec.ingress = [];
+    if (mode !== 'normalized-default-deny') base.spec.ingress = [];
+    if (mode === 'widened-default-deny') {
+      base.spec.ingress = [{}];
+    }
   } else if (name === 'bonvoyage-data-ingress') {
     base.spec.ingress = [{ports: [
       {protocol: 'TCP', port: 8080},
