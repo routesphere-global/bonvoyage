@@ -6,6 +6,11 @@ import process from 'node:process';
 import {fileURLToPath} from 'node:url';
 
 const COMMIT = /^[0-9a-f]{40}$/u;
+const DEPENDABOT = Object.freeze({
+  login: 'dependabot[bot]',
+  name: 'dependabot[bot]',
+  email: '49699333+dependabot[bot]@users.noreply.github.com',
+});
 
 function fail(message) {
   throw new Error(message);
@@ -33,8 +38,12 @@ function parseArguments(argv) {
   for (let index = 0; index < argv.length; index += 2) {
     const name = argv[index];
     const value = argv[index + 1];
-    if (!['--base', '--head', '--repository'].includes(name) || value === undefined) {
-      fail('usage: verify-dco-signoffs.mjs --base COMMIT --head COMMIT [--repository PATH]');
+    if (!['--base', '--head', '--repository', '--pull-request-author'].includes(name) ||
+        value === undefined) {
+      fail(
+        'usage: verify-dco-signoffs.mjs --base COMMIT --head COMMIT ' +
+        '[--repository PATH] [--pull-request-author LOGIN]',
+      );
     }
     if (values.has(name)) {
       fail(`duplicate argument ${name}`);
@@ -46,7 +55,12 @@ function parseArguments(argv) {
   if (!COMMIT.test(base ?? '') || !COMMIT.test(head ?? '')) {
     fail('--base and --head must be full lowercase Git commit identifiers');
   }
-  return {base, head, repository: values.get('--repository') ?? process.cwd()};
+  return {
+    base,
+    head,
+    repository: values.get('--repository') ?? process.cwd(),
+    pullRequestAuthor: values.get('--pull-request-author'),
+  };
 }
 
 function commitIdentity(repository, commit) {
@@ -80,7 +94,18 @@ function parsedSignoffs(repository, message) {
   return result;
 }
 
-export function verifyRange({base, head, repository = process.cwd()}) {
+function trustedDependabotCommit(author, pullRequestAuthor) {
+  return pullRequestAuthor === DEPENDABOT.login &&
+    author.name === DEPENDABOT.name &&
+    author.email.toLowerCase() === DEPENDABOT.email;
+}
+
+export function verifyRange({
+  base,
+  head,
+  repository = process.cwd(),
+  pullRequestAuthor,
+}) {
   if (!COMMIT.test(base) || !COMMIT.test(head)) {
     fail('base and head must be full lowercase Git commit identifiers');
   }
@@ -97,16 +122,19 @@ export function verifyRange({base, head, repository = process.cwd()}) {
   }
 
   const rejected = [];
+  const exempted = [];
   for (const commit of commits) {
     if (!COMMIT.test(commit)) {
       fail('Git returned an invalid commit identifier');
     }
     const author = commitIdentity(repository, commit);
     const signoffs = parsedSignoffs(repository, author.message);
-    const accepted = signoffs.some((signoff) =>
+    const signed = signoffs.some((signoff) =>
       signoff.name === author.name &&
       signoff.email.toLowerCase() === author.email.toLowerCase());
-    if (!accepted) {
+    if (!signed && trustedDependabotCommit(author, pullRequestAuthor)) {
+      exempted.push(commit);
+    } else if (!signed) {
       rejected.push({commit, author: `${author.name} <${author.email}>`});
     }
   }
@@ -119,7 +147,7 @@ export function verifyRange({base, head, repository = process.cwd()}) {
       `${details}\nAmend each commit with: git commit --amend --signoff`,
     );
   }
-  return {mergeBase, commits};
+  return {mergeBase, commits, exempted};
 }
 
 function main() {
@@ -127,6 +155,12 @@ function main() {
     const options = parseArguments(process.argv.slice(2));
     const result = verifyRange(options);
     process.stdout.write(`Verified DCO sign-offs for ${result.commits.length} commit(s).\n`);
+    if (result.exempted.length > 0) {
+      process.stdout.write(
+        `Accepted ${result.exempted.length} canonical Dependabot commit(s) ` +
+        'from a Dependabot-authored pull request.\n',
+      );
+    }
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
     process.exitCode = 1;

@@ -19,6 +19,22 @@ checksums, Gateway signatures, provenance, SBOMs, and platform scope from the
 release page.
 :::
 
+## Evidence paths
+
+| Evidence | What it contains |
+| --- | --- |
+| [v1.0.4 post-release replay](performance/v1-0-4-post-release-replay/) | Release-matched installation, functional, NGINX comparison, policy, protocol, recovery, and observability outcomes. |
+| [Current performance evidence](https://routesphere.global/performance/) | Curated current-release results, test conditions, resource trade-offs, acceptance gates, and limitations. |
+| [Historical comparison archive](https://routesphere.global/performance-history/) | Earlier NGINX and Envoy engineering measurements, kept separate from the public v1.0.4 replay. |
+| [Release evidence](https://routesphere.global/release-evidence/) | Artifact identities, verification material, SBOMs, provenance, assessments, and the A-G proof map. |
+| [Supported capabilities](reference/supported-capabilities/) | Shipped v1.0.4 behavior and explicit OSS, Console Free, Enterprise, and later boundaries. |
+
+The current v1.0.4 replay contains an accepted BonVoyage/NGINX comparison.
+Envoy results remain in the historical archive because the current-release
+campaign did not produce an accepted Envoy comparison. Curated public evidence
+does not imply that private infrastructure captures or every raw diagnostic are
+published.
+
 ## Run the local stack
 
 From the repository root:
@@ -43,6 +59,7 @@ and troubleshooting checks.
 | --- | --- |
 | Evaluate locally | [Requirements](getting-started/requirements/) and [Docker quickstart](getting-started/quickstart/) |
 | Verify a running stack | [Verify a local deployment](how-to/verify-local-deployment/) |
+| Operate metrics, dashboards, alerts, and traces | [Operate Prometheus, Grafana, and OpenTelemetry](how-to/operate-observability/) |
 | Validate desired-state YAML offline | [Validate a configuration](how-to/validate-configuration/) |
 | Format accepted YAML without changing its meaning | [Format a configuration](how-to/format-configuration/) |
 | Look up release-matched help for a field | [Explain a configuration field](how-to/explain-configuration-field/) |
@@ -63,6 +80,7 @@ and troubleshooting checks.
 | Install the release-bound ChatGPT/Codex authoring skill | [ChatGPT and Codex configuration skill](reference/openai-codex-configuration-skill/) |
 | Install the release-bound Claude Code authoring skill | [Claude Code configuration skill](reference/claude-configuration-skill/) |
 | Check current scope | [Supported capabilities](reference/supported-capabilities/) |
+| Inspect the post-release qualification | [v1.0.4 post-release replay](performance/v1-0-4-post-release-replay/) |
 | Report a defect or vulnerability | [Support and security](reference/support-and-security/) |
 
 ## Evidence boundary
