@@ -216,10 +216,35 @@ test('the verifier accepts exact readiness, traffic, accounting, and identity', 
     .reduce((sum, value) => sum + value.proxied, 0), 3);
 });
 
+test('the verifier accepts Kubernetes-normalized default-deny ingress', t => {
+  const {result} = runVerifier(t, 'normalized-default-deny');
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /^status=pass$/m);
+  assert.match(result.stdout, /^diagnostic_ingress_default_deny=true$/m);
+});
+
+test('the verifier rejects a widened default-deny ingress policy', t => {
+  const {result} = runVerifier(t, 'widened-default-deny');
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /gateway default-deny ingress rules/);
+});
+
 test('the verifier compares Kubernetes label maps independent of key order', t => {
   const {result} = runVerifier(t, 'reordered-label-map');
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /^status=pass$/m);
+});
+
+test('the verifier requires the deployment controller pod hash label', t => {
+  const {result} = runVerifier(t, 'missing-pod-template-hash');
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /pod-template-hash label/);
+});
+
+test('the verifier rejects unexpected gateway pod labels', t => {
+  const {result} = runVerifier(t, 'unexpected-pod-label');
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /unexpected labels/);
 });
 
 test('the verifier rejects an unrelated active context before observation', t => {
