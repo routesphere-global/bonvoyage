@@ -106,6 +106,12 @@ func TestHandlerEnforcesStrictMachineBoundaryAndJSON(t *testing.T) {
 		service.cancelInput.Reason != "operator stopped rollout" || service.cancelInput.RequestID == "" {
 		t.Fatalf("cancel response = %d %s input=%#v", cancelResponse.Code, cancelResponse.Body.String(), service.cancelInput)
 	}
+	assertStatusCursorHeaders(t, cancelResponse)
+	statusResponse := performAdminRequest(handler, http.MethodGet, "/api/v1/rollouts/current", "", nil)
+	if statusResponse.Code != http.StatusOK || strings.Contains(statusResponse.Body.String(), "bva_") {
+		t.Fatalf("status response = %d %s", statusResponse.Code, statusResponse.Body.String())
+	}
+	assertStatusCursorHeaders(t, statusResponse)
 	auditResponse := performAdminRequest(
 		handler, http.MethodGet, "/api/v1/rollouts/42/audit?after_index=7&limit=25", "", nil,
 	)
@@ -366,26 +372,46 @@ func (*recordingManagementService) PreviewRollback(
 func (*recordingManagementService) Apply(
 	context.Context, adminservice.Principal, adminservice.ApplyInput,
 ) (adminservice.MutationResult, error) {
-	return adminservice.MutationResult{}, nil
+	return adminservice.MutationResult{Status: testRolloutStatus()}, nil
 }
 
 func (service *recordingManagementService) Cancel(
 	_ context.Context, _ adminservice.Principal, input adminservice.CancelInput,
 ) (adminservice.MutationResult, error) {
 	service.cancelInput = input
-	return adminservice.MutationResult{}, nil
+	return adminservice.MutationResult{Status: testRolloutStatus()}, nil
 }
 
 func (*recordingManagementService) Rollback(
 	context.Context, adminservice.Principal, adminservice.RollbackInput,
 ) (adminservice.MutationResult, error) {
-	return adminservice.MutationResult{}, nil
+	return adminservice.MutationResult{Status: testRolloutStatus()}, nil
 }
 
 func (*recordingManagementService) GetStatus(
 	context.Context, adminservice.Principal, uint64,
 ) (adminservice.RolloutStatus, error) {
-	return adminservice.RolloutStatus{}, nil
+	return testRolloutStatus(), nil
+}
+
+func testRolloutStatus() adminservice.RolloutStatus {
+	return adminservice.RolloutStatus{
+		Cursor: adminservice.StatusCursor{
+			AuthorityID: "bva_0123456789abcdef0123456789abcdef",
+			Revision:    7,
+			SHA256:      strings.Repeat("a", 64),
+		},
+		APIVersion: adminservice.APIVersion,
+	}
+}
+
+func assertStatusCursorHeaders(t *testing.T, response *httptest.ResponseRecorder) {
+	t.Helper()
+	if response.Header().Get(statusAuthorityHeader) != "bva_0123456789abcdef0123456789abcdef" ||
+		response.Header().Get(statusRevisionHeader) != "7" ||
+		response.Header().Get(statusSHA256Header) != strings.Repeat("a", 64) {
+		t.Fatalf("status cursor headers = %#v", response.Header())
+	}
 }
 
 func (service *recordingManagementService) GetDesiredState(

@@ -31,6 +31,9 @@ const (
 	maxHeaderCount         = 64
 	maxHeaderValueBytes    = 8 << 10
 	maxJSONDepth           = 32
+	statusAuthorityHeader  = "BonVoyage-Status-Authority"
+	statusRevisionHeader   = "BonVoyage-Status-Revision"
+	statusSHA256Header     = "BonVoyage-Status-SHA256"
 )
 
 type managementService interface {
@@ -250,7 +253,7 @@ func (handler *Handler) handleApply(
 		handler.problem(response, requestID, err)
 		return
 	}
-	writeJSON(response, http.StatusAccepted, result)
+	writeMutationJSON(response, http.StatusAccepted, result)
 }
 
 func (handler *Handler) handleCancel(
@@ -287,7 +290,7 @@ func (handler *Handler) handleCancel(
 		handler.problem(response, requestID, err)
 		return
 	}
-	writeJSON(response, http.StatusAccepted, result)
+	writeMutationJSON(response, http.StatusAccepted, result)
 }
 
 func (handler *Handler) handleRollbackPreview(
@@ -355,7 +358,7 @@ func (handler *Handler) handleRollback(
 		handler.problem(response, requestID, err)
 		return
 	}
-	writeJSON(response, http.StatusAccepted, result)
+	writeMutationJSON(response, http.StatusAccepted, result)
 }
 
 func (handler *Handler) handleRolloutRead(
@@ -426,7 +429,7 @@ func (handler *Handler) handleRolloutRead(
 		handler.problem(response, requestID, err)
 		return
 	}
-	writeJSON(response, http.StatusOK, result)
+	writeStatusJSON(response, http.StatusOK, result)
 }
 
 func (handler *Handler) handleMetrics(
@@ -738,6 +741,22 @@ func writeJSON(response http.ResponseWriter, status int, value any) {
 	response.Header().Set("Content-Type", "application/json; charset=utf-8")
 	response.WriteHeader(status)
 	_ = json.NewEncoder(response).Encode(value)
+}
+
+func writeMutationJSON(response http.ResponseWriter, status int, value adminservice.MutationResult) {
+	writeStatusCursor(response, value.Status.Cursor)
+	writeJSON(response, status, value)
+}
+
+func writeStatusJSON(response http.ResponseWriter, status int, value adminservice.RolloutStatus) {
+	writeStatusCursor(response, value.Cursor)
+	writeJSON(response, status, value)
+}
+
+func writeStatusCursor(response http.ResponseWriter, cursor adminservice.StatusCursor) {
+	response.Header().Set(statusAuthorityHeader, cursor.AuthorityID)
+	response.Header().Set(statusRevisionHeader, strconv.FormatUint(cursor.Revision, 10))
+	response.Header().Set(statusSHA256Header, cursor.SHA256)
 }
 
 func secureResponseHeaders(response http.ResponseWriter, requestID string) {

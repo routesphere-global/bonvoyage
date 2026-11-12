@@ -21,6 +21,9 @@ import (
 type permission string
 
 const (
+	statusDigestVersion   = "bonvoyage.rollout-status.v1"
+	maxStatusReadAttempts = 4
+
 	permissionValidate    permission = "config.validate"
 	permissionPreview     permission = "config.preview"
 	permissionApply       permission = "rollout.apply"
@@ -391,24 +394,44 @@ func (service *Service) status(ctx context.Context, sequence uint64) (RolloutSta
 	if err != nil {
 		return RolloutStatus{}, err
 	}
-	selection, err := service.runtime.CurrentRollout()
-	if err != nil {
-		return RolloutStatus{}, err
-	}
 	phase := rollout.Phase("")
 	nodes := map[string]rollout.NodeSnapshot{}
-	selected := selection.Sequence == sequence
-	if selected {
-		phase, nodes = selection.Phase, selection.Nodes
-	} else {
-		coordinator, openErr := rolloutservice.Open(ctx, service.repository, sequence)
-		if openErr != nil {
-			return RolloutStatus{}, openErr
+	selected := false
+	version := storage.RolloutStatusVersion{}
+	consistent := false
+	for attempt := 0; attempt < maxStatusReadAttempts; attempt++ {
+		selection, selectionErr := service.runtime.CurrentRollout()
+		if selectionErr != nil {
+			return RolloutStatus{}, selectionErr
 		}
-		phase, nodes, err = coordinator.Status()
+		selected = selection.Sequence == sequence
+		journalRevision := uint64(0)
+		if selected {
+			phase, nodes = selection.Phase, selection.Nodes
+			journalRevision = selection.StatusRevision
+		} else {
+			coordinator, openErr := rolloutservice.Open(ctx, service.repository, sequence)
+			if openErr != nil {
+				return RolloutStatus{}, openErr
+			}
+			snapshot, snapshotErr := coordinator.StatusSnapshot()
+			if snapshotErr != nil {
+				return RolloutStatus{}, snapshotErr
+			}
+			phase, nodes = snapshot.Phase, snapshot.Nodes
+			journalRevision = snapshot.Revision
+		}
+		version, err = service.repository.GetRolloutStatusVersion(ctx, sequence)
 		if err != nil {
 			return RolloutStatus{}, err
 		}
+		if version.Selected == selected && version.JournalRevision == journalRevision {
+			consistent = true
+			break
+		}
+	}
+	if !consistent {
+		return RolloutStatus{}, fmt.Errorf("rollout status changed during observation: %w", ErrAuthorityMismatch)
 	}
 	nodeIDs := make([]string, 0, len(nodes))
 	for nodeID := range nodes {
@@ -437,7 +460,7 @@ func (service *Service) status(ctx context.Context, sequence uint64) (RolloutSta
 			})
 		}
 	}
-	return RolloutStatus{
+	status := RolloutStatus{
 		APIVersion: APIVersion, RolloutID: record.ID, RequestID: record.RequestID,
 		Sequence: record.Sequence, Kind: record.Kind,
 		RollbackTargetSequence: record.RollbackTargetSequence,
@@ -449,7 +472,72 @@ func (service *Service) status(ctx context.Context, sequence uint64) (RolloutSta
 		SourceChannel: record.SourceChannel, Actor: record.Actor, Reason: record.Reason,
 		CreatedAt: record.CreatedAt, Selected: selected, Nodes: nodeStatus, Connections: connections,
 		Policy: policyPointer(record.Policy),
-	}, nil
+	}
+	statusSHA256, err := durableRolloutStatusSHA256(status)
+	if err != nil {
+		return RolloutStatus{}, err
+	}
+	status.Cursor = StatusCursor{
+		AuthorityID: version.AuthorityID, Revision: version.Revision, SHA256: statusSHA256,
+	}
+	return status, nil
+}
+
+type durableRolloutStatusProjection struct {
+	Version                 string                `json:"version"`
+	APIVersion              string                `json:"api_version"`
+	RolloutID               string                `json:"rollout_id"`
+	RequestID               string                `json:"request_id"`
+	Sequence                uint64                `json:"sequence"`
+	Kind                    storage.RolloutKind   `json:"kind"`
+	RollbackTargetSequence  uint64                `json:"rollback_target_sequence,omitempty"`
+	Phase                   rollout.Phase         `json:"phase"`
+	Artifact                SnapshotSummary       `json:"artifact"`
+	PreviousArtifactSHA256  string                `json:"previous_artifact_sha256,omitempty"`
+	BaselineRolloutSequence uint64                `json:"baseline_rollout_sequence,omitempty"`
+	DesiredRevisionID       string                `json:"desired_revision_id"`
+	CompilerVersion         string                `json:"compiler_version"`
+	TargetNodeIDs           []string              `json:"target_node_ids"`
+	SourceChannel           storage.SourceChannel `json:"source_channel"`
+	Actor                   string                `json:"actor"`
+	Reason                  string                `json:"reason"`
+	CreatedAt               time.Time             `json:"created_at"`
+	Selected                bool                  `json:"selected"`
+	Nodes                   []durableStatusNode   `json:"nodes"`
+	Policy                  *RolloutPolicyInput   `json:"policy,omitempty"`
+}
+
+type durableStatusNode struct {
+	NodeID          string            `json:"node_id"`
+	Phase           rollout.NodePhase `json:"phase"`
+	ProcessInstance string            `json:"process_instance,omitempty"`
+}
+
+func durableRolloutStatusSHA256(status RolloutStatus) (string, error) {
+	nodes := make([]durableStatusNode, len(status.Nodes))
+	for index, node := range status.Nodes {
+		nodes[index] = durableStatusNode{
+			NodeID: node.NodeID, Phase: node.Phase, ProcessInstance: node.ProcessInstance,
+		}
+	}
+	projection := durableRolloutStatusProjection{
+		Version: statusDigestVersion, APIVersion: status.APIVersion,
+		RolloutID: status.RolloutID, RequestID: status.RequestID, Sequence: status.Sequence,
+		Kind: status.Kind, RollbackTargetSequence: status.RollbackTargetSequence,
+		Phase: status.Phase, Artifact: status.Artifact,
+		PreviousArtifactSHA256:  status.PreviousArtifactSHA256,
+		BaselineRolloutSequence: status.BaselineRolloutSequence,
+		DesiredRevisionID:       status.DesiredRevisionID, CompilerVersion: status.CompilerVersion,
+		TargetNodeIDs: append([]string(nil), status.TargetNodeIDs...),
+		SourceChannel: status.SourceChannel, Actor: status.Actor, Reason: status.Reason,
+		CreatedAt: status.CreatedAt.UTC().Round(0), Selected: status.Selected,
+		Nodes: nodes, Policy: status.Policy,
+	}
+	encoded, err := json.Marshal(projection)
+	if err != nil {
+		return "", fmt.Errorf("marshal durable rollout status: %w", err)
+	}
+	return storage.Sum(encoded).String(), nil
 }
 
 // GetDesiredState returns the immutable YAML that produced a rollout. The

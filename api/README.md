@@ -75,6 +75,28 @@ OpenAPI 3.1 operations covering:
 - explicit pre-activation cancellation; and
 - paged integrity-bound rollout audit.
 
+Admin API specification 1.1.0 adds a compatibility-preserving rollout-status
+cursor to status-bearing response headers. The JSON body and `/api/v1` paths
+remain unchanged. `BonVoyage-Status-Authority` is the persistent identity of
+one standalone installation. `BonVoyage-Status-Revision` is a per-rollout
+status revision that advances for accepted journal transitions and for changes
+to whether that rollout is selected. `BonVoyage-Status-SHA256` binds the
+revision to the versioned canonical durable projection: immutable rollout and
+artifact lineage, full rollout policy, selected state, durable phase, and
+durable per-node phase and process identity. Consumers compare the tuple
+`(authority, sequence, revision)` only inside their own organization and
+installation binding. A lower revision is stale; an equal revision with
+another digest is divergent and must fail closed. Point-in-time connection
+liveness is deliberately excluded because disconnects are not durable rollout
+transitions and require their own bounded-age observation.
+
+The file repository is a single-process authority, not an active-active shared
+control-plane store. Running copied repositories concurrently is unsupported:
+the copies retain the same authority identity and can diverge. Restoring an
+older repository may rewind a cursor, so remote consumers must fail closed and
+require an explicit installation recovery/rebind decision rather than silently
+accepting the restored state as newer.
+
 This HTTP API uses a separate TLS 1.3 mutual-TLS HTTP/1.1 listener and a fresh
 fingerprint-pinned SPIFFE authorization document. It is not a browser, cookie,
 bearer-token, file-upload, Git-clone, or shell-execution API. Apply and rollback

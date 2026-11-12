@@ -86,6 +86,9 @@ func (repository *FileRepository) AppendRolloutEvent(
 		return RolloutEvent{}, err
 	}
 	next.RolloutEvents = append(next.RolloutEvents, metadata)
+	if err := incrementRolloutStatusRevision(next.Rollouts, input.RolloutSequence); err != nil {
+		return RolloutEvent{}, err
+	}
 	if err := repository.writeState(next); err != nil {
 		return RolloutEvent{}, err
 	}

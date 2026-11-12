@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: RouteSphere BonVoyage Standalone Admin API
-  version: 1.0.0
+  version: 1.1.0
   description: >-
     Server-authoritative validation, preview, safe rollout, cancellation,
     status, bounded diagnostics, integrity-bound audit export, and
@@ -107,6 +107,13 @@ paths:
       responses:
         '202':
           description: The rollout is durably started and selected.
+          headers:
+            BonVoyage-Status-Authority:
+              $ref: '#/components/headers/StatusAuthority'
+            BonVoyage-Status-Revision:
+              $ref: '#/components/headers/StatusRevision'
+            BonVoyage-Status-SHA256:
+              $ref: '#/components/headers/StatusSHA256'
           content:
             application/json:
               schema:
@@ -149,6 +156,13 @@ paths:
       responses:
         '202':
           description: The rollback is durably started and selected.
+          headers:
+            BonVoyage-Status-Authority:
+              $ref: '#/components/headers/StatusAuthority'
+            BonVoyage-Status-Revision:
+              $ref: '#/components/headers/StatusRevision'
+            BonVoyage-Status-SHA256:
+              $ref: '#/components/headers/StatusSHA256'
           content:
             application/json:
               schema:
@@ -163,6 +177,13 @@ paths:
       responses:
         '200':
           description: Current rollout status.
+          headers:
+            BonVoyage-Status-Authority:
+              $ref: '#/components/headers/StatusAuthority'
+            BonVoyage-Status-Revision:
+              $ref: '#/components/headers/StatusRevision'
+            BonVoyage-Status-SHA256:
+              $ref: '#/components/headers/StatusSHA256'
           content:
             application/json:
               schema:
@@ -179,6 +200,13 @@ paths:
       responses:
         '200':
           description: Rollout status reconstructed from durable state.
+          headers:
+            BonVoyage-Status-Authority:
+              $ref: '#/components/headers/StatusAuthority'
+            BonVoyage-Status-Revision:
+              $ref: '#/components/headers/StatusRevision'
+            BonVoyage-Status-SHA256:
+              $ref: '#/components/headers/StatusSHA256'
           content:
             application/json:
               schema:
@@ -206,6 +234,13 @@ paths:
       responses:
         '202':
           description: The cancellation decision is durably journaled.
+          headers:
+            BonVoyage-Status-Authority:
+              $ref: '#/components/headers/StatusAuthority'
+            BonVoyage-Status-Revision:
+              $ref: '#/components/headers/StatusRevision'
+            BonVoyage-Status-SHA256:
+              $ref: '#/components/headers/StatusSHA256'
           content:
             application/json:
               schema:
@@ -599,6 +634,39 @@ components:
         type: string
         minLength: 1
         maxLength: 128
+  headers:
+    StatusAuthority:
+      description: >-
+        Opaque persistent identity of the standalone installation authority.
+        Consumers bind this value to their organization and installation and
+        fail closed if it changes without an explicit recovery operation.
+      required: true
+      schema:
+        type: string
+        pattern: '^bva_[0-9a-f]{32}$'
+    StatusRevision:
+      description: >-
+        Per-rollout durable status revision for the rollout sequence in the
+        response body. It advances for accepted journal transitions and for a
+        change to the rollout's selected state. Compare only within the same
+        installation authority and rollout sequence. It does not order
+        point-in-time connection liveness.
+      required: true
+      schema:
+        type: integer
+        format: uint64
+        minimum: 1
+    StatusSHA256:
+      description: >-
+        SHA-256 of the versioned canonical durable rollout projection at this
+        revision. The projection covers immutable rollout and artifact lineage,
+        the full rollout policy, selected state, durable phase, and durable
+        per-node phase and process identity. Equal revisions with different
+        digests indicate divergent authority or corruption and must fail
+        closed. Ephemeral connection liveness is deliberately excluded.
+      required: true
+      schema:
+        $ref: '#/components/schemas/Digest'
   responses:
     Problem:
       description: A bounded, sanitized RFC 9457-style problem response.
