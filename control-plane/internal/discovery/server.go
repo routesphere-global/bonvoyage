@@ -496,11 +496,14 @@ func (server *Server) CurrentRollout() (RolloutSelection, error) {
 	if !ok {
 		return RolloutSelection{}, fmt.Errorf("coordinator is not runtime-managed: %w", ErrInvalidOptions)
 	}
-	phase, nodes, err := current.Status()
+	snapshot, err := current.StatusSnapshot()
 	if err != nil {
 		return RolloutSelection{}, err
 	}
-	return RolloutSelection{Sequence: current.Sequence(), Phase: phase, Nodes: nodes}, nil
+	return RolloutSelection{
+		Sequence: current.Sequence(), StatusRevision: snapshot.Revision, StatusSHA256: snapshot.SHA256,
+		Phase: snapshot.Phase, Nodes: snapshot.Nodes,
+	}, nil
 }
 
 // CancelRollout durably cancels the selected rollout before activation begins
@@ -530,12 +533,13 @@ func (server *Server) CancelRollout(
 	if _, err := server.dispatch(transition.Commands); err != nil {
 		return RolloutSelection{}, err
 	}
-	phase, nodes, err := current.Status()
+	snapshot, err := current.StatusSnapshot()
 	if err != nil {
 		return RolloutSelection{}, err
 	}
 	return RolloutSelection{
-		Sequence: sequence, Phase: phase, Nodes: nodes, Replayed: transition.Replayed,
+		Sequence: sequence, StatusRevision: snapshot.Revision, StatusSHA256: snapshot.SHA256,
+		Phase: snapshot.Phase, Nodes: snapshot.Nodes, Replayed: transition.Replayed,
 	}, nil
 }
 
@@ -637,13 +641,15 @@ func (server *Server) ReplaceRollout(
 	if !ok {
 		return RolloutSelection{}, fmt.Errorf("coordinator is not runtime-managed: %w", ErrInvalidOptions)
 	}
-	currentPhase, currentNodes, err := current.Status()
+	currentSnapshot, err := current.StatusSnapshot()
 	if err != nil {
 		return RolloutSelection{}, err
 	}
+	currentPhase, currentNodes := currentSnapshot.Phase, currentSnapshot.Nodes
 	if next.Sequence() == current.Sequence() {
 		return RolloutSelection{
-			Sequence: current.Sequence(), Phase: currentPhase, Nodes: currentNodes, Replayed: true,
+			Sequence: current.Sequence(), StatusRevision: currentSnapshot.Revision,
+			StatusSHA256: currentSnapshot.SHA256, Phase: currentPhase, Nodes: currentNodes, Replayed: true,
 		}, nil
 	}
 	if next.Sequence() < current.Sequence() {
@@ -661,10 +667,11 @@ func (server *Server) ReplaceRollout(
 			return RolloutSelection{}, ErrRolloutInProgress
 		}
 	}
-	nextPhase, nextNodes, err := next.Status()
+	nextSnapshot, err := next.StatusSnapshot()
 	if err != nil {
 		return RolloutSelection{}, err
 	}
+	nextPhase, nextNodes := nextSnapshot.Phase, nextSnapshot.Nodes
 	if nextPhase != rollout.PhasePreparing {
 		return RolloutSelection{}, fmt.Errorf("candidate rollout is not durably started: %w", ErrRolloutInProgress)
 	}
@@ -674,7 +681,10 @@ func (server *Server) ReplaceRollout(
 	server.revokeOwnersForReplacementLocked(current)
 	server.coordinator = next
 	server.rollbackQuiescedSequence = 0
-	return RolloutSelection{Sequence: next.Sequence(), Phase: nextPhase, Nodes: nextNodes}, nil
+	return RolloutSelection{
+		Sequence: next.Sequence(), StatusRevision: nextSnapshot.Revision, StatusSHA256: nextSnapshot.SHA256,
+		Phase: nextPhase, Nodes: nextNodes,
+	}, nil
 }
 
 func replacementAllowed(

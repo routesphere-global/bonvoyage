@@ -113,6 +113,53 @@ func TestServiceRecoversPrepareBarrierAndRequiresRuntimeReconciliation(t *testin
 	}
 }
 
+func TestStatusSnapshotBindsDurableJournalRevisionAcrossRestart(t *testing.T) {
+	fixture := newServiceFixture(t)
+	service := openTestService(t, fixture.repository, fixture.rollout.Sequence)
+	initial, err := service.StatusSnapshot()
+	if err != nil || initial.Revision != 0 || len(initial.SHA256) != 64 {
+		t.Fatalf("initial status snapshot = %#v, err=%v", initial, err)
+	}
+	if _, err := service.Start(context.Background(), "status-cursor-start"); err != nil {
+		t.Fatal(err)
+	}
+	started, err := service.StatusSnapshot()
+	if err != nil || started.Revision != 1 || len(started.SHA256) != 64 ||
+		started.SHA256 == initial.SHA256 {
+		t.Fatalf("started status snapshot = %#v, err=%v", started, err)
+	}
+	if transition, err := service.Start(context.Background(), "status-cursor-start"); err != nil || !transition.Replayed {
+		t.Fatalf("idempotent start = %#v, err=%v", transition, err)
+	}
+	replayed, err := service.StatusSnapshot()
+	if err != nil || replayed.Revision != started.Revision || replayed.SHA256 != started.SHA256 {
+		t.Fatalf("replayed status snapshot = %#v, err=%v", replayed, err)
+	}
+	if _, err := service.Reconnect(
+		context.Background(), "status-cursor-reconnect",
+		fixture.preparedRuntime("node-a", "status-cursor-process"),
+	); err != nil {
+		t.Fatal(err)
+	}
+	connected, err := service.StatusSnapshot()
+	if err != nil || !connected.Nodes["node-a"].Connected || connected.Revision != 2 {
+		t.Fatalf("connected status snapshot = %#v, err=%v", connected, err)
+	}
+	if err := service.Disconnect("node-a", "status-cursor-process"); err != nil {
+		t.Fatal(err)
+	}
+	disconnected, err := service.StatusSnapshot()
+	if err != nil || disconnected.Nodes["node-a"].Connected ||
+		disconnected.Revision != connected.Revision || disconnected.SHA256 != connected.SHA256 {
+		t.Fatalf("ephemeral disconnect changed durable cursor: %#v, err=%v", disconnected, err)
+	}
+	reopened := openTestService(t, fixture.repository, fixture.rollout.Sequence)
+	restored, err := reopened.StatusSnapshot()
+	if err != nil || restored.Revision != connected.Revision || restored.SHA256 != connected.SHA256 {
+		t.Fatalf("restored status snapshot = %#v, err=%v", restored, err)
+	}
+}
+
 func TestServiceEventIDsAreIdempotentAndDoNotReplayStaleCommands(t *testing.T) {
 	fixture := newServiceFixture(t)
 	service := openTestService(t, fixture.repository, fixture.rollout.Sequence)

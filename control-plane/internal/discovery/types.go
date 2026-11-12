@@ -48,6 +48,7 @@ type ManagedCoordinator interface {
 	Cancel(context.Context, string, rolloutservice.CancellationInput) (rolloutservice.Transition, error)
 	Evaluate(context.Context, string, rollout.PolicyObservation) (rolloutservice.PolicyTransition, error)
 	Status() (rollout.Phase, map[string]rollout.NodeSnapshot, error)
+	StatusSnapshot() (rolloutservice.StatusSnapshot, error)
 	Policy() rollout.Policy
 	Sequence() uint64
 }
@@ -68,10 +69,12 @@ type RolloutSelector func(context.Context, uint64, uint64) error
 
 // RolloutSelection is the server-authoritative selected rollout projection.
 type RolloutSelection struct {
-	Sequence uint64
-	Phase    rollout.Phase
-	Nodes    map[string]rollout.NodeSnapshot
-	Replayed bool
+	Sequence       uint64
+	StatusRevision uint64
+	StatusSHA256   string
+	Phase          rollout.Phase
+	Nodes          map[string]rollout.NodeSnapshot
+	Replayed       bool
 }
 
 // PolicyEvaluationResult is the server-authoritative outcome of one policy

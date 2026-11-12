@@ -195,6 +195,17 @@ type RolloutRecord struct {
 	CreatedAt               time.Time
 }
 
+// RolloutStatusVersion is the atomic durable ordering boundary for one
+// rollout status. Revision advances for accepted journal transitions and for
+// selection changes; JournalRevision binds it to the reconstructed state.
+type RolloutStatusVersion struct {
+	AuthorityID     string
+	RolloutSequence uint64
+	Revision        uint64
+	JournalRevision uint64
+	Selected        bool
+}
+
 // RolloutEventInput appends one canonical accepted transition to a rollout's
 // immutable operation journal. EventID makes retried persistence idempotent.
 type RolloutEventInput struct {
@@ -226,12 +237,14 @@ type Lineage struct {
 // Repository is the persistence boundary shared by standalone and future
 // Enterprise implementations.
 type Repository interface {
+	AuthorityID(context.Context) (string, error)
 	CreateDesiredRevision(context.Context, DesiredRevisionInput) (DesiredRevision, error)
 	GetDesiredRevision(context.Context, string) (DesiredRevision, error)
 	CreateSnapshotArtifact(context.Context, SnapshotArtifactInput) (SnapshotArtifact, error)
 	GetSnapshotArtifact(context.Context, Digest) (SnapshotArtifact, error)
 	AllocateRollout(context.Context, RolloutInput) (RolloutRecord, error)
 	GetRollout(context.Context, uint64) (RolloutRecord, error)
+	GetRolloutStatusVersion(context.Context, uint64) (RolloutStatusVersion, error)
 	GetRolloutByRequestID(context.Context, string) (RolloutRecord, error)
 	InitializeSelectedRollout(context.Context, uint64) (RolloutRecord, error)
 	GetSelectedRollout(context.Context) (RolloutRecord, error)

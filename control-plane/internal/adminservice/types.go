@@ -61,12 +61,14 @@ type Principal struct {
 
 // Repository is the single-writer durable boundary required by this service.
 type Repository interface {
+	AuthorityID(context.Context) (string, error)
 	CreateDesiredRevision(context.Context, storage.DesiredRevisionInput) (storage.DesiredRevision, error)
 	GetDesiredRevision(context.Context, string) (storage.DesiredRevision, error)
 	CreateSnapshotArtifact(context.Context, storage.SnapshotArtifactInput) (storage.SnapshotArtifact, error)
 	GetSnapshotArtifact(context.Context, storage.Digest) (storage.SnapshotArtifact, error)
 	AllocateRollout(context.Context, storage.RolloutInput) (storage.RolloutRecord, error)
 	GetRollout(context.Context, uint64) (storage.RolloutRecord, error)
+	GetRolloutStatusVersion(context.Context, uint64) (storage.RolloutStatusVersion, error)
 	GetRolloutByRequestID(context.Context, string) (storage.RolloutRecord, error)
 	GetSelectedRollout(context.Context) (storage.RolloutRecord, error)
 	SelectRollout(context.Context, uint64, uint64) (storage.RolloutRecord, error)
@@ -252,7 +254,17 @@ type PolicyReconcileResult struct {
 	AutomaticRollback *MutationResult
 }
 
+// StatusCursor scopes one durable rollout projection to the standalone
+// installation authority that produced it. It is transported as HTTP headers
+// so the v1 JSON response remains compatible with strict existing clients.
+type StatusCursor struct {
+	AuthorityID string
+	Revision    uint64
+	SHA256      string
+}
+
 type RolloutStatus struct {
+	Cursor                  StatusCursor            `json:"-"`
 	APIVersion              string                  `json:"api_version"`
 	RolloutID               string                  `json:"rollout_id"`
 	RequestID               string                  `json:"request_id"`

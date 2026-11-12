@@ -122,6 +122,17 @@ type PolicyDiagnostic struct {
 	Nodes      []rollout.NodeHealth
 }
 
+// StatusSnapshot binds one reconstructed durable coordinator state to the
+// accepted journal position that produced it. SHA256 is an internal
+// coordinator-state digest, not the wider Admin API status digest. Both
+// exclude point-in-time connection liveness.
+type StatusSnapshot struct {
+	Revision uint64
+	SHA256   string
+	Phase    rollout.Phase
+	Nodes    map[string]rollout.NodeSnapshot
+}
+
 // Service serializes one rollout and publishes commands only after its event
 // is durably appended. A persistence ambiguity permanently fail-stops this
 // instance; reopening from the journal is the only recovery path.

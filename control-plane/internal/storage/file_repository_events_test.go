@@ -32,6 +32,10 @@ func TestFileRepositoryPersistsIdempotentRolloutEvents(t *testing.T) {
 	if first.Index != 1 || first.Digest != Sum([]byte(`{"version":1,"kind":"START"}`)) {
 		t.Fatalf("first event = %#v", first)
 	}
+	firstVersion, err := repository.GetRolloutStatusVersion(context.Background(), rollout.Sequence)
+	if err != nil || firstVersion.JournalRevision != 1 {
+		t.Fatalf("first status version = %#v, err=%v", firstVersion, err)
+	}
 
 	duplicate, err := repository.AppendRolloutEvent(context.Background(), RolloutEventInput{
 		RolloutSequence: rollout.Sequence,
@@ -45,6 +49,10 @@ func TestFileRepositoryPersistsIdempotentRolloutEvents(t *testing.T) {
 	if duplicate.Index != first.Index || duplicate.Digest != first.Digest ||
 		!bytes.Equal(duplicate.Payload, first.Payload) {
 		t.Fatalf("idempotent event changed: first=%#v duplicate=%#v", first, duplicate)
+	}
+	duplicateVersion, err := repository.GetRolloutStatusVersion(context.Background(), rollout.Sequence)
+	if err != nil || duplicateVersion != firstVersion {
+		t.Fatalf("idempotent event advanced status: first=%#v duplicate=%#v err=%v", firstVersion, duplicateVersion, err)
 	}
 	if _, err := repository.AppendRolloutEvent(context.Background(), RolloutEventInput{
 		RolloutSequence: rollout.Sequence,

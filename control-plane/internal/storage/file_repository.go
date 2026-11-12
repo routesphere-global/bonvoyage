@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	repositorySchemaVersion uint32 = 1
+	repositorySchemaVersion uint32 = 2
+	previousSchemaVersion   uint32 = 1
 	maxDesiredBytes                = int(snapshot.MaxConfigBytes)
 	maxSnapshotBytes               = 64 << 20
 	maxRolloutEventBytes           = 256 << 10
@@ -51,6 +52,7 @@ type FileRepository struct {
 
 type persistedState struct {
 	SchemaVersion           uint32             `json:"schema_version"`
+	AuthorityID             string             `json:"authority_id"`
 	Generation              uint64             `json:"generation"`
 	LastRolloutSequence     uint64             `json:"last_rollout_sequence"`
 	SelectedRolloutSequence uint64             `json:"selected_rollout_sequence,omitempty"`
@@ -58,6 +60,20 @@ type persistedState struct {
 	SnapshotArtifacts       []artifactMetadata `json:"snapshot_artifacts"`
 	Rollouts                []rolloutMetadata  `json:"rollouts"`
 	RolloutEvents           []eventMetadata    `json:"rollout_events,omitempty"`
+}
+
+// legacyPersistedState is the exact schema written by Admin API 1.0. Keeping
+// the original field order is required because the integrity digest covers
+// its canonical JSON representation.
+type legacyPersistedState struct {
+	SchemaVersion           uint32                  `json:"schema_version"`
+	Generation              uint64                  `json:"generation"`
+	LastRolloutSequence     uint64                  `json:"last_rollout_sequence"`
+	SelectedRolloutSequence uint64                  `json:"selected_rollout_sequence,omitempty"`
+	DesiredRevisions        []desiredMetadata       `json:"desired_revisions"`
+	SnapshotArtifacts       []artifactMetadata      `json:"snapshot_artifacts"`
+	Rollouts                []legacyRolloutMetadata `json:"rollouts"`
+	RolloutEvents           []eventMetadata         `json:"rollout_events,omitempty"`
 }
 
 type stateEnvelope struct {
@@ -93,6 +109,30 @@ type compilationMetadata struct {
 }
 
 type rolloutMetadata struct {
+	ID                      string                         `json:"id"`
+	RequestID               string                         `json:"request_id"`
+	RequestDigest           string                         `json:"request_digest,omitempty"`
+	Sequence                uint64                         `json:"sequence"`
+	ArtifactDigest          string                         `json:"artifact_digest"`
+	PreviousArtifactDigest  string                         `json:"previous_artifact_digest,omitempty"`
+	BaselineRolloutSequence uint64                         `json:"baseline_rollout_sequence,omitempty"`
+	DesiredRevisionID       string                         `json:"desired_revision_id"`
+	CompilerVersion         string                         `json:"compiler_version"`
+	TargetNodeIDs           []string                       `json:"target_node_ids"`
+	ExpectedActiveByNode    []nodeExpectedArtifactMetadata `json:"expected_active_by_node,omitempty"`
+	Policy                  *rolloutPolicyMetadata         `json:"policy,omitempty"`
+	SourceChannel           SourceChannel                  `json:"source_channel"`
+	Actor                   string                         `json:"actor"`
+	Reason                  string                         `json:"reason"`
+	Kind                    RolloutKind                    `json:"kind,omitempty"`
+	RollbackTargetSequence  uint64                         `json:"rollback_target_sequence,omitempty"`
+	CreatedAt               time.Time                      `json:"created_at"`
+	StatusRevision          uint64                         `json:"status_revision"`
+}
+
+// legacyRolloutMetadata is the immutable rollout representation written by
+// Admin API 1.0 before durable status cursors were introduced.
+type legacyRolloutMetadata struct {
 	ID                      string                         `json:"id"`
 	RequestID               string                         `json:"request_id"`
 	RequestDigest           string                         `json:"request_digest,omitempty"`
@@ -179,12 +219,44 @@ func OpenFileRepository(root string, options FileOptions) (_ *FileRepository, re
 
 	state, err := repository.loadState()
 	if errors.Is(err, os.ErrNotExist) {
-		state = persistedState{SchemaVersion: repositorySchemaVersion, Generation: 1}
+		authorityID, authorityErr := newAuthorityID(repository.random)
+		if authorityErr != nil {
+			return nil, authorityErr
+		}
+		state = persistedState{
+			SchemaVersion: repositorySchemaVersion,
+			AuthorityID:   authorityID,
+			Generation:    1,
+		}
+		if err := repository.validateState(state); err != nil {
+			return nil, err
+		}
 		if err := repository.writeState(state); err != nil {
 			return nil, err
 		}
 	} else if err != nil {
 		return nil, err
+	} else if state.SchemaVersion == previousSchemaVersion {
+		if state.AuthorityID != "" {
+			return nil, fmt.Errorf("legacy repository has an authority identity: %w", ErrCorrupt)
+		}
+		next, nextErr := nextState(state)
+		if nextErr != nil {
+			return nil, nextErr
+		}
+		authorityID, authorityErr := newAuthorityID(repository.random)
+		if authorityErr != nil {
+			return nil, authorityErr
+		}
+		next.SchemaVersion = repositorySchemaVersion
+		next.AuthorityID = authorityID
+		if err := repository.validateState(next); err != nil {
+			return nil, err
+		}
+		if err := repository.writeState(next); err != nil {
+			return nil, err
+		}
+		state = next
 	}
 	if err := repository.validateState(state); err != nil {
 		return nil, err
@@ -543,6 +615,7 @@ func (repository *FileRepository) allocateRollout(
 		Kind:                    normalized.Kind,
 		RollbackTargetSequence:  normalized.RollbackTargetSequence,
 		CreatedAt:               repository.now(),
+		StatusRevision:          1,
 	}
 	next, err := nextState(repository.state)
 	if err != nil {
@@ -577,6 +650,40 @@ func (repository *FileRepository) GetRollout(ctx context.Context, sequence uint6
 		return RolloutRecord{}, ErrNotFound
 	}
 	return rolloutFromMetadata(metadata)
+}
+
+// GetRolloutStatusVersion atomically binds one rollout's durable status
+// revision to its journal position and current selection state.
+func (repository *FileRepository) GetRolloutStatusVersion(
+	ctx context.Context,
+	sequence uint64,
+) (RolloutStatusVersion, error) {
+	if err := contextError(ctx); err != nil {
+		return RolloutStatusVersion{}, err
+	}
+	if sequence == 0 {
+		return RolloutStatusVersion{}, fmt.Errorf("rollout sequence is zero: %w", ErrInvalid)
+	}
+	repository.mu.Lock()
+	defer repository.mu.Unlock()
+	if err := repository.ensureOpenLocked(); err != nil {
+		return RolloutStatusVersion{}, err
+	}
+	metadata, found := findRolloutBySequence(repository.state.Rollouts, sequence)
+	if !found {
+		return RolloutStatusVersion{}, ErrNotFound
+	}
+	var journalRevision uint64
+	for _, event := range repository.state.RolloutEvents {
+		if event.RolloutSequence == sequence {
+			journalRevision = event.Index
+		}
+	}
+	return RolloutStatusVersion{
+		AuthorityID: repository.state.AuthorityID, RolloutSequence: sequence,
+		Revision: metadata.StatusRevision, JournalRevision: journalRevision,
+		Selected: repository.state.SelectedRolloutSequence == sequence,
+	}, nil
 }
 
 // GetRolloutByRequestID resolves the immutable operation created by an
@@ -644,6 +751,9 @@ func (repository *FileRepository) InitializeSelectedRollout(
 		return RolloutRecord{}, err
 	}
 	next.SelectedRolloutSequence = sequence
+	if err := incrementRolloutStatusRevision(next.Rollouts, sequence); err != nil {
+		return RolloutRecord{}, err
+	}
 	if err := repository.writeState(next); err != nil {
 		return RolloutRecord{}, err
 	}
@@ -718,11 +828,31 @@ func (repository *FileRepository) SelectRollout(
 		return RolloutRecord{}, err
 	}
 	next.SelectedRolloutSequence = nextSequence
+	if err := incrementRolloutStatusRevision(next.Rollouts, expectedSequence); err != nil {
+		return RolloutRecord{}, err
+	}
+	if err := incrementRolloutStatusRevision(next.Rollouts, nextSequence); err != nil {
+		return RolloutRecord{}, err
+	}
 	if err := repository.writeState(next); err != nil {
 		return RolloutRecord{}, err
 	}
 	repository.state = next
 	return rolloutFromMetadata(metadata)
+}
+
+func incrementRolloutStatusRevision(rollouts []rolloutMetadata, sequence uint64) error {
+	for index := range rollouts {
+		if rollouts[index].Sequence != sequence {
+			continue
+		}
+		if rollouts[index].StatusRevision == math.MaxUint64 {
+			return fmt.Errorf("rollout %d status revision exhausted: %w", sequence, ErrConflict)
+		}
+		rollouts[index].StatusRevision++
+		return nil
+	}
+	return fmt.Errorf("rollout %d status revision is missing: %w", sequence, ErrCorrupt)
 }
 
 func (repository *FileRepository) GetLineage(ctx context.Context, digest Digest) (Lineage, error) {
@@ -792,6 +922,23 @@ func (repository *FileRepository) LastRolloutSequence(ctx context.Context) (uint
 	return repository.state.LastRolloutSequence, nil
 }
 
+// AuthorityID returns the persistent identity of this standalone repository.
+// It scopes status cursors to one installation and survives ordinary restart.
+func (repository *FileRepository) AuthorityID(ctx context.Context) (string, error) {
+	if err := contextError(ctx); err != nil {
+		return "", err
+	}
+	repository.mu.Lock()
+	defer repository.mu.Unlock()
+	if err := repository.ensureOpenLocked(); err != nil {
+		return "", err
+	}
+	if err := contextError(ctx); err != nil {
+		return "", err
+	}
+	return repository.state.AuthorityID, nil
+}
+
 func (repository *FileRepository) Close() error {
 	repository.mu.Lock()
 	defer repository.mu.Unlock()
@@ -825,6 +972,14 @@ func (repository *FileRepository) newIDLocked(prefix string, exists func(string)
 		}
 	}
 	return "", fmt.Errorf("generate unique repository ID: %w", ErrConflict)
+}
+
+func newAuthorityID(random io.Reader) (string, error) {
+	var value [16]byte
+	if _, err := io.ReadFull(random, value[:]); err != nil {
+		return "", fmt.Errorf("generate repository authority ID: %w", err)
+	}
+	return fmt.Sprintf("bva_%x", value), nil
 }
 
 func (repository *FileRepository) desiredBlobDirectory() string {

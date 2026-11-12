@@ -23,6 +23,10 @@ import (
 func TestServiceAppliesIdempotentlyAndRejectsStaleAuthority(t *testing.T) {
 	fixture := newAdminFixture(t)
 	principal := fixture.operator()
+	baselineStatus, err := fixture.service.GetStatus(context.Background(), principal, fixture.initial.Sequence)
+	if err != nil || !baselineStatus.Selected || !validStatusCursor(baselineStatus.Cursor) {
+		t.Fatalf("baseline status = %#v, err=%v", baselineStatus, err)
+	}
 	candidate := bytes.Replace(fixture.document, []byte("local-bootstrap"), []byte("admin-candidate"), 1)
 	preview, err := fixture.service.Preview(context.Background(), principal, PreviewInput{
 		Document: candidate, BaselineRolloutSequence: fixture.initial.Sequence,
@@ -47,8 +51,16 @@ func TestServiceAppliesIdempotentlyAndRejectsStaleAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	if result.Replayed || !result.Status.Selected || result.Status.Sequence != fixture.initial.Sequence+1 ||
-		result.Status.Phase != rollout.PhasePreparing || result.Status.Kind != storage.RolloutKindApply {
+		result.Status.Phase != rollout.PhasePreparing || result.Status.Kind != storage.RolloutKindApply ||
+		!validStatusCursor(result.Status.Cursor) {
 		t.Fatalf("apply result = %#v", result)
+	}
+	supersededStatus, err := fixture.service.GetStatus(context.Background(), principal, fixture.initial.Sequence)
+	if err != nil || supersededStatus.Selected ||
+		supersededStatus.Cursor.AuthorityID != baselineStatus.Cursor.AuthorityID ||
+		supersededStatus.Cursor.Revision <= baselineStatus.Cursor.Revision ||
+		supersededStatus.Cursor.SHA256 == baselineStatus.Cursor.SHA256 {
+		t.Fatalf("superseded status = %#v, baseline=%#v, err=%v", supersededStatus, baselineStatus, err)
 	}
 	replayed, err := fixture.service.Apply(context.Background(), principal, input)
 	if err != nil || !replayed.Replayed || replayed.Status.Sequence != result.Status.Sequence {
@@ -72,6 +84,28 @@ func TestServiceAppliesIdempotentlyAndRejectsStaleAuthority(t *testing.T) {
 	diagnostics, err := fixture.service.GetDiagnostics(context.Background(), viewer, result.Status.Sequence)
 	if err != nil || len(diagnostics.Events) != 1 || diagnostics.Events[0].Kind != "START" {
 		t.Fatalf("diagnostics = %#v, err=%v", diagnostics, err)
+	}
+}
+
+func TestServiceKeepsEphemeralLivenessOutsideDurableCursor(t *testing.T) {
+	fixture := newAdminFixture(t)
+	principal := fixture.operator()
+	before, err := fixture.service.GetStatus(context.Background(), principal, fixture.initial.Sequence)
+	if err != nil || len(before.Nodes) != 1 || !before.Nodes[0].Connected {
+		t.Fatalf("connected status = %#v, err=%v", before, err)
+	}
+	fixture.runtime.mu.Lock()
+	err = fixture.runtime.current.Disconnect("node-a", "admin-initial-process")
+	fixture.runtime.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	after, err := fixture.service.GetStatus(context.Background(), principal, fixture.initial.Sequence)
+	if err != nil || len(after.Nodes) != 1 || after.Nodes[0].Connected {
+		t.Fatalf("disconnected status = %#v, err=%v", after, err)
+	}
+	if after.Cursor != before.Cursor {
+		t.Fatalf("liveness changed durable cursor: before=%#v after=%#v", before.Cursor, after.Cursor)
 	}
 }
 
@@ -675,9 +709,10 @@ type fakeRuntime struct {
 func (runtime *fakeRuntime) CurrentRollout() (discovery.RolloutSelection, error) {
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
-	phase, nodes, err := runtime.current.Status()
+	snapshot, err := runtime.current.StatusSnapshot()
 	return discovery.RolloutSelection{
-		Sequence: runtime.current.Sequence(), Phase: phase, Nodes: nodes,
+		Sequence: runtime.current.Sequence(), StatusRevision: snapshot.Revision,
+		StatusSHA256: snapshot.SHA256, Phase: snapshot.Phase, Nodes: snapshot.Nodes,
 	}, err
 }
 
@@ -693,8 +728,11 @@ func (runtime *fakeRuntime) ReplaceRollout(
 		return discovery.RolloutSelection{}, err
 	}
 	runtime.current = next
-	phase, nodes, err := next.Status()
-	return discovery.RolloutSelection{Sequence: next.Sequence(), Phase: phase, Nodes: nodes}, err
+	snapshot, err := next.StatusSnapshot()
+	return discovery.RolloutSelection{
+		Sequence: next.Sequence(), StatusRevision: snapshot.Revision,
+		StatusSHA256: snapshot.SHA256, Phase: snapshot.Phase, Nodes: snapshot.Nodes,
+	}, err
 }
 
 func (runtime *fakeRuntime) CancelRollout(
@@ -712,10 +750,16 @@ func (runtime *fakeRuntime) CancelRollout(
 	if err != nil {
 		return discovery.RolloutSelection{}, err
 	}
-	phase, nodes, err := runtime.current.Status()
+	snapshot, err := runtime.current.StatusSnapshot()
 	return discovery.RolloutSelection{
-		Sequence: sequence, Phase: phase, Nodes: nodes, Replayed: transition.Replayed,
+		Sequence: sequence, StatusRevision: snapshot.Revision, StatusSHA256: snapshot.SHA256,
+		Phase: snapshot.Phase, Nodes: snapshot.Nodes, Replayed: transition.Replayed,
 	}, err
+}
+
+func validStatusCursor(cursor StatusCursor) bool {
+	return strings.HasPrefix(cursor.AuthorityID, "bva_") && len(cursor.AuthorityID) == 36 &&
+		cursor.Revision > 0 && len(cursor.SHA256) == 64
 }
 
 func (runtime *fakeRuntime) EvaluateRollout(

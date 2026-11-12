@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -118,6 +119,95 @@ func TestFileRepositoryPersistsLineageAndMonotonicSequences(t *testing.T) {
 	assertPrivateMode(t, filepath.Join(root, stateFileName), 0o600)
 	assertPrivateMode(t, reopened.snapshotBlobPath(artifactV2.Digest), 0o600)
 	assertPrivateMode(t, root, 0o700)
+}
+
+func TestFileRepositoryPersistsAndMigratesInstallationAuthority(t *testing.T) {
+	t.Run("ordinary restart preserves authority", func(t *testing.T) {
+		root := t.TempDir()
+		repository := openTestRepository(t, root, deterministicOptions())
+		authority, err := repository.AuthorityID(context.Background())
+		if err != nil || !validAuthorityID(authority) {
+			t.Fatalf("authority = %q, err=%v", authority, err)
+		}
+		if err := repository.Close(); err != nil {
+			t.Fatal(err)
+		}
+		reopened := openTestRepository(t, root, deterministicOptions())
+		t.Cleanup(func() { _ = reopened.Close() })
+		restored, err := reopened.AuthorityID(context.Background())
+		if err != nil || restored != authority {
+			t.Fatalf("restored authority = %q, want %q, err=%v", restored, authority, err)
+		}
+	})
+
+	t.Run("version one state receives one persistent authority", func(t *testing.T) {
+		root := t.TempDir()
+		repository := openTestRepository(t, root, deterministicOptions())
+		desired := createDesired(t, repository, "legacy-desired", testDesiredDocument(t))
+		artifact := createArtifact(t, repository, desired, "0.4.0")
+		rollout := allocateRollout(t, repository, RolloutInput{
+			RequestID: "legacy-rollout", ArtifactDigest: artifact.Digest,
+			DesiredRevisionID: desired.ID, CompilerVersion: "0.4.0",
+			TargetNodeIDs: []string{"node-a"}, SourceChannel: SourceAPI,
+			Actor: "operator@example.test", Reason: "legacy migration fixture",
+		})
+		if _, err := repository.AppendRolloutEvent(context.Background(), RolloutEventInput{
+			RolloutSequence: rollout.Sequence, EventID: "legacy-start", Kind: "START",
+			Payload: []byte(`{"version":1}`),
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := repository.InitializeSelectedRollout(context.Background(), rollout.Sequence); err != nil {
+			t.Fatal(err)
+		}
+		legacy := cloneState(repository.state)
+		legacy.SchemaVersion = previousSchemaVersion
+		legacy.AuthorityID = ""
+		legacyGeneration := legacy.Generation
+		writeLegacyRepositoryState(t, repository.root, legacy)
+		if err := repository.Close(); err != nil {
+			t.Fatal(err)
+		}
+		migrated := openTestRepository(t, root, deterministicOptions())
+		t.Cleanup(func() { _ = migrated.Close() })
+		if migrated.state.SchemaVersion != repositorySchemaVersion ||
+			migrated.state.Generation != legacyGeneration+1 ||
+			!validAuthorityID(migrated.state.AuthorityID) {
+			t.Fatalf("migrated state header = %#v", migrated.state)
+		}
+		version, err := migrated.GetRolloutStatusVersion(context.Background(), rollout.Sequence)
+		if err != nil || version.JournalRevision != 1 || version.Revision <= version.JournalRevision || !version.Selected {
+			t.Fatalf("migrated rollout status version = %#v, err=%v", version, err)
+		}
+	})
+}
+
+func writeLegacyRepositoryState(t *testing.T, root string, current persistedState) {
+	t.Helper()
+	encodedCurrent, err := json.Marshal(current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var legacy legacyPersistedState
+	if err := json.Unmarshal(encodedCurrent, &legacy); err != nil {
+		t.Fatal(err)
+	}
+	stateBytes, err := json.Marshal(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	envelope := struct {
+		IntegritySHA256 string               `json:"integrity_sha256"`
+		State           legacyPersistedState `json:"state"`
+	}{IntegritySHA256: Sum(stateBytes).String(), State: legacy}
+	data, err := json.MarshalIndent(envelope, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data = append(data, '\n')
+	if err := os.WriteFile(filepath.Join(root, stateFileName), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestFileRepositoryAllowsSameArtifactForChangedTargets(t *testing.T) {
@@ -236,6 +326,10 @@ func TestFileRepositoryAtomicallySelectsApplyAndExactRollback(t *testing.T) {
 	if _, err := repository.InitializeSelectedRollout(context.Background(), rolloutV1.Sequence); err != nil {
 		t.Fatal(err)
 	}
+	selectedV1Version, err := repository.GetRolloutStatusVersion(context.Background(), rolloutV1.Sequence)
+	if err != nil || !selectedV1Version.Selected {
+		t.Fatalf("initial selected status version = %#v, err=%v", selectedV1Version, err)
+	}
 
 	documentV2 := bytes.Replace(documentV1, []byte("local-bootstrap"), []byte("selected-v2"), 1)
 	desiredV2 := createDesired(t, repository, "selected-desired-2", documentV2)
@@ -248,8 +342,22 @@ func TestFileRepositoryAtomicallySelectsApplyAndExactRollback(t *testing.T) {
 		Actor: "spiffe://admin.test/service-accounts/deployer", Reason: "apply revision two",
 	})
 	appendStartedEvent(t, repository, rolloutV2.Sequence, "selected-start-2")
+	stagedV2Version, err := repository.GetRolloutStatusVersion(context.Background(), rolloutV2.Sequence)
+	if err != nil || stagedV2Version.Selected {
+		t.Fatalf("staged rollout status version = %#v, err=%v", stagedV2Version, err)
+	}
 	if _, err := repository.SelectRollout(context.Background(), rolloutV1.Sequence, rolloutV2.Sequence); err != nil {
 		t.Fatal(err)
+	}
+	supersededV1Version, err := repository.GetRolloutStatusVersion(context.Background(), rolloutV1.Sequence)
+	if err != nil || supersededV1Version.Selected ||
+		supersededV1Version.Revision != selectedV1Version.Revision+1 {
+		t.Fatalf("superseded status version = %#v, err=%v", supersededV1Version, err)
+	}
+	selectedV2Version, err := repository.GetRolloutStatusVersion(context.Background(), rolloutV2.Sequence)
+	if err != nil || !selectedV2Version.Selected ||
+		selectedV2Version.Revision != stagedV2Version.Revision+1 {
+		t.Fatalf("replacement status version = %#v, err=%v", selectedV2Version, err)
 	}
 	selected, err := repository.GetSelectedRollout(context.Background())
 	if err != nil || selected.Sequence != rolloutV2.Sequence || selected.Kind != RolloutKindApply {
@@ -559,6 +667,7 @@ func TestFileRepositoryRejectsPersistedStateInvariantViolations(t *testing.T) {
 		mutate func(*persistedState)
 	}{
 		{"header", func(state *persistedState) { state.SchemaVersion = 0 }},
+		{"authority", func(state *persistedState) { state.AuthorityID = "bva_not-canonical" }},
 		{"duplicate desired ID", func(state *persistedState) {
 			state.DesiredRevisions = append(state.DesiredRevisions, state.DesiredRevisions[0])
 		}},

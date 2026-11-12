@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	bonvoyagev1 "github.com/routesphere-global/bonvoyage/api/gen/go/bonvoyage/v1"
 	"github.com/routesphere-global/bonvoyage/control-plane/internal/snapshot"
@@ -22,21 +23,89 @@ func (repository *FileRepository) loadState() (persistedState, error) {
 	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
-	var envelope stateEnvelope
+	var envelope struct {
+		IntegritySHA256 string          `json:"integrity_sha256"`
+		State           json.RawMessage `json:"state"`
+	}
 	if err := decoder.Decode(&envelope); err != nil {
 		return persistedState{}, fmt.Errorf("decode repository state: %w: %w", ErrCorrupt, err)
 	}
 	if err := requireJSONEOF(decoder); err != nil {
 		return persistedState{}, err
 	}
-	stateBytes, err := json.Marshal(envelope.State)
+	var header struct {
+		SchemaVersion uint32 `json:"schema_version"`
+	}
+	if err := json.Unmarshal(envelope.State, &header); err != nil {
+		return persistedState{}, fmt.Errorf("decode repository state header: %w: %w", ErrCorrupt, err)
+	}
+	switch header.SchemaVersion {
+	case previousSchemaVersion:
+		var legacy legacyPersistedState
+		if err := decodeStrictJSON(envelope.State, &legacy); err != nil {
+			return persistedState{}, fmt.Errorf("decode legacy repository state: %w: %w", ErrCorrupt, err)
+		}
+		if err := verifyStateIntegrity(envelope.IntegritySHA256, legacy); err != nil {
+			return persistedState{}, err
+		}
+		return migrateLegacyState(legacy)
+	case repositorySchemaVersion:
+		var state persistedState
+		if err := decodeStrictJSON(envelope.State, &state); err != nil {
+			return persistedState{}, fmt.Errorf("decode repository state: %w: %w", ErrCorrupt, err)
+		}
+		if err := verifyStateIntegrity(envelope.IntegritySHA256, state); err != nil {
+			return persistedState{}, err
+		}
+		return state, nil
+	default:
+		return persistedState{}, fmt.Errorf("unsupported repository schema version %d: %w", header.SchemaVersion, ErrCorrupt)
+	}
+}
+
+func decodeStrictJSON(data []byte, destination any) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(destination); err != nil {
+		return err
+	}
+	return requireJSONEOF(decoder)
+}
+
+func verifyStateIntegrity(integrity string, state any) error {
+	stateBytes, err := json.Marshal(state)
 	if err != nil {
-		return persistedState{}, fmt.Errorf("remarshal repository state: %w", err)
+		return fmt.Errorf("remarshal repository state: %w", err)
 	}
-	if envelope.IntegritySHA256 != Sum(stateBytes).String() {
-		return persistedState{}, fmt.Errorf("repository state checksum mismatch: %w", ErrCorrupt)
+	if integrity != Sum(stateBytes).String() {
+		return fmt.Errorf("repository state checksum mismatch: %w", ErrCorrupt)
 	}
-	return envelope.State, nil
+	return nil
+}
+
+func migrateLegacyState(legacy legacyPersistedState) (persistedState, error) {
+	encoded, err := json.Marshal(legacy)
+	if err != nil {
+		return persistedState{}, fmt.Errorf("marshal legacy repository state: %w", err)
+	}
+	var state persistedState
+	if err := json.Unmarshal(encoded, &state); err != nil {
+		return persistedState{}, fmt.Errorf("convert legacy repository state: %w", err)
+	}
+	lastEventByRollout := make(map[uint64]uint64, len(state.Rollouts))
+	for _, event := range state.RolloutEvents {
+		if event.Index > lastEventByRollout[event.RolloutSequence] {
+			lastEventByRollout[event.RolloutSequence] = event.Index
+		}
+	}
+	for index := range state.Rollouts {
+		lastEvent := lastEventByRollout[state.Rollouts[index].Sequence]
+		if lastEvent == ^uint64(0) {
+			return persistedState{}, fmt.Errorf("legacy rollout status revision exhausted: %w", ErrCorrupt)
+		}
+		state.Rollouts[index].StatusRevision = lastEvent + 1
+	}
+	return state, nil
 }
 
 func (repository *FileRepository) writeState(state persistedState) error {
@@ -57,7 +126,8 @@ func (repository *FileRepository) writeState(state persistedState) error {
 }
 
 func (repository *FileRepository) validateState(state persistedState) error {
-	if state.SchemaVersion != repositorySchemaVersion || state.Generation == 0 {
+	if state.SchemaVersion != repositorySchemaVersion || state.Generation == 0 ||
+		!validAuthorityID(state.AuthorityID) {
 		return fmt.Errorf("unsupported repository state header: %w", ErrCorrupt)
 	}
 	desiredIDs := make(map[string]struct{}, len(state.DesiredRevisions))
@@ -326,7 +396,28 @@ func (repository *FileRepository) validateState(state persistedState) error {
 		ids[metadata.EventID] = struct{}{}
 		eventIndexes[metadata.RolloutSequence] = metadata.Index
 	}
+	for _, metadata := range state.Rollouts {
+		if metadata.StatusRevision == 0 || metadata.StatusRevision <= eventIndexes[metadata.Sequence] {
+			return fmt.Errorf(
+				"rollout %d status revision does not cover its journal: %w",
+				metadata.Sequence,
+				ErrCorrupt,
+			)
+		}
+	}
 	return nil
+}
+
+func validAuthorityID(value string) bool {
+	if len(value) != len("bva_")+32 || !strings.HasPrefix(value, "bva_") {
+		return false
+	}
+	for _, character := range value[len("bva_"):] {
+		if (character < '0' || character > '9') && (character < 'a' || character > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 func validateArtifactPayload(metadata artifactMetadata, data []byte) error {

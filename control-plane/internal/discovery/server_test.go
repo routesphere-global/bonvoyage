@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -170,7 +171,8 @@ func TestReplaceRolloutCommitsSelectionBeforeSwitchingAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if selection.Sequence != record.Sequence || selection.Phase != rollout.PhasePreparing {
+	if selection.Sequence != record.Sequence || selection.Phase != rollout.PhasePreparing ||
+		selection.StatusRevision != 1 || len(selection.StatusSHA256) != 64 {
 		t.Fatalf("selection = %#v", selection)
 	}
 	selected, err := fixture.repository.GetSelectedRollout(context.Background())
@@ -178,7 +180,9 @@ func TestReplaceRolloutCommitsSelectionBeforeSwitchingAuthority(t *testing.T) {
 		t.Fatalf("persisted selection = %#v, err=%v", selected, err)
 	}
 	currentSelection, err := server.CurrentRollout()
-	if err != nil || currentSelection.Sequence != record.Sequence {
+	if err != nil || currentSelection.Sequence != record.Sequence ||
+		currentSelection.StatusRevision != selection.StatusRevision ||
+		currentSelection.StatusSHA256 != selection.StatusSHA256 {
 		t.Fatalf("runtime selection = %#v, err=%v", currentSelection, err)
 	}
 	replayed, err := server.ReplaceRollout(
@@ -960,6 +964,13 @@ func (coordinator *policyRecordingCoordinator) Status() (
 	return coordinator.phase, map[string]rollout.NodeSnapshot{
 		"node-a": {Phase: rollout.NodeActive, Connected: true, ProcessInstance: "process-a"},
 	}, nil
+}
+
+func (coordinator *policyRecordingCoordinator) StatusSnapshot() (rolloutservice.StatusSnapshot, error) {
+	phase, nodes, err := coordinator.Status()
+	return rolloutservice.StatusSnapshot{
+		Revision: 1, SHA256: strings.Repeat("a", 64), Phase: phase, Nodes: nodes,
+	}, err
 }
 
 func (coordinator *policyRecordingCoordinator) Policy() rollout.Policy {

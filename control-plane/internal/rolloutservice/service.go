@@ -199,15 +199,32 @@ func (service *Service) Disconnect(nodeID, processInstance string) error {
 	return service.machine.Disconnect(nodeID, processInstance)
 }
 
-// Status exposes authoritative reconstructed state while the service is healthy.
-func (service *Service) Status() (rollout.Phase, map[string]rollout.NodeSnapshot, error) {
+// StatusSnapshot exposes one atomic durable projection and its accepted
+// journal position while the service is healthy.
+func (service *Service) StatusSnapshot() (StatusSnapshot, error) {
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	if service.poisoned != nil {
-		return "", nil, service.poisoned
+		return StatusSnapshot{}, service.poisoned
 	}
 	phase, nodes := service.machine.Status()
-	return phase, nodes, nil
+	digest, err := digestJSON(durableState(service.machine))
+	if err != nil {
+		return StatusSnapshot{}, err
+	}
+	return StatusSnapshot{
+		Revision: service.lastIndex,
+		SHA256:   digest,
+		Phase:    phase,
+		Nodes:    nodes,
+	}, nil
+}
+
+// Status preserves the original internal projection for callers that do not
+// need a remote ordering cursor.
+func (service *Service) Status() (rollout.Phase, map[string]rollout.NodeSnapshot, error) {
+	snapshot, err := service.StatusSnapshot()
+	return snapshot.Phase, snapshot.Nodes, err
 }
 
 // Sequence returns the immutable sequence owned by this service.
