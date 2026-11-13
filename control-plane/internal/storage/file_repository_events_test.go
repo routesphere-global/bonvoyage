@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"slices"
 	"strings"
@@ -104,6 +105,116 @@ func TestFileRepositoryPersistsIdempotentRolloutEvents(t *testing.T) {
 	}
 	if len(restored) != 2 || restored[0].Digest != first.Digest || restored[1].Digest != second.Digest {
 		t.Fatalf("restored events = %#v", restored)
+	}
+}
+
+func TestFileRepositoryExposesAuthorityGenerationAsStatusRevision(t *testing.T) {
+	root := t.TempDir()
+	repository := openTestRepository(t, root, deterministicOptions())
+	rollout := createEventTestRollout(t, repository)
+
+	initial, err := repository.GetRolloutStatusVersion(context.Background(), rollout.Sequence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata, found := findRolloutBySequence(repository.state.Rollouts, rollout.Sequence)
+	if !found {
+		t.Fatal("allocated rollout is missing")
+	}
+	localRevision := metadata.StatusRevision
+
+	unrelatedDocument := bytes.Replace(
+		testDesiredDocument(t),
+		[]byte("local-bootstrap"),
+		[]byte("unrelated-generation"),
+		1,
+	)
+	createDesired(t, repository, "unrelated-generation", unrelatedDocument)
+	afterUnrelatedWrite, err := repository.GetRolloutStatusVersion(context.Background(), rollout.Sequence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata, found = findRolloutBySequence(repository.state.Rollouts, rollout.Sequence)
+	if !found || metadata.StatusRevision != localRevision {
+		t.Fatalf("unrelated write changed local rollout revision: %#v", metadata)
+	}
+	if afterUnrelatedWrite.AuthorityID != initial.AuthorityID ||
+		afterUnrelatedWrite.Revision != initial.Revision+1 ||
+		afterUnrelatedWrite.JournalRevision != initial.JournalRevision {
+		t.Fatalf("authority generation after unrelated write: before=%#v after=%#v", initial, afterUnrelatedWrite)
+	}
+
+	first, err := repository.AppendRolloutEvent(context.Background(), RolloutEventInput{
+		RolloutSequence: rollout.Sequence,
+		EventID:         "authority-generation-start",
+		Kind:            "START",
+		Payload:         []byte(`{"version":1,"kind":"START"}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterEvent, err := repository.GetRolloutStatusVersion(context.Background(), rollout.Sequence)
+	if err != nil || afterEvent.Revision != afterUnrelatedWrite.Revision+1 || afterEvent.JournalRevision != 1 {
+		t.Fatalf("authority generation after event = %#v, err=%v", afterEvent, err)
+	}
+	if _, err := repository.AppendRolloutEvent(context.Background(), RolloutEventInput{
+		RolloutSequence: rollout.Sequence,
+		EventID:         first.EventID,
+		Kind:            first.Kind,
+		Payload:         []byte(`{"version":1,"kind":"START"}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	afterReplay, err := repository.GetRolloutStatusVersion(context.Background(), rollout.Sequence)
+	if err != nil || afterReplay != afterEvent {
+		t.Fatalf("idempotent replay advanced authority generation: event=%#v replay=%#v err=%v", afterEvent, afterReplay, err)
+	}
+
+	if err := repository.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened := openTestRepository(t, root, deterministicOptions())
+	t.Cleanup(func() { _ = reopened.Close() })
+	restored, err := reopened.GetRolloutStatusVersion(context.Background(), rollout.Sequence)
+	if err != nil || restored != afterEvent {
+		t.Fatalf("reopened authority generation: before=%#v after=%#v err=%v", afterEvent, restored, err)
+	}
+
+	nextDocument := bytes.Replace(
+		testDesiredDocument(t),
+		[]byte("local-bootstrap"),
+		[]byte("post-restart-generation"),
+		1,
+	)
+	createDesired(t, reopened, "post-restart-generation", nextDocument)
+	afterRestartWrite, err := reopened.GetRolloutStatusVersion(context.Background(), rollout.Sequence)
+	if err != nil || afterRestartWrite.AuthorityID != restored.AuthorityID ||
+		afterRestartWrite.Revision != restored.Revision+1 {
+		t.Fatalf("post-restart authority generation: before=%#v after=%#v err=%v", restored, afterRestartWrite, err)
+	}
+}
+
+func TestFileRepositoryGenerationExhaustionLeavesStatusReadable(t *testing.T) {
+	repository := openTestRepository(t, t.TempDir(), deterministicOptions())
+	t.Cleanup(func() { _ = repository.Close() })
+	rollout := createEventTestRollout(t, repository)
+
+	exhausted := cloneState(repository.state)
+	exhausted.Generation = math.MaxUint64
+	if err := repository.writeState(exhausted); err != nil {
+		t.Fatal(err)
+	}
+	repository.state = exhausted
+	before, err := repository.GetRolloutStatusVersion(context.Background(), rollout.Sequence)
+	if err != nil || before.Revision != math.MaxUint64 {
+		t.Fatalf("exhausted generation status = %#v, err=%v", before, err)
+	}
+	if _, err := repository.InitializeSelectedRollout(context.Background(), rollout.Sequence); !errors.Is(err, ErrConflict) {
+		t.Fatalf("generation exhaustion error = %v", err)
+	}
+	after, err := repository.GetRolloutStatusVersion(context.Background(), rollout.Sequence)
+	if err != nil || after != before {
+		t.Fatalf("failed write changed readable status: before=%#v after=%#v err=%v", before, after, err)
 	}
 }
 

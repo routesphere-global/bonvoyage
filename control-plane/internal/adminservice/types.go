@@ -255,8 +255,9 @@ type PolicyReconcileResult struct {
 }
 
 // StatusCursor scopes one durable rollout projection to the standalone
-// installation authority that produced it. It is transported as HTTP headers
-// so the v1 JSON response remains compatible with strict existing clients.
+// installation authority that produced it. Revision is the authority-wide
+// durable generation. The cursor is transported as HTTP headers so the v1 JSON
+// response remains compatible with strict existing clients.
 type StatusCursor struct {
 	AuthorityID string
 	Revision    uint64
