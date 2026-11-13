@@ -542,7 +542,10 @@ components:
       type: mutualTLS
       description: >-
         Dedicated Admin client trust. The verified leaf must also match one
-        fresh, fingerprint-pinned SPIFFE authorization entry.
+        fresh, fingerprint-pinned SPIFFE authorization entry. Bounded
+        certificate rotation may authorize multiple distinct leaf fingerprints
+        for one logical SPIFFE identity only when every entry grants identical
+        authority.
   parameters:
     IdempotencyKey:
       name: Idempotency-Key

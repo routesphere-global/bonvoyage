@@ -47,8 +47,8 @@
     },
     "admin_openapi": {
       "path": "api/openapi/bonvoyage-admin-v1.yaml",
-      "bytes": 58335,
-      "sha256": "17d323e8f88b40f35eb9c6131f64bd8a409b050fba2cac37ff98c3ab40dd0b0d"
+      "bytes": 58520,
+      "sha256": "d891bf5bd4263fb06ba59824ac16bcff3b74a1bf603263b65d7d613f438c7289"
     }
   },
   "corpus": {

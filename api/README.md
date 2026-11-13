@@ -113,6 +113,12 @@ artifact digest, and the exact preview fingerprint. The selected sequence is
 persisted explicitly and shared with the discovery runtime; callers cannot
 select role, actor, source channel, or an alternate coordinator.
 
+Certificate rotation and replicated machine clients may authorize multiple
+distinct leaf fingerprints for one logical SPIFFE identity only when every
+entry grants the same role, source channel, and Console-delegation policy. A
+conflicting authority assignment or reused fingerprint invalidates the entire
+authorization document.
+
 The OpenAPI document is checked by
 `cd website && npm run validate:project`. Live contracts are exercised by
 `make phase4-admin-api`, `make phase4-safe-rollout`, and
