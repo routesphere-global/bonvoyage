@@ -228,6 +228,96 @@ func TestFileAuthorizerPinsSPIFFEIdentityCertificateAndFreshAuthorization(t *tes
 	}
 }
 
+func TestFileAuthorizerAllowsBoundedCertificateRotationForOneLogicalPrincipal(t *testing.T) {
+	now := time.Date(2026, time.September, 23, 11, 0, 0, 0, time.UTC)
+	identity, err := url.Parse("spiffe://admin.test/bonvoyage/service-accounts/rollout")
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := testClientCertificate(t, now, []*url.URL{identity})
+	second := testClientCertificate(t, now.Add(time.Second), []*url.URL{identity})
+	firstFingerprint := fmt.Sprintf("sha256:%x", sha256.Sum256(first.Raw))
+	secondFingerprint := fmt.Sprintf("sha256:%x", sha256.Sum256(second.Raw))
+	if firstFingerprint == secondFingerprint {
+		t.Fatal("test certificates unexpectedly share a fingerprint")
+	}
+	path := filepath.Join(t.TempDir(), "authorizations.json")
+	document := authorizationDocument{
+		Version: 1, Generation: 1, UpdatedAt: now.Add(-time.Minute), ValidUntil: now.Add(time.Hour),
+		Principals: []authorizationPrincipal{
+			{
+				SPIFFEID: identity.String(), CertificateSHA256: firstFingerprint,
+				Role: adminservice.RoleOperator, SourceChannel: storage.SourceAPI,
+			},
+			{
+				SPIFFEID: identity.String(), CertificateSHA256: secondFingerprint,
+				Role: adminservice.RoleOperator, SourceChannel: storage.SourceAPI,
+			},
+		},
+	}
+	writeAuthorizationTestFile(t, path, document)
+	authorizer := FileAuthorizer{
+		Path: path, TrustDomain: "admin.test",
+		OperatorPathPrefix:       "/bonvoyage/operators/",
+		ServiceAccountPathPrefix: "/bonvoyage/service-accounts/",
+		Clock:                    func() time.Time { return now },
+	}
+	for index, certificate := range []*x509.Certificate{first, second} {
+		request := &http.Request{TLS: &tls.ConnectionState{
+			PeerCertificates: []*x509.Certificate{certificate},
+			VerifiedChains:   [][]*x509.Certificate{{certificate}},
+		}}
+		principal, authorizeErr := authorizer.Authorize(request)
+		if authorizeErr != nil || principal.Actor != identity.String() ||
+			principal.Role != adminservice.RoleOperator || principal.SourceChannel != storage.SourceAPI {
+			t.Fatalf("certificate %d principal = %#v, err=%v", index, principal, authorizeErr)
+		}
+	}
+
+	document.Principals[1].Role = adminservice.RoleAuditor
+	writeAuthorizationTestFile(t, path, document)
+	request := &http.Request{TLS: &tls.ConnectionState{
+		PeerCertificates: []*x509.Certificate{second},
+		VerifiedChains:   [][]*x509.Certificate{{second}},
+	}}
+	if _, err := authorizer.Authorize(request); err == nil {
+		t.Fatal("one logical identity with conflicting authority was accepted")
+	}
+	document.Principals[1].Role = adminservice.RoleOperator
+	document.Principals[1].SourceChannel = storage.SourceCLI
+	writeAuthorizationTestFile(t, path, document)
+	if _, err := authorizer.Authorize(request); err == nil {
+		t.Fatal("one logical identity with conflicting source channels was accepted")
+	}
+	document.Principals[1].SourceChannel = storage.SourceAPI
+	document.Principals[0].Role = adminservice.RoleAdministrator
+	document.Principals[1].Role = adminservice.RoleAdministrator
+	document.Principals[0].SourceChannel = storage.SourceConsole
+	document.Principals[1].SourceChannel = storage.SourceConsole
+	document.Principals[1].AllowConsoleDelegation = true
+	writeAuthorizationTestFile(t, path, document)
+	request.Header = make(http.Header)
+	request.Header.Set(consoleActorHeader, "local:alice")
+	request.Header.Set(consoleRoleHeader, string(adminservice.RoleOperator))
+	request.Header.Set(consoleSessionHeader, "sha256:"+strings.Repeat("a", 64))
+	if _, err := authorizer.Authorize(request); err == nil {
+		t.Fatal("one logical identity with conflicting Console delegation was accepted")
+	}
+	document.Principals[0].Role = adminservice.RoleOperator
+	document.Principals[1].Role = adminservice.RoleOperator
+	document.Principals[0].SourceChannel = storage.SourceAPI
+	document.Principals[1].SourceChannel = storage.SourceAPI
+	document.Principals[1].AllowConsoleDelegation = false
+	document.Principals[1].CertificateSHA256 = firstFingerprint
+	writeAuthorizationTestFile(t, path, document)
+	request.Header = make(http.Header)
+	request.TLS.PeerCertificates = []*x509.Certificate{first}
+	request.TLS.VerifiedChains = [][]*x509.Certificate{{first}}
+	if _, err := authorizer.Authorize(request); err == nil {
+		t.Fatal("one certificate fingerprint was assigned more than once")
+	}
+}
+
 func TestFileAuthorizerBindsConsoleDelegationToAnAuthorizedMachineIdentity(t *testing.T) {
 	now := time.Date(2026, time.September, 24, 10, 0, 0, 0, time.UTC)
 	identity, err := url.Parse("spiffe://admin.test/bonvoyage/service-accounts/console")

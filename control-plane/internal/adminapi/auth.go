@@ -87,7 +87,7 @@ func (authorizer FileAuthorizer) Authorize(request *http.Request) (adminservice.
 			continue
 		}
 		if candidate.CertificateSHA256 != fingerprint {
-			return adminservice.Principal{}, ErrUnauthenticated
+			continue
 		}
 		return authorizePrincipal(request, candidate, identityString)
 	}
@@ -118,7 +118,7 @@ func (authorizer FileAuthorizer) load() (authorizationDocument, error) {
 		len(document.Principals) == 0 || len(document.Principals) > 1_000 {
 		return authorizationDocument{}, errors.New("authorization document header is invalid or stale")
 	}
-	seenIdentity := make(map[string]struct{}, len(document.Principals))
+	seenIdentity := make(map[string]authorizationPrincipal, len(document.Principals))
 	seenFingerprint := make(map[string]struct{}, len(document.Principals))
 	for _, principal := range document.Principals {
 		identity, err := url.Parse(principal.SPIFFEID)
@@ -142,13 +142,16 @@ func (authorizer FileAuthorizer) load() (authorizationDocument, error) {
 				principal.Role != adminservice.RoleAdministrator) {
 			return authorizationDocument{}, errors.New("Console delegation requires a Console administrator principal")
 		}
-		if _, exists := seenIdentity[principal.SPIFFEID]; exists {
-			return authorizationDocument{}, errors.New("authorization principal identity is duplicated")
+		if existing, exists := seenIdentity[principal.SPIFFEID]; exists &&
+			(existing.Role != principal.Role ||
+				existing.SourceChannel != principal.SourceChannel ||
+				existing.AllowConsoleDelegation != principal.AllowConsoleDelegation) {
+			return authorizationDocument{}, errors.New("authorization principal identity has conflicting authority")
 		}
 		if _, exists := seenFingerprint[principal.CertificateSHA256]; exists {
 			return authorizationDocument{}, errors.New("authorization certificate fingerprint is duplicated")
 		}
-		seenIdentity[principal.SPIFFEID] = struct{}{}
+		seenIdentity[principal.SPIFFEID] = principal
 		seenFingerprint[principal.CertificateSHA256] = struct{}{}
 	}
 	return document, nil
