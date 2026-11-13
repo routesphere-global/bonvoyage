@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: RouteSphere BonVoyage Standalone Admin API
-  version: 1.1.0
+  version: 1.2.0
   description: >-
     Server-authoritative validation, preview, safe rollout, cancellation,
     status, bounded diagnostics, integrity-bound audit export, and
@@ -646,10 +646,12 @@ components:
         pattern: '^bva_[0-9a-f]{32}$'
     StatusRevision:
       description: >-
-        Per-rollout durable status revision for the rollout sequence in the
-        response body. It advances for accepted journal transitions and for a
-        change to the rollout's selected state. Compare only within the same
-        installation authority and rollout sequence. It does not order
+        Authority-wide durable repository generation observed with the rollout
+        projection in the response body. It advances on every accepted durable
+        authority write, so gaps and a higher revision with an unchanged
+        projection digest are valid. Compare ordering only within the same
+        installation authority. Equal-revision digest divergence is an error
+        only for the same rollout sequence. This value does not order
         point-in-time connection liveness.
       required: true
       schema:
@@ -661,9 +663,11 @@ components:
         SHA-256 of the versioned canonical durable rollout projection at this
         revision. The projection covers immutable rollout and artifact lineage,
         the full rollout policy, selected state, durable phase, and durable
-        per-node phase and process identity. Equal revisions with different
-        digests indicate divergent authority or corruption and must fail
-        closed. Ephemeral connection liveness is deliberately excluded.
+        per-node phase and process identity. For the same rollout sequence,
+        equal revisions with different digests indicate divergence or
+        corruption and must fail closed. Different rollout sequences may have
+        different digests at one authority generation. Ephemeral connection
+        liveness is deliberately excluded.
       required: true
       schema:
         $ref: '#/components/schemas/Digest'

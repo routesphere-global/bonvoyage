@@ -195,9 +195,9 @@ type RolloutRecord struct {
 	CreatedAt               time.Time
 }
 
-// RolloutStatusVersion is the atomic durable ordering boundary for one
-// rollout status. Revision advances for accepted journal transitions and for
-// selection changes; JournalRevision binds it to the reconstructed state.
+// RolloutStatusVersion is the atomic durable ordering boundary for one rollout
+// projection. Revision is the authority-wide repository generation;
+// JournalRevision independently binds the projection to reconstructed state.
 type RolloutStatusVersion struct {
 	AuthorityID     string
 	RolloutSequence uint64

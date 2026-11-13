@@ -75,19 +75,27 @@ OpenAPI 3.1 operations covering:
 - explicit pre-activation cancellation; and
 - paged integrity-bound rollout audit.
 
-Admin API specification 1.1.0 adds a compatibility-preserving rollout-status
-cursor to status-bearing response headers. The JSON body and `/api/v1` paths
-remain unchanged. `BonVoyage-Status-Authority` is the persistent identity of
-one standalone installation. `BonVoyage-Status-Revision` is a per-rollout
-status revision that advances for accepted journal transitions and for changes
-to whether that rollout is selected. `BonVoyage-Status-SHA256` binds the
-revision to the versioned canonical durable projection: immutable rollout and
-artifact lineage, full rollout policy, selected state, durable phase, and
-durable per-node phase and process identity. Consumers compare the tuple
-`(authority, sequence, revision)` only inside their own organization and
-installation binding. A lower revision is stale; an equal revision with
-another digest is divergent and must fail closed. Point-in-time connection
-liveness is deliberately excluded because disconnects are not durable rollout
+Admin API specification 1.2.0 defines an authority-ordered rollout-status
+cursor in status-bearing response headers. Specification 1.1.0 exposed a
+per-rollout revision; 1.2.0 exposes the authority-wide durable repository
+generation under the same header name. Consumers that depend on ordering
+across rollout sequences must pin and qualify specification 1.2.0. The JSON
+body and `/api/v1` paths remain unchanged.
+
+`BonVoyage-Status-Authority` is the persistent identity of one standalone
+installation. `BonVoyage-Status-Revision` advances on every accepted durable
+authority write. Gaps and a higher revision with an unchanged rollout digest
+are therefore valid. `BonVoyage-Status-SHA256` identifies the versioned
+canonical durable projection observed alongside that generation: immutable
+rollout and artifact lineage, full rollout policy, selected state, durable
+phase, and durable per-node phase and process identity. The generation itself
+is not part of the projection digest. Consumers compare the tuple `(authority,
+sequence, revision)` only inside their own organization and installation
+binding. For the same rollout sequence, a lower revision is stale and an equal
+revision with another digest is divergent and must fail closed. Different
+rollout sequences may have different digests at one generation because one
+selection write changes both projections. Point-in-time connection liveness
+is deliberately excluded because disconnects are not durable rollout
 transitions and require their own bounded-age observation.
 
 The file repository is a single-process authority, not an active-active shared

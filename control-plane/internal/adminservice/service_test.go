@@ -59,7 +59,9 @@ func TestServiceAppliesIdempotentlyAndRejectsStaleAuthority(t *testing.T) {
 	if err != nil || supersededStatus.Selected ||
 		supersededStatus.Cursor.AuthorityID != baselineStatus.Cursor.AuthorityID ||
 		supersededStatus.Cursor.Revision <= baselineStatus.Cursor.Revision ||
-		supersededStatus.Cursor.SHA256 == baselineStatus.Cursor.SHA256 {
+		supersededStatus.Cursor.SHA256 == baselineStatus.Cursor.SHA256 ||
+		supersededStatus.Cursor.Revision != result.Status.Cursor.Revision ||
+		supersededStatus.Cursor.SHA256 == result.Status.Cursor.SHA256 {
 		t.Fatalf("superseded status = %#v, baseline=%#v, err=%v", supersededStatus, baselineStatus, err)
 	}
 	replayed, err := fixture.service.Apply(context.Background(), principal, input)
@@ -106,6 +108,36 @@ func TestServiceKeepsEphemeralLivenessOutsideDurableCursor(t *testing.T) {
 	}
 	if after.Cursor != before.Cursor {
 		t.Fatalf("liveness changed durable cursor: before=%#v after=%#v", before.Cursor, after.Cursor)
+	}
+}
+
+func TestServiceAdvancesAuthorityGenerationWithoutChangingProjection(t *testing.T) {
+	fixture := newAdminFixture(t)
+	principal := fixture.operator()
+	before, err := fixture.service.GetStatus(context.Background(), principal, fixture.initial.Sequence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unrelated := bytes.Replace(
+		fixture.document,
+		[]byte("local-bootstrap"),
+		[]byte("authority-generation-write"),
+		1,
+	)
+	if _, err := fixture.repository.CreateDesiredRevision(context.Background(), storage.DesiredRevisionInput{
+		RequestID: "admin-authority-generation-write",
+		Document:  unrelated, SourceChannel: storage.SourceSystem, Actor: "admin-test",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	after, err := fixture.service.GetStatus(context.Background(), principal, fixture.initial.Sequence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Cursor.AuthorityID != before.Cursor.AuthorityID ||
+		after.Cursor.Revision != before.Cursor.Revision+1 ||
+		after.Cursor.SHA256 != before.Cursor.SHA256 {
+		t.Fatalf("authority generation did not preserve unchanged projection: before=%#v after=%#v", before.Cursor, after.Cursor)
 	}
 }
 

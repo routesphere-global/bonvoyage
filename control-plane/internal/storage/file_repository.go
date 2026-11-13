@@ -652,8 +652,9 @@ func (repository *FileRepository) GetRollout(ctx context.Context, sequence uint6
 	return rolloutFromMetadata(metadata)
 }
 
-// GetRolloutStatusVersion atomically binds one rollout's durable status
-// revision to its journal position and current selection state.
+// GetRolloutStatusVersion atomically binds one rollout's durable projection to
+// the authority-wide repository generation, its journal position, and current
+// selection state.
 func (repository *FileRepository) GetRolloutStatusVersion(
 	ctx context.Context,
 	sequence uint64,
@@ -669,7 +670,7 @@ func (repository *FileRepository) GetRolloutStatusVersion(
 	if err := repository.ensureOpenLocked(); err != nil {
 		return RolloutStatusVersion{}, err
 	}
-	metadata, found := findRolloutBySequence(repository.state.Rollouts, sequence)
+	_, found := findRolloutBySequence(repository.state.Rollouts, sequence)
 	if !found {
 		return RolloutStatusVersion{}, ErrNotFound
 	}
@@ -681,7 +682,7 @@ func (repository *FileRepository) GetRolloutStatusVersion(
 	}
 	return RolloutStatusVersion{
 		AuthorityID: repository.state.AuthorityID, RolloutSequence: sequence,
-		Revision: metadata.StatusRevision, JournalRevision: journalRevision,
+		Revision: repository.state.Generation, JournalRevision: journalRevision,
 		Selected: repository.state.SelectedRolloutSequence == sequence,
 	}, nil
 }

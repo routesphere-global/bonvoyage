@@ -176,7 +176,8 @@ func TestFileRepositoryPersistsAndMigratesInstallationAuthority(t *testing.T) {
 			t.Fatalf("migrated state header = %#v", migrated.state)
 		}
 		version, err := migrated.GetRolloutStatusVersion(context.Background(), rollout.Sequence)
-		if err != nil || version.JournalRevision != 1 || version.Revision <= version.JournalRevision || !version.Selected {
+		if err != nil || version.JournalRevision != 1 ||
+			version.Revision != migrated.state.Generation || !version.Selected {
 			t.Fatalf("migrated rollout status version = %#v, err=%v", version, err)
 		}
 	})
@@ -346,17 +347,34 @@ func TestFileRepositoryAtomicallySelectsApplyAndExactRollback(t *testing.T) {
 	if err != nil || stagedV2Version.Selected {
 		t.Fatalf("staged rollout status version = %#v, err=%v", stagedV2Version, err)
 	}
+	beforeV1, found := findRolloutBySequence(repository.state.Rollouts, rolloutV1.Sequence)
+	if !found {
+		t.Fatal("selected rollout metadata is missing")
+	}
+	beforeV2, found := findRolloutBySequence(repository.state.Rollouts, rolloutV2.Sequence)
+	if !found {
+		t.Fatal("staged rollout metadata is missing")
+	}
 	if _, err := repository.SelectRollout(context.Background(), rolloutV1.Sequence, rolloutV2.Sequence); err != nil {
 		t.Fatal(err)
 	}
+	afterV1, found := findRolloutBySequence(repository.state.Rollouts, rolloutV1.Sequence)
+	if !found || afterV1.StatusRevision != beforeV1.StatusRevision+1 {
+		t.Fatalf("superseded local status revision: before=%#v after=%#v", beforeV1, afterV1)
+	}
+	afterV2, found := findRolloutBySequence(repository.state.Rollouts, rolloutV2.Sequence)
+	if !found || afterV2.StatusRevision != beforeV2.StatusRevision+1 {
+		t.Fatalf("selected local status revision: before=%#v after=%#v", beforeV2, afterV2)
+	}
 	supersededV1Version, err := repository.GetRolloutStatusVersion(context.Background(), rolloutV1.Sequence)
 	if err != nil || supersededV1Version.Selected ||
-		supersededV1Version.Revision != selectedV1Version.Revision+1 {
+		supersededV1Version.Revision <= selectedV1Version.Revision {
 		t.Fatalf("superseded status version = %#v, err=%v", supersededV1Version, err)
 	}
 	selectedV2Version, err := repository.GetRolloutStatusVersion(context.Background(), rolloutV2.Sequence)
 	if err != nil || !selectedV2Version.Selected ||
-		selectedV2Version.Revision != stagedV2Version.Revision+1 {
+		selectedV2Version.Revision != stagedV2Version.Revision+1 ||
+		selectedV2Version.Revision != supersededV1Version.Revision {
 		t.Fatalf("replacement status version = %#v, err=%v", selectedV2Version, err)
 	}
 	selected, err := repository.GetSelectedRollout(context.Background())
@@ -384,8 +402,22 @@ func TestFileRepositoryAtomicallySelectsApplyAndExactRollback(t *testing.T) {
 		Kind: RolloutKindRollback, RollbackTargetSequence: rolloutV1.Sequence,
 	})
 	appendStartedEvent(t, repository, rollback.Sequence, "selected-rollback-start")
+	stagedRollbackVersion, err := repository.GetRolloutStatusVersion(context.Background(), rollback.Sequence)
+	if err != nil || stagedRollbackVersion.Selected {
+		t.Fatalf("staged rollback status version = %#v, err=%v", stagedRollbackVersion, err)
+	}
 	if _, err := repository.SelectRollout(context.Background(), rolloutV2.Sequence, rollback.Sequence); err != nil {
 		t.Fatal(err)
+	}
+	selectedRollbackVersion, err := repository.GetRolloutStatusVersion(context.Background(), rollback.Sequence)
+	if err != nil || !selectedRollbackVersion.Selected ||
+		selectedRollbackVersion.Revision != stagedRollbackVersion.Revision+1 {
+		t.Fatalf("selected rollback status version = %#v, err=%v", selectedRollbackVersion, err)
+	}
+	supersededV2AfterRollback, err := repository.GetRolloutStatusVersion(context.Background(), rolloutV2.Sequence)
+	if err != nil || supersededV2AfterRollback.Selected ||
+		supersededV2AfterRollback.Revision != selectedRollbackVersion.Revision {
+		t.Fatalf("shared selection generation = rollback=%#v previous=%#v err=%v", selectedRollbackVersion, supersededV2AfterRollback, err)
 	}
 	if rollback.Kind != RolloutKindRollback || rollback.RollbackTargetSequence != rolloutV1.Sequence {
 		t.Fatalf("rollback lineage = %#v", rollback)
@@ -399,6 +431,10 @@ func TestFileRepositoryAtomicallySelectsApplyAndExactRollback(t *testing.T) {
 	selected, err = reopened.GetSelectedRollout(context.Background())
 	if err != nil || selected.Sequence != rollback.Sequence || selected.RollbackTargetSequence != rolloutV1.Sequence {
 		t.Fatalf("reopened selection = %#v, err=%v", selected, err)
+	}
+	reopenedRollbackVersion, err := reopened.GetRolloutStatusVersion(context.Background(), rollback.Sequence)
+	if err != nil || reopenedRollbackVersion != selectedRollbackVersion {
+		t.Fatalf("reopened rollback status version = %#v, err=%v", reopenedRollbackVersion, err)
 	}
 }
 
