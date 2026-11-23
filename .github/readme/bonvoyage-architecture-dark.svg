@@ -1,0 +1,60 @@
+<svg width="1200" height="500" viewBox="0 0 1200 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>BonVoyage request and configuration paths</title>
+  <desc>Requests stay on the shard-local data plane while configuration is validated and activated through a separate operator-controlled path.</desc>
+  <rect x="1" y="1" width="1198" height="498" rx="20" fill="#071410" stroke="#234A40" stroke-width="2"/>
+  <text x="48" y="48" fill="#F1F8F5" font-family="Inter, Arial, sans-serif" font-size="21" font-weight="700">Request path</text>
+  <text x="1150" y="48" fill="#91AAA2" font-family="Inter, Arial, sans-serif" font-size="14" text-anchor="end">No request-time control-plane dependency</text>
+  <rect x="48" y="86" width="190" height="174" rx="14" fill="#0D221C" stroke="#397A69" stroke-width="2"/>
+  <text x="143" y="119" fill="#F1F8F5" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle">CLIENT TRAFFIC</text>
+  <g fill="#20B7A4">
+    <circle cx="102" cy="160" r="9"/><circle cx="143" cy="160" r="9"/><circle cx="184" cy="160" r="9"/>
+    <circle cx="102" cy="202" r="9"/><circle cx="143" cy="202" r="9"/><circle cx="184" cy="202" r="9"/>
+  </g>
+  <text x="143" y="229" fill="#91AAA2" font-family="Inter, Arial, sans-serif" font-size="12" text-anchor="middle">HTTP &#183; unary gRPC</text>
+  <text x="143" y="247" fill="#91AAA2" font-family="Inter, Arial, sans-serif" font-size="12" text-anchor="middle">SSE &#183; WebSocket</text>
+  <path d="M238 173H314" stroke="#47776A" stroke-width="4" stroke-linecap="round"/>
+  <path d="M300 161L314 173 300 185" stroke="#20B7A4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="316" y="70" width="568" height="218" rx="18" fill="#0D221C" stroke="#20B7A4" stroke-width="2"/>
+  <text x="600" y="104" fill="#F1F8F5" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700" text-anchor="middle">C++ / SEASTAR DATA PLANE</text>
+  <text x="600" y="129" fill="#91AAA2" font-family="Inter, Arial, sans-serif" font-size="13" text-anchor="middle">Connection ownership &#183; local policy &#183; upstream pools &#183; bounded admission</text>
+  <g fill="#113B31" stroke="#20B7A4" stroke-width="2">
+    <rect x="350" y="154" width="112" height="92" rx="12"/><rect x="482" y="154" width="112" height="92" rx="12"/>
+    <rect x="614" y="154" width="112" height="92" rx="12"/><rect x="746" y="154" width="104" height="92" rx="12"/>
+  </g>
+  <text x="406" y="188" fill="#70E0D0" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">SHARD 0</text>
+  <text x="538" y="188" fill="#70E0D0" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">SHARD 1</text>
+  <text x="670" y="188" fill="#70E0D0" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">SHARD 2</text>
+  <text x="798" y="188" fill="#70E0D0" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">SHARD N</text>
+  <text x="406" y="218" fill="#91AAA2" font-family="Inter, Arial, sans-serif" font-size="12" text-anchor="middle">local state</text>
+  <text x="538" y="218" fill="#91AAA2" font-family="Inter, Arial, sans-serif" font-size="12" text-anchor="middle">local state</text>
+  <text x="670" y="218" fill="#91AAA2" font-family="Inter, Arial, sans-serif" font-size="12" text-anchor="middle">local state</text>
+  <text x="798" y="218" fill="#91AAA2" font-family="Inter, Arial, sans-serif" font-size="12" text-anchor="middle">local state</text>
+  <path d="M884 173H960" stroke="#47776A" stroke-width="4" stroke-linecap="round"/>
+  <path d="M946 161L960 173 946 185" stroke="#20B7A4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="962" y="86" width="190" height="174" rx="14" fill="#0D221C" stroke="#397A69" stroke-width="2"/>
+  <text x="1057" y="119" fill="#F1F8F5" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle">UPSTREAMS</text>
+  <rect x="1002" y="146" width="110" height="28" rx="7" fill="#113B31"/><rect x="1002" y="184" width="110" height="28" rx="7" fill="#113B31"/>
+  <text x="1057" y="165" fill="#70E0D0" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">API SERVICE</text>
+  <text x="1057" y="203" fill="#70E0D0" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">ORIGIN</text>
+  <text x="1057" y="237" fill="#91AAA2" font-family="Inter, Arial, sans-serif" font-size="13" text-anchor="middle">health &#183; pools &#183; circuits</text>
+  <text x="48" y="334" fill="#F1F8F5" font-family="Inter, Arial, sans-serif" font-size="21" font-weight="700">Configuration path</text>
+  <g fill="#0D221C" stroke="#397A69" stroke-width="2">
+    <rect x="48" y="360" width="202" height="88" rx="13"/><rect x="280" y="360" width="202" height="88" rx="13"/>
+    <rect x="512" y="360" width="202" height="88" rx="13"/><rect x="744" y="360" width="202" height="88" rx="13"/>
+  </g>
+  <rect x="976" y="360" width="176" height="88" rx="13" fill="#E9F5F1"/>
+  <text x="149" y="393" fill="#F1F8F5" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">AI-ASSISTED DRAFT</text>
+  <text x="149" y="418" fill="#91AAA2" font-family="Inter, Arial, sans-serif" font-size="12" text-anchor="middle">Codex &#183; Claude Code &#183; YAML</text>
+  <text x="381" y="393" fill="#F1F8F5" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">COMPILER VALIDATION</text>
+  <text x="381" y="418" fill="#91AAA2" font-family="Inter, Arial, sans-serif" font-size="12" text-anchor="middle">format &#183; explain &#183; diff &#183; preview</text>
+  <text x="613" y="393" fill="#F1F8F5" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">GO CONTROL PLANE</text>
+  <text x="613" y="418" fill="#91AAA2" font-family="Inter, Arial, sans-serif" font-size="12" text-anchor="middle">prepare &#183; distribute &#183; ACK/NACK</text>
+  <text x="845" y="393" fill="#F1F8F5" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">OPERATOR DECISION</text>
+  <text x="845" y="418" fill="#91AAA2" font-family="Inter, Arial, sans-serif" font-size="12" text-anchor="middle">review &#183; activate &#183; rollback</text>
+  <text x="1064" y="393" fill="#071410" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">ACTIVE SNAPSHOT</text>
+  <text x="1064" y="418" fill="#28594C" font-family="Inter, Arial, sans-serif" font-size="12" text-anchor="middle">immutable in-memory state</text>
+  <g stroke="#20B7A4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M250 404H278"/><path d="M270 397L278 404 270 411"/><path d="M482 404H510"/><path d="M502 397L510 404 502 411"/>
+    <path d="M714 404H742"/><path d="M734 397L742 404 734 411"/><path d="M946 404H974"/><path d="M966 397L974 404 966 411"/>
+  </g>
+</svg>

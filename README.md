@@ -1,101 +1,48 @@
-# RouteSphere BonVoyage API Gateway
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/readme/bonvoyage-hero-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset=".github/readme/bonvoyage-hero-light.svg">
+    <img alt="RouteSphere BonVoyage API Gateway. Built in Singapore. Engineered for the world." src=".github/readme/bonvoyage-hero-light.svg" width="100%">
+  </picture>
+</p>
 
-RouteSphere BonVoyage API Gateway is a high-performance, standalone API gateway
-with a C++/Seastar data plane and a Go control plane. It is designed around
-shard-local request ownership, immutable configuration snapshots, bounded
-failure behavior, and evidence-led release engineering.
+<p align="center">
+  <a href="https://github.com/routesphere-global/bonvoyage/releases/latest"><img alt="Current release" src="https://img.shields.io/github/v/release/routesphere-global/bonvoyage?display_name=tag&sort=semver&style=flat-square&color=0b8f7e"></a>
+  <a href="LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/github/license/routesphere-global/bonvoyage?style=flat-square&color=1f2937"></a>
+  <a href="https://github.com/routesphere-global/bonvoyage/actions/workflows/ci.yml"><img alt="Public CI status" src="https://github.com/routesphere-global/bonvoyage/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <a href="https://docs.routesphere.global/"><img alt="Documentation" src="https://img.shields.io/badge/docs-online-0b8f7e?style=flat-square"></a>
+  <a href="https://routesphere.global/release-evidence/"><img alt="Release evidence" src="https://img.shields.io/badge/release-evidence-111827?style=flat-square"></a>
+</p>
+
+<p align="center">
+  <a href="https://routesphere.global/"><strong>Website</strong></a>
+  &nbsp;&middot;&nbsp;
+  <a href="https://docs.routesphere.global/getting-started/quickstart/"><strong>Quickstart</strong></a>
+  &nbsp;&middot;&nbsp;
+  <a href="https://docs.routesphere.global/"><strong>Documentation</strong></a>
+  &nbsp;&middot;&nbsp;
+  <a href="https://routesphere.global/performance/"><strong>Performance</strong></a>
+  &nbsp;&middot;&nbsp;
+  <a href="https://routesphere.global/release-evidence/"><strong>Release evidence</strong></a>
+</p>
+
+# BonVoyage API Gateway
+
+BonVoyage is an Apache-2.0 reverse proxy and API gateway that routes, secures,
+and observes API traffic on infrastructure you control. Its C++/Seastar data
+plane owns request work shard-locally, while a separate Go control plane
+validates and activates immutable configuration snapshots without sitting in
+the request path.
+
+It is **AI-native and operator-controlled**: release-matched Codex and Claude
+Code skills can help engineers understand, draft, and migrate configuration;
+deterministic tools validate the candidate; the operator decides what becomes
+active.
 
 > **Current release:** [BonVoyage v1.0.4](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.4)
-> is the current checksum-bound public release. BonVoyage-owned source and
-> public documentation are licensed under Apache License 2.0. Use the exact Gateway packages,
-> checksums, signatures, provenance, SBOMs, and platform scope published with
-> that release rather than an unverified local or third-party build.
-
-## What standalone means
-
-Standalone means the gateway can run without the proprietary RouteSphere
-Console. The data plane can start from and continue serving an active immutable
-snapshot without a running control-plane process. The included Go control plane
-adds validated distribution, ACK/NACK state, rollout, and rollback primitives;
-it does not sit in the request path.
-
-## Use without registration
-
-The BonVoyage gateway does not require a RouteSphere account, product
-registration, subscription, or connection to a hosted RouteSphere service.
-Users can build and run the Apache-2.0 software directly from this repository.
-
-Console Free is an optional, no-cost proprietary companion distributed as a
-release-matched binary package. It also runs without product registration, a
-RouteSphere account, or a subscription. An admitted Console package is
-attached to its matching
-[BonVoyage GitHub release](https://github.com/routesphere-global/bonvoyage/releases).
-If a release has no Console package, no supported public Console package exists
-for that version. See [Get Console Free](https://docs.routesphere.global/console/get-console-free/)
-for the package and licensing boundary.
-
-The supported public operating surfaces are YAML, the release-matched
-configuration tools, and Console Free. The management service used by the
-Console is not a public compatibility contract: this repository does not ship
-a supported endpoint reference, external automation guide, SDK contract, or
-third-party Console integration guide. Supported programmatic management and
-its documentation are reserved for the Enterprise offer.
-
-## Capabilities
-
-### Proxy and traffic management
-
-- HTTP/1.1 and HTTP/2 proxying with TLS and mTLS boundaries.
-- Routing, upstream pools, weighted load balancing, health checks, bounded
-  retries, endpoint circuits, and overload admission.
-- Unary gRPC, WebSocket forwarding, and incremental SSE delivery.
-- Redirects, header transformations, and route rewrites.
-
-### Security and request policy
-
-- API-key and JWT admission, source-IP policy, CORS, request-content controls,
-  and local rate limits.
-
-### Operations and observability
-
-- Prometheus metrics, bounded access logging, and OpenTelemetry trace export.
-- Docker, native Ubuntu packaging, Kubernetes manifests, benchmark tooling,
-  security checks, and a plan-first Linux host-tuning utility.
-
-### Control plane
-
-- Immutable snapshot compilation and validation.
-- Release-matched source commands for offline `bonvoyage-config validate`,
-  fail-closed `format`, static
-  release-matched `explain`, redacted compiled-semantic `diff`, and explicit
-  fail-closed `migrate` and immutable-artifact `preview` source commands with
-  deterministic machine output.
-- Preview, ACK/NACK discovery, safe rollout, and rollback primitives.
-
-These implementation capabilities do not establish a supported public
-management-API contract. Public operators should use YAML, the documented
-configuration tools, or Console Free.
-
-### Engineering evidence
-
-- Reproducible benchmark and protocol-qualification tooling.
-- Runtime, dependency, and release-security checks.
-- Source, artifact, and evidence identity binding.
-
-The proprietary RouteSphere Console, enterprise fleet management, and internal
-founder or commercial records are not part of this repository.
-
-## Current status
-
-| Area | Status |
-| --- | --- |
-| Release state | [v1.0.4 published](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.4) with exact release assets and evidence |
-| Public license | Apache License 2.0 for BonVoyage-owned source and documentation |
-| Production support | Community issue intake; no human-response or incident-response SLA |
-| Core proxy path | Included in the current v1.0.4 release |
-| Standalone Go control plane | Included as source in the current v1.0.4 release |
-| Public performance package | Scoped, evidence-bound results; no universal or dedicated-hardware claim |
-| Proprietary Console | Source not included; matching Console Free package published with v1.0.4 |
+> is the current checksum-bound Apache-2.0 release. Use the exact packages,
+> checksums, signatures, provenance, SBOMs, and platform scope attached to that
+> release rather than an unverified local or third-party build.
 
 ## Quick start
 
@@ -104,58 +51,152 @@ Seastar data plane.
 
 ```bash
 docker compose -f deploy/compose/local.yml up --build --detach --wait
-```
-
-The local profile publishes its traffic, metrics, and admin listeners on
-host loopback only. Run the bounded verifier after all roles are ready:
-
-```bash
 make verify-local-deployment
 ```
 
-It checks the one-shot snapshot compiler, gateway and upstream lifecycle,
-fixed and proxied traffic, exact request-accounting deltas, configuration
-gauges, restart counts, and selected runtime failure counters. A passing run
-ends with `status=pass`.
+The evaluation profile binds traffic, metrics, and admin listeners to host
+loopback. The verifier checks snapshot compilation, gateway and upstream
+lifecycle, fixed and proxied traffic, exact request-accounting deltas,
+configuration gauges, restart counts, and selected failure counters. A passing
+run ends with:
 
-You can also verify the fixed readiness route directly:
+```text
+status=pass
+```
+
+Probe the fixed readiness route directly:
 
 ```bash
 curl --fail --show-error http://127.0.0.1:8080/bonvoyage/ready
 ```
 
-Expected response:
-
-```text
-ready
-```
-
-Stop and remove the local stack with:
+Stop and remove the local stack:
 
 ```bash
 docker compose -f deploy/compose/local.yml down --volumes
 ```
 
-## Network ports
+Read the complete [Docker quickstart](https://docs.routesphere.global/getting-started/quickstart/)
+and [local verification guide](https://docs.routesphere.global/how-to/verify-local-deployment/).
 
-BonVoyage does not require a broad firewall range. These are the principal
-defaults and repository examples; traffic and upstream ports remain
-configuration-defined.
+## Why BonVoyage
 
-| Flow | TCP port | Exposure |
-| --- | ---: | --- |
-| Client to example HTTP listener | `8080` | Application network; configurable |
-| Client to example HTTPS listener | `8443` | Application network; Kubernetes maps service port `443` to it |
-| Prometheus to metrics | `9090` | Monitoring network only; binds to loopback by default |
-| Probe to data-plane health/admin | `9901` | Loopback or restricted management network only |
-| Gateway to optional discovery service | `9443` | Gateway-to-control-plane mutual TLS only |
-| Gateway to upstream application | Configured per endpoint | Outbound only; demo port `8081` is not a product default |
+- **Shard-local execution.** Connections, request state, upstream pools, and
+  fast-path policy remain local to their owning Seastar shard.
+- **Deterministic change.** Configuration is compiled and validated before
+  activation, with explicit ACK/NACK outcomes, last-known-good service, and
+  rollback primitives.
+- **Bounded failure behavior.** Admission, retries, circuits, queues, timeouts,
+  and telemetry are designed with explicit resource and recovery limits.
+- **Inspectable releases.** Signed artifacts, SBOMs, provenance, replay
+  records, security checks, and scoped performance evidence accompany the
+  published software boundary.
+- **No RouteSphere account required.** The Apache-2.0 gateway runs without
+  registration, a subscription, or a request-time RouteSphere service.
 
-Standalone snapshot compilation opens no control-plane port. Optional
-enrollment and Enterprise management listeners have no fixed default and must
-be assigned distinct, restricted addresses. See the authoritative
-[network ports and firewall rules](https://docs.routesphere.global/reference/network-ports/)
-before changing a firewall, security group, or Kubernetes NetworkPolicy.
+## How it works
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/readme/bonvoyage-architecture-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset=".github/readme/bonvoyage-architecture-light.svg">
+    <img alt="BonVoyage request and configuration paths" src=".github/readme/bonvoyage-architecture-light.svg" width="100%">
+  </picture>
+</p>
+
+**Request:** client traffic -> owning data-plane shard -> selected upstream.
+
+**Configuration:** assisted draft -> deterministic validation -> prepare and
+ACK/NACK -> operator activation -> active immutable snapshot.
+
+The active data plane serves traffic from immutable in-memory state. The
+control plane and offline tools prepare, validate, preview, and distribute
+candidate snapshots. Invalid candidates are rejected without replacing the
+active configuration.
+
+## What ships in v1.0.4
+
+| Area | Released capability |
+| --- | --- |
+| Protocols | HTTP/1.1 and HTTP/2 proxying, unary gRPC, HTTP/1.1 WebSocket forwarding, and incremental SSE delivery |
+| Traffic | Host/path/header routing, upstream pools, weighted load balancing, health checks, bounded retries, endpoint circuits, timeouts, and overload admission |
+| Security and policy | TLS and mTLS boundaries, API-key and JWT admission, source-IP policy, CORS, request-content controls, redirects, transformations, rewrites, and local rate limits |
+| Configuration | Immutable snapshot compilation, validation, preview, ACK/NACK discovery, activation, and rollback primitives |
+| Observability | Prometheus metrics, bounded asynchronous access logging, decision telemetry, and OpenTelemetry trace export |
+| Deployment | Docker Compose, native Ubuntu packages, Kubernetes manifests, benchmark tooling, security checks, and plan-first Linux host tuning |
+| Authoring tools | Release-matched `validate`, `format`, `explain`, `diff`, `migrate`, and `preview` commands with deterministic machine output |
+
+See the authoritative [supported-capability boundary](https://docs.routesphere.global/reference/supported-capabilities/)
+before designing a production evaluation.
+
+## Tail latency at 600,000 offered RPS
+
+BonVoyage met the `p99 <= 500 ms` target in 3 of 3 measured runs. NGINX met it
+in 1 of 3. The published post-release replay used a bounded HTTPS/1.1
+header-transformation workload on shared AWS infrastructure. Across all three
+runs per system, 216 million requests returned HTTP 200 with zero client errors
+and zero timeouts.
+
+| Metric | BonVoyage v1.0.4 | NGINX 1.30.4 |
+| --- | ---: | ---: |
+| Three-run median successful RPS | 599,899.2 | 599,787.9 |
+| Runs meeting the `p99 <= 500 ms` gate | 3 of 3 | 1 of 3 |
+| p99 | 189.934 ms | 745.333 ms |
+| RSS | 643.2 MiB | 959.0 MiB |
+| Application CPU | 22.66 core-equivalents | 16.92 core-equivalents |
+
+This was a fixed offered-rate diagnostic on shared AWS infrastructure, not a
+maximum-capacity result or a universal superiority claim. BonVoyage used more
+measured application CPU while maintaining the stated tail gate and using less
+RSS and fewer descriptors in this workload. Read the
+[complete replay, environment, run order, limitations, and rejected results](https://docs.routesphere.global/performance/v1-0-4-post-release-replay/).
+
+## AI-native, operator-controlled
+
+BonVoyage includes release-matched configuration skills and deterministic
+authoring tools. The intended workflow is:
+
+1. An engineer or assistant drafts or migrates a candidate configuration.
+2. Release-matched tooling formats, explains, validates, and previews it.
+3. The control plane prepares the immutable snapshot and reports ACK or NACK.
+4. An accountable operator chooses whether to activate or roll back.
+
+The skills do not bypass validation, grant an assistant production authority,
+or turn v1.0.4 into a general AI, MCP, or inference-governance gateway. Review
+the [assistant skill contract](https://docs.routesphere.global/reference/assistant-skill-contract/)
+and [published evaluations](https://docs.routesphere.global/reference/assistant-skill-evaluations/).
+
+## Operating surfaces and product boundary
+
+The gateway and included Go control-plane source run without a RouteSphere
+account, product registration, subscription, or hosted RouteSphere dependency.
+The data plane can start from and continue serving its active immutable
+snapshot when the control-plane process is unavailable.
+
+Console Free is an optional, no-cost proprietary companion distributed as a
+release-matched binary package when one is admitted for a release. YAML,
+release-matched configuration tools, and Console Free are the supported public
+operating surfaces.
+
+The Console's management service is not a public compatibility contract. This
+repository does not ship a supported external management API, SDK, or
+third-party Console integration guide. Supported programmatic fleet management
+is reserved for the future Enterprise offer. See
+[Get Console Free](https://docs.routesphere.global/console/get-console-free/)
+for its package and licensing boundary.
+
+## Release status
+
+| Area | Status |
+| --- | --- |
+| Release | [v1.0.4 published](https://github.com/routesphere-global/bonvoyage/releases/tag/v1.0.4) with exact assets and evidence |
+| License | Apache License 2.0 for BonVoyage-owned source and public documentation |
+| Support | Community issue intake; no human-response or incident-response SLA |
+| Data plane | Included in v1.0.4 within the documented protocol and policy boundaries |
+| Go control plane | Included as source in v1.0.4; not in the request path |
+| Performance evidence | Scoped results with exact workload and environment boundaries |
+| Console | Proprietary source not included; Console Free is an optional release-matched package |
+| Enterprise | Private and unreleased; no public availability claim |
 
 ## Development checks
 
@@ -175,64 +216,42 @@ make oss-deb-builder-test
 ```
 
 Linux/Seastar builds, sanitizers, protocol conformance, fuzzing, and release
-artifact checks require Docker or an Ubuntu 24.04 x86-64 host. The public
-documentation records the prerequisites and evidence boundary for each check.
+artifact checks require Docker or an Ubuntu 24.04 x86-64 host. Required checks
+fail when their tools are unavailable; they do not report a skipped check as
+success.
 
-## Performance evidence
-
-BonVoyage is built to deliver predictable throughput, latency, memory use, and
-recovery under realistic gateway policy workloads. Results are accepted only
-when correctness, errors, support-role headroom, CPU, memory, p50, p95, p99,
-and the test environment are recorded together. This project does not claim
-universal superiority over NGINX, Envoy, or any other gateway.
-
-Read the public [system model](https://docs.routesphere.global/concepts/system-model/)
-and [supported-capability boundaries](https://docs.routesphere.global/reference/supported-capabilities/)
-before interpreting an implementation or performance claim.
-
-## Read next
+## Documentation
 
 - [Requirements](https://docs.routesphere.global/getting-started/requirements/)
 - [Docker quickstart](https://docs.routesphere.global/getting-started/quickstart/)
-- [Get Console Free](https://docs.routesphere.global/console/get-console-free/)
-- [Verify a local deployment](https://docs.routesphere.global/how-to/verify-local-deployment/)
-- [Validate a configuration](https://docs.routesphere.global/how-to/validate-configuration/)
-- [Format a configuration](https://docs.routesphere.global/how-to/format-configuration/)
-- [Explain a configuration field](https://docs.routesphere.global/how-to/explain-configuration-field/)
-- [Compare configurations](https://docs.routesphere.global/how-to/compare-configurations/)
-- [Migrate a configuration](https://docs.routesphere.global/how-to/migrate-configuration/)
-- [Preview an immutable configuration artifact](https://docs.routesphere.global/how-to/preview-configuration/)
-- [Configuration test corpus](https://docs.routesphere.global/reference/configuration-test-corpus/)
-- [Configuration completion metadata](https://docs.routesphere.global/reference/configuration-completion-metadata/)
-- [Configuration snippets](https://docs.routesphere.global/reference/configuration-snippets/)
-- [Configuration diagnostics](https://docs.routesphere.global/reference/configuration-diagnostics/)
-- [Assistant skill contract](https://docs.routesphere.global/reference/assistant-skill-contract/)
-- [Assistant skill evaluations](https://docs.routesphere.global/reference/assistant-skill-evaluations/)
+- [Configuration authoring](https://docs.routesphere.global/reference/configuration-authoring-contract/)
 - [System model](https://docs.routesphere.global/concepts/system-model/)
-- [Network ports and firewall rules](https://docs.routesphere.global/reference/network-ports/)
 - [Supported capabilities](https://docs.routesphere.global/reference/supported-capabilities/)
+- [Network ports and firewall rules](https://docs.routesphere.global/reference/network-ports/)
+- [Performance evidence](https://routesphere.global/performance/)
+- [Release evidence](https://routesphere.global/release-evidence/)
 - [Support and security](https://docs.routesphere.global/reference/support-and-security/)
 
-## Documentation and support
+## Support and security
 
-- Documentation: <https://docs.routesphere.global>
-- Product site: <https://routesphere.global>
 - Community questions and reproducible defects: use this repository's issue
   tracker.
+- Suspected vulnerabilities: follow [SECURITY.md](SECURITY.md) and use private
+  vulnerability reporting. Do not publish sensitive reports in an issue.
 - Verified Release Assurance inquiries: <sales@routesphere.global>
 
 Community issue submission does not include a response or incident-resolution
-SLA. Read [SUPPORT.md](SUPPORT.md) and [SECURITY.md](SECURITY.md) before sharing
-diagnostics or a suspected vulnerability.
+SLA. Read [SUPPORT.md](SUPPORT.md) before sharing diagnostics.
 
 ## License and trademarks
 
-BonVoyage-owned source and public documentation in this repository are
-licensed under the [Apache License 2.0](LICENSE). Third-party material remains
-under its identified upstream terms; consult the
+BonVoyage-owned source and public documentation are licensed under the
+[Apache License 2.0](LICENSE). Third-party material remains under its identified
+upstream terms; consult the
 [third-party notices](packaging/release/licenses/THIRD_PARTY_NOTICES.md),
 [source-availability notice](packaging/release/licenses/THIRD_PARTY_SOURCE.md),
-`third_party/`, dependency records and release artifacts before redistribution.
+`third_party/`, dependency records, and release artifacts before
+redistribution.
 
 Community participation is issue-based as described in
 [CONTRIBUTING.md](CONTRIBUTING.md); external source-code fixes and pull requests
@@ -243,15 +262,13 @@ not grant general rights to RouteSphere or BonVoyage names and logos; see the
 
 ## Project policies
 
-- [License](LICENSE)
-- [Trademark policy](TRADEMARKS.md)
-- [Developer Certificate of Origin](DCO)
-- [Contributing](CONTRIBUTING.md)
-- [Dependency policy](DEPENDENCY_POLICY.md)
-- [Third-party notices](packaging/release/licenses/THIRD_PARTY_NOTICES.md)
-- [Third-party source availability](packaging/release/licenses/THIRD_PARTY_SOURCE.md)
-- [Release bundle verification](packaging/release/README.md)
-- [Governance](GOVERNANCE.md)
-- [Security](SECURITY.md)
-- [Support](SUPPORT.md)
-- [Code of Conduct](CODE_OF_CONDUCT.md)
+[License](LICENSE) &middot;
+[Trademarks](TRADEMARKS.md) &middot;
+[DCO](DCO) &middot;
+[Contributing](CONTRIBUTING.md) &middot;
+[Dependency policy](DEPENDENCY_POLICY.md) &middot;
+[Release verification](packaging/release/README.md) &middot;
+[Governance](GOVERNANCE.md) &middot;
+[Security](SECURITY.md) &middot;
+[Support](SUPPORT.md) &middot;
+[Code of Conduct](CODE_OF_CONDUCT.md)
