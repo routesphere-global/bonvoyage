@@ -23,3 +23,19 @@
 # Retained benchmark evidence is checksummed and must survive a clone without
 # newline or encoding transformations, even when a captured tool emits CRLF.
 benchmarks/results/** -text -eol -diff -merge
+
+# GitHub language statistics describe the primary C++ data plane and Go
+# control plane. Benchmark, release-engineering, documentation, and fixture
+# code remains fully visible and reviewable, but is auxiliary to the runtime.
+benchmarks/scripts/** linguist-detectable=false
+scripts/** linguist-detectable=false
+tests/fixtures/** linguist-detectable=false
+docs-site/** linguist-documentation=true linguist-detectable=false
+config/authoring/skills/** linguist-detectable=false
+skills/**/scripts/** linguist-detectable=false
+deploy/docker/upstream/** linguist-detectable=false
+
+# Generated protocol bindings and retained upstream source should not be
+# attributed to BonVoyage's authored implementation language mix.
+api/gen/** linguist-generated=true
+third_party/** linguist-vendored=true
