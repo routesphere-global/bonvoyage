@@ -116,6 +116,7 @@ type NodeLifecycleEvent struct {
 	Index         uint64        `json:"index"`
 	EventID       string        `json:"event_id"`
 	RequestSHA256 string        `json:"request_sha256,omitempty"`
+	IntentSHA256  string        `json:"intent_sha256,omitempty"`
 	NodeID        string        `json:"node_id"`
 	Kind          NodeEventKind `json:"kind"`
 	Actor         string        `json:"actor"`
@@ -129,6 +130,7 @@ type NodeLifecycleEvent struct {
 // short-lived, one-time enrollment credential.
 type NodeEnrollmentInput struct {
 	RequestID       string
+	IntentSHA256    string
 	Actor           string
 	Reason          string
 	NodeID          string
@@ -165,6 +167,7 @@ type ManagedNodeRevocationPlan struct {
 // NodeMetadataUpdateInput applies an optimistic, auditable metadata change.
 type NodeMetadataUpdateInput struct {
 	RequestID       string
+	IntentSHA256    string
 	Actor           string
 	Reason          string
 	NodeID          string
@@ -175,6 +178,7 @@ type NodeMetadataUpdateInput struct {
 // NodeTransitionInput applies one optimistic lifecycle transition.
 type NodeTransitionInput struct {
 	RequestID       string
+	IntentSHA256    string
 	Actor           string
 	Reason          string
 	NodeID          string
@@ -185,6 +189,7 @@ type NodeTransitionInput struct {
 // operator attribution in addition to the certificate revocation record.
 type ManagedNodeRevocationInput struct {
 	RequestID       string
+	IntentSHA256    string
 	Actor           string
 	Reason          string
 	NodeID          string
@@ -324,6 +329,7 @@ type Repository interface {
 	RetireNode(context.Context, NodeTransitionInput) (NodeMutationPlan, error)
 	RevokeManagedNode(context.Context, ManagedNodeRevocationInput) (ManagedNodeRevocationPlan, error)
 	GetNode(context.Context, string) (NodeIdentitySummary, error)
+	GetNodeEvent(context.Context, string) (NodeLifecycleEvent, error)
 	ListNodes(context.Context) ([]NodeIdentitySummary, error)
 	ListNodeEvents(context.Context, string) ([]NodeLifecycleEvent, error)
 	Enroll(context.Context, AuthorityLoader, EnrollmentRequest) (CredentialRecord, error)

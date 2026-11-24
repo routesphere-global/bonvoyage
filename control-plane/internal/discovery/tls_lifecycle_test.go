@@ -241,6 +241,12 @@ func TestRevocationDocumentOperatorLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if published, err := NodeRevocationPublished(path, "node-a", now.Add(time.Minute)); err != nil || !published {
+		t.Fatalf("published node revocation = %v, err=%v", published, err)
+	}
+	if published, err := NodeRevocationPublished(path, "node-b", now.Add(time.Minute)); err != nil || published {
+		t.Fatalf("absent node revocation = %v, err=%v", published, err)
+	}
 	if document.Generation != 2 || len(document.Revoked) != 1 || document.Revoked[0].NodeID != "node-a" {
 		t.Fatalf("revoked document = %#v", document)
 	}

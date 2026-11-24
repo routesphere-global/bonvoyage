@@ -39,6 +39,19 @@ func TestNodeHandlerRoutesBoundedMutationsAndRequiresTerminalConfirmation(t *tes
 	if invalidEvents.Code != http.StatusBadRequest {
 		t.Fatalf("invalid event window = %d %s", invalidEvents.Code, invalidEvents.Body.String())
 	}
+	operationID := "op_" + strings.Repeat("a", 64)
+	operation := performAdminRequest(
+		handler, http.MethodGet, "/api/v1/node-operations/"+operationID, "", nil,
+	)
+	if operation.Code != http.StatusOK || nodes.operationID != operationID {
+		t.Fatalf("get node operation = %d %s operation=%q", operation.Code, operation.Body.String(), nodes.operationID)
+	}
+	invalidOperation := performAdminRequest(
+		handler, http.MethodGet, "/api/v1/node-operations/op_not-a-digest", "", nil,
+	)
+	if invalidOperation.Code != http.StatusNotFound {
+		t.Fatalf("invalid node operation = %d %s", invalidOperation.Code, invalidOperation.Body.String())
+	}
 	created := performAdminRequest(
 		handler, http.MethodPost, "/api/v1/nodes",
 		`{"node_id":"node-a","metadata":{"display_name":"Singapore A","group":"edge","labels":{"zone":"sin-a"}},"reason":"add node","ttl_seconds":600}`,
@@ -119,6 +132,7 @@ type recordingNodeManagementService struct {
 	replaceInput     adminservice.ReplaceNodeInput
 	eventsAfterIndex uint64
 	eventsLimit      int
+	operationID      string
 }
 
 func (service *recordingNodeManagementService) ListNodes(
@@ -132,6 +146,17 @@ func (*recordingNodeManagementService) GetNode(
 	context.Context, adminservice.Principal, string,
 ) (adminservice.NodeView, error) {
 	return adminservice.NodeView{}, nil
+}
+
+func (service *recordingNodeManagementService) GetNodeOperation(
+	_ context.Context, _ adminservice.Principal, operationID string,
+) (adminservice.NodeOperationResult, error) {
+	service.operationID = operationID
+	return adminservice.NodeOperationResult{
+		APIVersion: adminservice.APIVersion, OperationID: operationID,
+		Status: adminservice.NodeOperationCommitted,
+		Event:  &adminservice.NodeEventView{EventID: operationID},
+	}, nil
 }
 
 func (service *recordingNodeManagementService) ListNodeEvents(

@@ -54,6 +54,7 @@ type managementService interface {
 type nodeManagementService interface {
 	ListNodes(context.Context, adminservice.Principal) (adminservice.NodeListResult, error)
 	GetNode(context.Context, adminservice.Principal, string) (adminservice.NodeView, error)
+	GetNodeOperation(context.Context, adminservice.Principal, string) (adminservice.NodeOperationResult, error)
 	ListNodeEvents(context.Context, adminservice.Principal, string, uint64, int) (adminservice.NodeEventsResult, error)
 	CreateNode(context.Context, adminservice.Principal, adminservice.CreateNodeInput) (adminservice.NodeEnrollmentResult, error)
 	ReissueNode(context.Context, adminservice.Principal, adminservice.ReissueNodeInput) (adminservice.NodeEnrollmentResult, error)
@@ -146,6 +147,8 @@ func (handler *Handler) ServeHTTP(response http.ResponseWriter, request *http.Re
 		handler.handleRollback(response, request, requestID, principal)
 	case request.URL.Path == "/api/v1/nodes":
 		handler.handleNodes(response, request, requestID, principal)
+	case strings.HasPrefix(request.URL.Path, "/api/v1/node-operations/"):
+		handler.handleNodeOperation(response, request, requestID, principal)
 	case strings.HasPrefix(request.URL.Path, "/api/v1/nodes/"):
 		handler.handleNodeResource(response, request, requestID, principal)
 	case strings.HasPrefix(request.URL.Path, "/api/v1/rollouts/") &&

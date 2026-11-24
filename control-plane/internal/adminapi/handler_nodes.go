@@ -197,6 +197,49 @@ func (handler *Handler) handleNodeEvents(
 	writeJSON(response, http.StatusOK, result)
 }
 
+func (handler *Handler) handleNodeOperation(
+	response http.ResponseWriter,
+	request *http.Request,
+	requestID string,
+	principal adminservice.Principal,
+) {
+	if handler.nodes == nil {
+		handler.problem(response, requestID, storage.ErrNotFound)
+		return
+	}
+	if !handler.requireMethod(response, requestID, request, http.MethodGet) {
+		return
+	}
+	operationID, err := parseNodeOperationPath(request.URL.Path)
+	if err != nil {
+		handler.problem(response, requestID, storage.ErrNotFound)
+		return
+	}
+	ctx, cancel := context.WithTimeout(request.Context(), 5*time.Second)
+	defer cancel()
+	result, err := handler.nodes.GetNodeOperation(ctx, principal, operationID)
+	if err != nil {
+		handler.problem(response, requestID, err)
+		return
+	}
+	writeJSON(response, http.StatusOK, result)
+}
+
+func parseNodeOperationPath(path string) (string, error) {
+	const prefix = "/api/v1/node-operations/"
+	operationID := strings.TrimPrefix(path, prefix)
+	if operationID == path || len(operationID) != len("op_")+64 ||
+		!strings.HasPrefix(operationID, "op_") || strings.Contains(operationID, "/") {
+		return "", storage.ErrNotFound
+	}
+	for _, character := range strings.TrimPrefix(operationID, "op_") {
+		if (character < '0' || character > '9') && (character < 'a' || character > 'f') {
+			return "", storage.ErrNotFound
+		}
+	}
+	return operationID, nil
+}
+
 func parseNodeEventWindow(rawQuery string) (uint64, int, error) {
 	if rawQuery == "" {
 		return 0, adminservice.DefaultNodeEventPageSize, nil

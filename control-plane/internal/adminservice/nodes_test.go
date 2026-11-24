@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -156,6 +157,57 @@ func TestNodeEventsAreCursorBounded(t *testing.T) {
 		context.Background(), administrator, "node-page", 0, MaxNodeEventPageSize+1,
 	); !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("oversized page error = %v", err)
+	}
+}
+
+func TestNodeOperationLookupIsExactAndActorBound(t *testing.T) {
+	service, administrator := newNodeLifecycleService(t)
+	operationID := "op_" + strings.Repeat("a", 64)
+	if _, err := service.CreateNode(context.Background(), administrator, CreateNodeInput{
+		RequestID: operationID, Reason: "operation lookup fixture", NodeID: "node-operation",
+		Metadata: NodeMetadataInput{DisplayName: "Node operation", Group: "edge"}, TTLSeconds: 60,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	auditor := administrator
+	auditor.Role = RoleAuditor
+	result, err := service.GetNodeOperation(context.Background(), auditor, operationID)
+	if err != nil || result.OperationID != operationID || result.Status != NodeOperationCommitted ||
+		result.Event == nil || result.Event.EventID != operationID ||
+		result.Event.IntentSHA256 == "" || result.Event.Kind != identity.NodeEventEnrollmentCreated ||
+		result.Event.Actor != administrator.Actor {
+		t.Fatalf("node operation lookup = %#v, err=%v", result, err)
+	}
+
+	otherActor := auditor
+	otherActor.Actor = "spiffe://admin.test/operators/other"
+	hidden, err := service.GetNodeOperation(context.Background(), otherActor, operationID)
+	if err != nil || hidden.Status != NodeOperationNotFound || hidden.Event != nil {
+		t.Fatalf("cross-actor lookup = %#v, err=%v", hidden, err)
+	}
+	missingID := "op_" + strings.Repeat("b", 64)
+	missing, err := service.GetNodeOperation(context.Background(), auditor, missingID)
+	if err != nil || missing.OperationID != missingID || missing.Status != NodeOperationNotFound || missing.Event != nil {
+		t.Fatalf("missing operation lookup = %#v, err=%v", missing, err)
+	}
+	if _, err := service.GetNodeOperation(context.Background(), auditor, "op_not-a-digest"); !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("invalid operation lookup error = %v", err)
+	}
+}
+
+func TestNodeOperationIntentSHA256IsCanonical(t *testing.T) {
+	digest := nodeOperationIntentSHA256(
+		"replace", "edge-sin-01", 7, "edge-sin-02",
+		NodeMetadataInput{
+			DisplayName: "Singapore replacement", Group: "payments",
+			Labels: map[string]string{"zone": "sin", "role": "edge"},
+		},
+		"replace hardware", 600,
+	)
+	const expected = "f7fd4609c0d146c02f5eb8d579c82dc0069e14501f45ed06af1d21dc93566aaa"
+	if digest != expected {
+		t.Fatalf("intent digest = %q, want %q", digest, expected)
 	}
 }
 

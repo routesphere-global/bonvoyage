@@ -81,6 +81,33 @@ func AddNodeRevocation(
 	})
 }
 
+// NodeRevocationPublished reports whether the current structurally valid
+// revocation document contains the whole-node revocation. Freshness is not
+// required here: an expired document already fails transport authentication
+// closed, while this lookup answers whether the mutation side effect was ever
+// durably published.
+func NodeRevocationPublished(path, nodeID string, now time.Time) (bool, error) {
+	if !filepath.IsAbs(path) || filepath.Clean(path) != path || now.IsZero() ||
+		validateIdentifier("revoked node ID", nodeID) != nil {
+		return false, errors.New("revocation lookup input is invalid")
+	}
+	contents, err := readLifecycleFile(path, maxRevocationFileBytes, false)
+	if err != nil {
+		return false, err
+	}
+	document, err := decodeRevocationDocument(contents, now.UTC(), false)
+	if err != nil {
+		return false, err
+	}
+	for _, revoked := range document.Revoked {
+		if revoked.NodeID == nodeID && revoked.CredentialFingerprint == "" &&
+			revoked.IssuerFingerprint == "" && revoked.SerialNumber == "" {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func updateRevocationDocument(
 	path string,
 	now time.Time,

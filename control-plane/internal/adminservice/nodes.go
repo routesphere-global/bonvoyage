@@ -2,10 +2,14 @@ package adminservice
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"net"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -146,6 +150,7 @@ type NodeEventView struct {
 	Index         uint64                 `json:"index"`
 	EventID       string                 `json:"event_id"`
 	RequestSHA256 string                 `json:"request_sha256,omitempty"`
+	IntentSHA256  string                 `json:"intent_sha256,omitempty"`
 	NodeID        string                 `json:"node_id"`
 	Kind          identity.NodeEventKind `json:"kind"`
 	Actor         string                 `json:"actor"`
@@ -164,6 +169,21 @@ type NodeEventsResult struct {
 	TotalEvents    int             `json:"total_events"`
 	HasMore        bool            `json:"has_more"`
 	Events         []NodeEventView `json:"events"`
+}
+
+const (
+	NodeOperationCommitted = "COMMITTED"
+	NodeOperationNotFound  = "NOT_FOUND"
+)
+
+// NodeOperationResult is an actor-bound point-in-time lookup result. A
+// committed result is secret-free and deliberately omits request bodies and
+// idempotency keys. NOT_FOUND is not authorization to retry.
+type NodeOperationResult struct {
+	APIVersion  string         `json:"api_version"`
+	OperationID string         `json:"operation_id"`
+	Status      string         `json:"status"`
+	Event       *NodeEventView `json:"event,omitempty"`
 }
 
 func (service *Service) ListNodes(ctx context.Context, principal Principal) (NodeListResult, error) {
@@ -227,15 +247,134 @@ func (service *Service) ListNodeEvents(
 			result.HasMore = true
 			break
 		}
-		result.Events = append(result.Events, NodeEventView{
-			Index: event.Index, EventID: event.EventID, NodeID: event.NodeID, Kind: event.Kind,
-			RequestSHA256: event.RequestSHA256,
-			Actor:         event.Actor, Reason: event.Reason, NodeVersion: event.NodeVersion,
-			RelatedNodeID: event.RelatedNodeID, CreatedAt: event.CreatedAt,
-		})
+		result.Events = append(result.Events, nodeEventView(event))
 		result.NextAfterIndex = event.Index
 	}
 	return result, nil
+}
+
+// GetNodeOperation returns one committed operation only to the same
+// authenticated actor that performed it. Actor mismatches are hidden as not
+// found so the lookup does not become a cross-account evidence oracle.
+func (service *Service) GetNodeOperation(
+	ctx context.Context,
+	principal Principal,
+	operationID string,
+) (NodeOperationResult, error) {
+	if err := requirePermission(principal, permissionNodeRead); err != nil {
+		return NodeOperationResult{}, err
+	}
+	if err := service.requireNodeLifecycle(); err != nil {
+		return NodeOperationResult{}, err
+	}
+	if err := validateNodeOperationID(operationID); err != nil {
+		return NodeOperationResult{}, err
+	}
+	if err := contextError(ctx); err != nil {
+		return NodeOperationResult{}, err
+	}
+
+	service.nodeMu.Lock()
+	defer service.nodeMu.Unlock()
+	event, err := service.identity.GetNodeEvent(ctx, operationID)
+	if errors.Is(err, identity.ErrNotFound) {
+		return NodeOperationResult{
+			APIVersion: APIVersion, OperationID: operationID, Status: NodeOperationNotFound,
+		}, nil
+	}
+	if err != nil {
+		return NodeOperationResult{}, err
+	}
+	if event.Actor != principal.Actor {
+		return NodeOperationResult{
+			APIVersion: APIVersion, OperationID: operationID, Status: NodeOperationNotFound,
+		}, nil
+	}
+	if event.RequestSHA256 == "" || event.IntentSHA256 == "" {
+		return NodeOperationResult{}, fmt.Errorf(
+			"node operation lacks exact-intent recovery evidence: %w", ErrPrecondition,
+		)
+	}
+	if event.Kind == identity.NodeEventRevoked {
+		published, err := discovery.NodeRevocationPublished(
+			service.nodePolicy.RevocationPath, event.NodeID, service.nodeClock(),
+		)
+		if err != nil {
+			return NodeOperationResult{}, fmt.Errorf("verify node revocation snapshot: %w", err)
+		}
+		if !published {
+			return NodeOperationResult{}, fmt.Errorf(
+				"node revocation snapshot is not published: %w", ErrPrecondition,
+			)
+		}
+	}
+	view := nodeEventView(event)
+	return NodeOperationResult{
+		APIVersion: APIVersion, OperationID: operationID,
+		Status: NodeOperationCommitted, Event: &view,
+	}, nil
+}
+
+func nodeEventView(event identity.NodeLifecycleEvent) NodeEventView {
+	return NodeEventView{
+		Index: event.Index, EventID: event.EventID, NodeID: event.NodeID, Kind: event.Kind,
+		RequestSHA256: event.RequestSHA256, IntentSHA256: event.IntentSHA256,
+		Actor: event.Actor, Reason: event.Reason, NodeVersion: event.NodeVersion,
+		RelatedNodeID: event.RelatedNodeID, CreatedAt: event.CreatedAt,
+	}
+}
+
+func validateNodeOperationID(operationID string) error {
+	if len(operationID) != len("op_")+64 || !strings.HasPrefix(operationID, "op_") {
+		return fmt.Errorf("node operation ID is invalid: %w", ErrInvalidInput)
+	}
+	digest := strings.TrimPrefix(operationID, "op_")
+	if strings.ToLower(digest) != digest {
+		return fmt.Errorf("node operation ID is invalid: %w", ErrInvalidInput)
+	}
+	if _, err := hex.DecodeString(digest); err != nil {
+		return fmt.Errorf("node operation ID is invalid: %w", ErrInvalidInput)
+	}
+	return nil
+}
+
+// nodeOperationIntentSHA256 binds recovery evidence to the exact public
+// operation intent without exposing the browser idempotency key. Values are
+// UTF-8 and NUL separated in the order below; accepted node fields cannot
+// contain NUL bytes.
+func nodeOperationIntentSHA256(
+	operation string,
+	nodeID string,
+	expectedVersion uint64,
+	replacementNodeID string,
+	metadata NodeMetadataInput,
+	reason string,
+	ttlSeconds uint32,
+) string {
+	parts := []string{
+		"bonvoyage-node-intent-v1",
+		"operation", operation,
+		"node_id", nodeID,
+		"expected_version", strconv.FormatUint(expectedVersion, 10),
+		"replacement_node_id", replacementNodeID,
+		"display_name", metadata.DisplayName,
+		"group", metadata.Group,
+	}
+	labelKeys := make([]string, 0, len(metadata.Labels))
+	for key := range metadata.Labels {
+		labelKeys = append(labelKeys, key)
+	}
+	sort.Strings(labelKeys)
+	parts = append(parts, "label_count", strconv.Itoa(len(labelKeys)))
+	for _, key := range labelKeys {
+		parts = append(parts, "label", key, metadata.Labels[key])
+	}
+	parts = append(parts,
+		"reason", reason,
+		"ttl_seconds", strconv.FormatUint(uint64(ttlSeconds), 10),
+	)
+	digest := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
+	return hex.EncodeToString(digest[:])
 }
 
 func (service *Service) CreateNode(
@@ -252,7 +391,11 @@ func (service *Service) CreateNode(
 	service.nodeMu.Lock()
 	defer service.nodeMu.Unlock()
 	plan, err := service.identity.CreateNodeEnrollment(ctx, identity.NodeEnrollmentInput{
-		RequestID: input.RequestID, Actor: principal.Actor, Reason: input.Reason,
+		RequestID: input.RequestID,
+		IntentSHA256: nodeOperationIntentSHA256(
+			"create", input.NodeID, 0, "", input.Metadata, input.Reason, input.TTLSeconds,
+		),
+		Actor: principal.Actor, Reason: input.Reason,
 		NodeID: input.NodeID, Metadata: identityMetadata(input.Metadata), Audience: service.nodePolicy.Audience,
 		TTL: enrollmentTTL(input.TTLSeconds),
 	})
@@ -280,7 +423,12 @@ func (service *Service) ReissueNode(
 		return NodeEnrollmentResult{}, err
 	}
 	plan, err := service.identity.ReissueNodeEnrollment(ctx, identity.NodeEnrollmentInput{
-		RequestID: input.RequestID, Actor: principal.Actor, Reason: input.Reason,
+		RequestID: input.RequestID,
+		IntentSHA256: nodeOperationIntentSHA256(
+			"reissue", input.NodeID, input.ExpectedVersion, "", NodeMetadataInput{},
+			input.Reason, input.TTLSeconds,
+		),
+		Actor: principal.Actor, Reason: input.Reason,
 		NodeID: input.NodeID, ExpectedVersion: input.ExpectedVersion,
 		Metadata: current.Node.Metadata, Audience: service.nodePolicy.Audience,
 		TTL: enrollmentTTL(input.TTLSeconds),
@@ -305,7 +453,12 @@ func (service *Service) ReplaceNode(
 	service.nodeMu.Lock()
 	defer service.nodeMu.Unlock()
 	plan, err := service.identity.CreateNodeReplacement(ctx, identity.NodeEnrollmentInput{
-		RequestID: input.RequestID, Actor: principal.Actor, Reason: input.Reason,
+		RequestID: input.RequestID,
+		IntentSHA256: nodeOperationIntentSHA256(
+			"replace", input.PredecessorNodeID, input.ExpectedVersion, input.ReplacementNodeID,
+			input.Metadata, input.Reason, input.TTLSeconds,
+		),
+		Actor: principal.Actor, Reason: input.Reason,
 		NodeID: input.ReplacementNodeID, ExpectedVersion: input.ExpectedVersion,
 		Metadata: identityMetadata(input.Metadata), Audience: service.nodePolicy.Audience,
 		TTL: enrollmentTTL(input.TTLSeconds), ReplacementFor: input.PredecessorNodeID,
@@ -330,7 +483,11 @@ func (service *Service) UpdateNode(
 	service.nodeMu.Lock()
 	defer service.nodeMu.Unlock()
 	plan, err := service.identity.UpdateNodeMetadata(ctx, identity.NodeMetadataUpdateInput{
-		RequestID: input.RequestID, Actor: principal.Actor, Reason: input.Reason,
+		RequestID: input.RequestID,
+		IntentSHA256: nodeOperationIntentSHA256(
+			"edit", input.NodeID, input.ExpectedVersion, "", input.Metadata, input.Reason, 0,
+		),
+		Actor: principal.Actor, Reason: input.Reason,
 		NodeID: input.NodeID, ExpectedVersion: input.ExpectedVersion,
 		Metadata: identityMetadata(input.Metadata),
 	})
@@ -354,7 +511,11 @@ func (service *Service) DrainNode(
 	service.nodeMu.Lock()
 	defer service.nodeMu.Unlock()
 	plan, err := service.identity.RequestNodeDrain(ctx, identity.NodeTransitionInput{
-		RequestID: input.RequestID, Actor: principal.Actor, Reason: input.Reason,
+		RequestID: input.RequestID,
+		IntentSHA256: nodeOperationIntentSHA256(
+			"drain", input.NodeID, input.ExpectedVersion, "", NodeMetadataInput{}, input.Reason, 0,
+		),
+		Actor: principal.Actor, Reason: input.Reason,
 		NodeID: input.NodeID, ExpectedVersion: input.ExpectedVersion,
 	})
 	if err != nil {
@@ -389,7 +550,11 @@ func (service *Service) RetireNode(
 		return NodeMutationResult{}, fmt.Errorf("node remains in the selected rollout target set: %w", ErrPrecondition)
 	}
 	plan, err := service.identity.RetireNode(ctx, identity.NodeTransitionInput{
-		RequestID: input.RequestID, Actor: principal.Actor, Reason: input.Reason,
+		RequestID: input.RequestID,
+		IntentSHA256: nodeOperationIntentSHA256(
+			"retire", input.NodeID, input.ExpectedVersion, "", NodeMetadataInput{}, input.Reason, 0,
+		),
+		Actor: principal.Actor, Reason: input.Reason,
 		NodeID: input.NodeID, ExpectedVersion: input.ExpectedVersion,
 	})
 	if err != nil {
@@ -409,10 +574,17 @@ func (service *Service) RevokeNode(
 	if err := service.requireNodeLifecycle(); err != nil {
 		return NodeMutationResult{}, err
 	}
+	if len(input.Reason) > 128 {
+		return NodeMutationResult{}, fmt.Errorf("node revocation reason exceeds 128 bytes: %w", ErrInvalidInput)
+	}
 	service.nodeMu.Lock()
 	defer service.nodeMu.Unlock()
 	plan, err := service.identity.RevokeManagedNode(ctx, identity.ManagedNodeRevocationInput{
-		RequestID: input.RequestID, Actor: principal.Actor, Reason: input.Reason,
+		RequestID: input.RequestID,
+		IntentSHA256: nodeOperationIntentSHA256(
+			"revoke", input.NodeID, input.ExpectedVersion, "", NodeMetadataInput{}, input.Reason, 0,
+		),
+		Actor: principal.Actor, Reason: input.Reason,
 		NodeID: input.NodeID, ExpectedVersion: input.ExpectedVersion,
 	})
 	if err != nil {

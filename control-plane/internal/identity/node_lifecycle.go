@@ -84,8 +84,8 @@ func (repository *FileRepository) CreateNodeEnrollment(
 	next.Nodes = append(next.Nodes, node)
 	if err := appendNodeEvent(&next, NodeLifecycleEvent{
 		EventID: input.RequestID, NodeID: input.NodeID, Kind: NodeEventEnrollmentCreated,
-		RequestSHA256: requestDigest,
-		Actor:         input.Actor, Reason: input.Reason, NodeVersion: node.Version, CreatedAt: now,
+		RequestSHA256: requestDigest, IntentSHA256: input.IntentSHA256,
+		Actor: input.Actor, Reason: input.Reason, NodeVersion: node.Version, CreatedAt: now,
 	}); err != nil {
 		return NodeEnrollmentPlan{}, err
 	}
@@ -147,8 +147,8 @@ func (repository *FileRepository) ReissueNodeEnrollment(
 	next.Nodes[nodeIndex] = node
 	if err := appendNodeEvent(&next, NodeLifecycleEvent{
 		EventID: input.RequestID, NodeID: input.NodeID, Kind: NodeEventEnrollmentReissued,
-		RequestSHA256: requestDigest,
-		Actor:         input.Actor, Reason: input.Reason, NodeVersion: node.Version, CreatedAt: now,
+		RequestSHA256: requestDigest, IntentSHA256: input.IntentSHA256,
+		Actor: input.Actor, Reason: input.Reason, NodeVersion: node.Version, CreatedAt: now,
 	}); err != nil {
 		return NodeEnrollmentPlan{}, err
 	}
@@ -227,8 +227,8 @@ func (repository *FileRepository) CreateNodeReplacement(
 	next.Nodes = append(next.Nodes, replacement)
 	if err := appendNodeEvent(&next, NodeLifecycleEvent{
 		EventID: input.RequestID, NodeID: input.NodeID, Kind: NodeEventReplacementCreated,
-		RequestSHA256: requestDigest,
-		Actor:         input.Actor, Reason: input.Reason, NodeVersion: replacement.Version,
+		RequestSHA256: requestDigest, IntentSHA256: input.IntentSHA256,
+		Actor: input.Actor, Reason: input.Reason, NodeVersion: replacement.Version,
 		RelatedNodeID: input.ReplacementFor, CreatedAt: now,
 	}); err != nil {
 		return NodeEnrollmentPlan{}, err
@@ -246,6 +246,9 @@ func (repository *FileRepository) UpdateNodeMetadata(
 	if err := validateNodeMutation(input.RequestID, input.Actor, input.Reason, input.NodeID, input.ExpectedVersion); err != nil {
 		return NodeMutationPlan{}, err
 	}
+	if err := validateIntentSHA256(input.IntentSHA256); err != nil {
+		return NodeMutationPlan{}, err
+	}
 	if err := validateNodeMetadata(input.Metadata); err != nil {
 		return NodeMutationPlan{}, err
 	}
@@ -253,7 +256,8 @@ func (repository *FileRepository) UpdateNodeMetadata(
 	if err != nil {
 		return NodeMutationPlan{}, err
 	}
-	return repository.mutateNode(ctx, input.RequestID, requestDigest, input.NodeID, NodeEventMetadataUpdated,
+	return repository.mutateNode(ctx, input.RequestID, requestDigest, input.IntentSHA256,
+		input.NodeID, NodeEventMetadataUpdated,
 		input.Actor, input.Reason, input.ExpectedVersion, func(node *NodeRecord, _ time.Time) error {
 			if node.Lifecycle == NodeLifecycleRetired || node.Lifecycle == NodeLifecycleRevoked {
 				return fmt.Errorf("terminal node metadata is immutable: %w", ErrConflict)
@@ -270,11 +274,15 @@ func (repository *FileRepository) RequestNodeDrain(
 	if err := validateNodeMutation(input.RequestID, input.Actor, input.Reason, input.NodeID, input.ExpectedVersion); err != nil {
 		return NodeMutationPlan{}, err
 	}
+	if err := validateIntentSHA256(input.IntentSHA256); err != nil {
+		return NodeMutationPlan{}, err
+	}
 	requestDigest, err := nodeRequestDigest(NodeEventDrainRequested, input)
 	if err != nil {
 		return NodeMutationPlan{}, err
 	}
-	return repository.mutateNode(ctx, input.RequestID, requestDigest, input.NodeID, NodeEventDrainRequested,
+	return repository.mutateNode(ctx, input.RequestID, requestDigest, input.IntentSHA256,
+		input.NodeID, NodeEventDrainRequested,
 		input.Actor, input.Reason, input.ExpectedVersion, func(node *NodeRecord, now time.Time) error {
 			if node.Lifecycle != NodeLifecycleEnrolling && node.Lifecycle != NodeLifecycleReady {
 				return fmt.Errorf("node cannot enter drain from %s: %w", node.Lifecycle, ErrConflict)
@@ -292,11 +300,15 @@ func (repository *FileRepository) RetireNode(
 	if err := validateNodeMutation(input.RequestID, input.Actor, input.Reason, input.NodeID, input.ExpectedVersion); err != nil {
 		return NodeMutationPlan{}, err
 	}
+	if err := validateIntentSHA256(input.IntentSHA256); err != nil {
+		return NodeMutationPlan{}, err
+	}
 	requestDigest, err := nodeRequestDigest(NodeEventRetired, input)
 	if err != nil {
 		return NodeMutationPlan{}, err
 	}
-	return repository.mutateNode(ctx, input.RequestID, requestDigest, input.NodeID, NodeEventRetired,
+	return repository.mutateNode(ctx, input.RequestID, requestDigest, input.IntentSHA256,
+		input.NodeID, NodeEventRetired,
 		input.Actor, input.Reason, input.ExpectedVersion, func(node *NodeRecord, now time.Time) error {
 			if node.Lifecycle != NodeLifecycleDraining {
 				return fmt.Errorf("node must be draining before retirement: %w", ErrConflict)
@@ -312,6 +324,9 @@ func (repository *FileRepository) RevokeManagedNode(
 	input ManagedNodeRevocationInput,
 ) (ManagedNodeRevocationPlan, error) {
 	if err := validateNodeMutation(input.RequestID, input.Actor, input.Reason, input.NodeID, input.ExpectedVersion); err != nil {
+		return ManagedNodeRevocationPlan{}, err
+	}
+	if err := validateIntentSHA256(input.IntentSHA256); err != nil {
 		return ManagedNodeRevocationPlan{}, err
 	}
 	requestDigest, err := nodeRequestDigest(NodeEventRevoked, input)
@@ -367,8 +382,8 @@ func (repository *FileRepository) RevokeManagedNode(
 	next.Nodes[nodeIndex] = node
 	if err := appendNodeEvent(&next, NodeLifecycleEvent{
 		EventID: input.RequestID, NodeID: input.NodeID, Kind: NodeEventRevoked,
-		RequestSHA256: requestDigest,
-		Actor:         input.Actor, Reason: input.Reason, NodeVersion: node.Version, CreatedAt: now,
+		RequestSHA256: requestDigest, IntentSHA256: input.IntentSHA256,
+		Actor: input.Actor, Reason: input.Reason, NodeVersion: node.Version, CreatedAt: now,
 	}); err != nil {
 		return ManagedNodeRevocationPlan{}, err
 	}
@@ -443,10 +458,36 @@ func (repository *FileRepository) ListNodeEvents(
 	return result, nil
 }
 
+// GetNodeEvent resolves one exact, secret-free lifecycle event. The event ID
+// is globally unique inside one identity authority and is the durable
+// idempotency identity for node mutations.
+func (repository *FileRepository) GetNodeEvent(
+	ctx context.Context,
+	eventID string,
+) (NodeLifecycleEvent, error) {
+	if err := contextError(ctx); err != nil {
+		return NodeLifecycleEvent{}, err
+	}
+	if err := validateIdentifier("node lifecycle event ID", eventID); err != nil {
+		return NodeLifecycleEvent{}, err
+	}
+	repository.mu.Lock()
+	defer repository.mu.Unlock()
+	if err := repository.ensureOpenLocked(); err != nil {
+		return NodeLifecycleEvent{}, err
+	}
+	event, found := findNodeEventByID(repository.state.NodeEvents, eventID)
+	if !found {
+		return NodeLifecycleEvent{}, ErrNotFound
+	}
+	return event, nil
+}
+
 func (repository *FileRepository) mutateNode(
 	ctx context.Context,
 	requestID string,
 	requestDigest string,
+	intentSHA256 string,
 	nodeID string,
 	kind NodeEventKind,
 	actor string,
@@ -492,7 +533,8 @@ func (repository *FileRepository) mutateNode(
 	}
 	if err := appendNodeEvent(&next, NodeLifecycleEvent{
 		EventID: requestID, NodeID: nodeID, Kind: kind, Actor: actor, Reason: reason,
-		RequestSHA256: requestDigest, NodeVersion: node.Version, CreatedAt: now,
+		RequestSHA256: requestDigest, IntentSHA256: intentSHA256,
+		NodeVersion: node.Version, CreatedAt: now,
 	}); err != nil {
 		return NodeMutationPlan{}, err
 	}
@@ -653,6 +695,9 @@ func validateNodeEnrollmentInput(input NodeEnrollmentInput, expectedVersion, rep
 	if err := validateNodeMutation(input.RequestID, input.Actor, input.Reason, input.NodeID, 1); err != nil {
 		return err
 	}
+	if err := validateIntentSHA256(input.IntentSHA256); err != nil {
+		return err
+	}
 	if expectedVersion && input.ExpectedVersion == 0 {
 		return fmt.Errorf("expected node version is required: %w", ErrInvalid)
 	}
@@ -671,6 +716,17 @@ func validateNodeEnrollmentInput(input NodeEnrollmentInput, expectedVersion, rep
 		}
 	} else if input.ReplacementFor != "" {
 		return fmt.Errorf("replacement predecessor is not valid for this operation: %w", ErrInvalid)
+	}
+	return nil
+}
+
+func validateIntentSHA256(value string) error {
+	if value == "" {
+		return nil
+	}
+	digest, err := hex.DecodeString(value)
+	if err != nil || len(digest) != sha256.Size || hex.EncodeToString(digest) != value {
+		return fmt.Errorf("node operation intent digest is invalid: %w", ErrInvalid)
 	}
 	return nil
 }

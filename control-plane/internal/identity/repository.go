@@ -1130,6 +1130,12 @@ func validateState(state persistedState) error {
 				return fmt.Errorf("node lifecycle request digest is invalid: %w", ErrCorrupt)
 			}
 		}
+		if event.IntentSHA256 != "" {
+			digest, err := hex.DecodeString(event.IntentSHA256)
+			if err != nil || len(digest) != sha256.Size || event.IntentSHA256 != strings.ToLower(event.IntentSHA256) {
+				return fmt.Errorf("node lifecycle intent digest is invalid: %w", ErrCorrupt)
+			}
+		}
 		if err := validateText("node lifecycle event actor", event.Actor, maxNodeActorBytes, true); err != nil {
 			return fmt.Errorf("%w: %v", ErrCorrupt, err)
 		}

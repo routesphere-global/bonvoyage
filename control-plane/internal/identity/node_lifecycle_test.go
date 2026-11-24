@@ -136,6 +136,14 @@ func TestNodeLifecyclePersistsEnrollmentMetadataDrainAndRetirement(t *testing.T)
 		events[len(events)-1].Kind != NodeEventRetired {
 		t.Fatalf("events = %#v, err=%v", events, err)
 	}
+	exactEvent, err := repository.GetNodeEvent(context.Background(), "request-update-node-a")
+	if err != nil || exactEvent.Kind != NodeEventMetadataUpdated || exactEvent.NodeID != "node-a" ||
+		exactEvent.Actor != "spiffe://operator.test/admin" {
+		t.Fatalf("exact node event = %#v, err=%v", exactEvent, err)
+	}
+	if _, err := repository.GetNodeEvent(context.Background(), "request-does-not-exist"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("missing exact node event error = %v", err)
+	}
 	stateBytes, err := os.ReadFile(repository.statePath())
 	if err != nil {
 		t.Fatal(err)
@@ -154,6 +162,10 @@ func TestNodeLifecyclePersistsEnrollmentMetadataDrainAndRetirement(t *testing.T)
 	restored, err := reopened.GetNode(context.Background(), "node-a")
 	if err != nil || restored.Node.Lifecycle != NodeLifecycleRetired || restored.Node.Version != 6 {
 		t.Fatalf("restored node = %#v, err=%v", restored, err)
+	}
+	restoredEvent, err := reopened.GetNodeEvent(context.Background(), "request-update-node-a")
+	if err != nil || restoredEvent != exactEvent {
+		t.Fatalf("restored exact node event = %#v, err=%v", restoredEvent, err)
 	}
 }
 
