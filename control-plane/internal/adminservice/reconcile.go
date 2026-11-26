@@ -37,6 +37,9 @@ func (service *Service) Cancel(
 
 	service.mutationMu.Lock()
 	defer service.mutationMu.Unlock()
+	if err := service.requireStatusAuthority(ctx, input.ExpectedStatusAuthorityID); err != nil {
+		return MutationResult{}, err
+	}
 	selection, err := service.runtime.CurrentRollout()
 	if err != nil {
 		return MutationResult{}, err
@@ -52,11 +55,17 @@ func (service *Service) Cancel(
 		},
 	)
 	if err != nil {
-		return MutationResult{}, err
+		return MutationResult{}, unknownMutationOutcome(
+			fmt.Sprintf("cancellation of rollout %d was dispatched before its outcome became uncertain", input.Sequence),
+			err,
+		)
 	}
 	status, err := service.status(ctx, selection.Sequence)
 	if err != nil {
-		return MutationResult{}, err
+		return MutationResult{}, unknownMutationOutcome(
+			fmt.Sprintf("rollout %d was cancelled before its response became uncertain", selection.Sequence),
+			err,
+		)
 	}
 	return MutationResult{APIVersion: APIVersion, Replayed: selection.Replayed, Status: status}, nil
 }

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/routesphere-global/bonvoyage/control-plane/internal/adminservice"
+	"github.com/routesphere-global/bonvoyage/control-plane/internal/identity"
 	"github.com/routesphere-global/bonvoyage/control-plane/internal/storage"
 )
 
@@ -31,10 +32,12 @@ func TestNodeHandlerRoutesBoundedMutationsAndRequiresTerminalConfirmation(t *tes
 	if listed.Code != http.StatusOK || nodes.listCalls != 1 {
 		t.Fatalf("list nodes = %d %s", listed.Code, listed.Body.String())
 	}
+	assertStatusCursorHeaders(t, listed)
 	events := performAdminRequest(handler, http.MethodGet, "/api/v1/nodes/node-a/events?after_index=7&limit=25", "", nil)
 	if events.Code != http.StatusOK || nodes.eventsAfterIndex != 7 || nodes.eventsLimit != 25 {
 		t.Fatalf("list events = %d %s cursor=%d limit=%d", events.Code, events.Body.String(), nodes.eventsAfterIndex, nodes.eventsLimit)
 	}
+	assertStatusCursorHeaders(t, events)
 	invalidEvents := performAdminRequest(handler, http.MethodGet, "/api/v1/nodes/node-a/events?limit=251", "", nil)
 	if invalidEvents.Code != http.StatusBadRequest {
 		t.Fatalf("invalid event window = %d %s", invalidEvents.Code, invalidEvents.Body.String())
@@ -46,6 +49,7 @@ func TestNodeHandlerRoutesBoundedMutationsAndRequiresTerminalConfirmation(t *tes
 	if operation.Code != http.StatusOK || nodes.operationID != operationID {
 		t.Fatalf("get node operation = %d %s operation=%q", operation.Code, operation.Body.String(), nodes.operationID)
 	}
+	assertStatusCursorHeaders(t, operation)
 	invalidOperation := performAdminRequest(
 		handler, http.MethodGet, "/api/v1/node-operations/op_not-a-digest", "", nil,
 	)
@@ -55,12 +59,17 @@ func TestNodeHandlerRoutesBoundedMutationsAndRequiresTerminalConfirmation(t *tes
 	created := performAdminRequest(
 		handler, http.MethodPost, "/api/v1/nodes",
 		`{"node_id":"node-a","metadata":{"display_name":"Singapore A","group":"edge","labels":{"zone":"sin-a"}},"reason":"add node","ttl_seconds":600}`,
-		http.Header{"Idempotency-Key": {"create-node-a-0001"}},
+		http.Header{
+			"Idempotency-Key":             {"create-node-a-0001"},
+			expectedStatusAuthorityHeader: {"bva_0123456789abcdef0123456789abcdef"},
+		},
 	)
 	if created.Code != http.StatusCreated || nodes.createInput.NodeID != "node-a" ||
-		nodes.createInput.Metadata.Labels["zone"] != "sin-a" || nodes.createInput.RequestID == "" {
+		nodes.createInput.Metadata.Labels["zone"] != "sin-a" || nodes.createInput.RequestID == "" ||
+		nodes.createInput.ExpectedStatusAuthorityID != "bva_0123456789abcdef0123456789abcdef" {
 		t.Fatalf("create node = %d %s input=%#v", created.Code, created.Body.String(), nodes.createInput)
 	}
+	assertStatusCursorHeaders(t, created)
 	updated := performAdminRequest(
 		handler, http.MethodPatch, "/api/v1/nodes/node-a",
 		`{"expected_version":2,"metadata":{"display_name":"Payments A","group":"payments","labels":{}},"reason":"change placement"}`,
@@ -119,6 +128,41 @@ func TestNodeHandlerRoutesBoundedMutationsAndRequiresTerminalConfirmation(t *tes
 	)
 	if missingKey.Code != http.StatusBadRequest || !strings.Contains(missingKey.Body.String(), "INVALID_IDEMPOTENCY_KEY") {
 		t.Fatalf("missing idempotency key = %d %s", missingKey.Code, missingKey.Body.String())
+	}
+}
+
+func TestNodeMutationPreservesUncertaintyWhenAuthorityProjectionFails(t *testing.T) {
+	for name, statusErr := range map[string]error{
+		"missing projection": storage.ErrNotFound,
+		"corrupt storage":    storage.ErrCorrupt,
+		"corrupt identity":   identity.ErrCorrupt,
+	} {
+		t.Run(name, func(t *testing.T) {
+			management := &recordingManagementService{statusErr: statusErr}
+			nodes := &recordingNodeManagementService{}
+			principal := testPrincipal()
+			principal.Role = adminservice.RoleAdministrator
+			principal.SourceChannel = storage.SourceConsole
+			handler, err := NewHandler(HandlerOptions{
+				Service: management, NodeService: nodes,
+				Authorizer: staticAuthorizer{principal: principal},
+				ServerName: "admin.test", MaxConcurrent: 4,
+				Random: bytes.NewReader(bytes.Repeat([]byte{0x72}, 4_096)),
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			response := performAdminRequest(
+				handler, http.MethodPost, "/api/v1/nodes",
+				`{"node_id":"node-a","metadata":{"display_name":"Singapore A","group":"edge","labels":{}},"reason":"add node","ttl_seconds":600}`,
+				http.Header{"Idempotency-Key": {"create-node-uncertain-0001"}},
+			)
+			if response.Code != http.StatusServiceUnavailable || nodes.createInput.NodeID != "node-a" ||
+				!strings.Contains(response.Body.String(), `"code":"MUTATION_OUTCOME_UNKNOWN"`) ||
+				strings.Contains(response.Body.String(), `"code":"DATA_LOSS"`) {
+				t.Fatalf("post-write node projection = %d %s input=%#v", response.Code, response.Body.String(), nodes.createInput)
+			}
+		})
 	}
 }
 

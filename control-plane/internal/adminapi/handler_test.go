@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -23,6 +24,8 @@ import (
 	"time"
 
 	"github.com/routesphere-global/bonvoyage/control-plane/internal/adminservice"
+	"github.com/routesphere-global/bonvoyage/control-plane/internal/discovery"
+	"github.com/routesphere-global/bonvoyage/control-plane/internal/identity"
 	"github.com/routesphere-global/bonvoyage/control-plane/internal/rollout"
 	"github.com/routesphere-global/bonvoyage/control-plane/internal/storage"
 )
@@ -98,15 +101,27 @@ func TestHandlerEnforcesStrictMachineBoundaryAndJSON(t *testing.T) {
 		t.Fatalf("policy preview = %d %s input=%#v", previewResponse.Code, previewResponse.Body.String(), service.previewInput)
 	}
 	cancelHeaders := http.Header{"Idempotency-Key": {"cancel-operation-0001"}}
+	cancelHeaders.Set(expectedStatusAuthorityHeader, "bva_0123456789abcdef0123456789abcdef")
 	cancelResponse := performAdminRequest(
 		handler, http.MethodPost, "/api/v1/rollouts/42/cancel",
 		`{"reason":"operator stopped rollout"}`, cancelHeaders,
 	)
 	if cancelResponse.Code != http.StatusAccepted || service.cancelInput.Sequence != 42 ||
-		service.cancelInput.Reason != "operator stopped rollout" || service.cancelInput.RequestID == "" {
+		service.cancelInput.Reason != "operator stopped rollout" || service.cancelInput.RequestID == "" ||
+		service.cancelInput.ExpectedStatusAuthorityID != "bva_0123456789abcdef0123456789abcdef" {
 		t.Fatalf("cancel response = %d %s input=%#v", cancelResponse.Code, cancelResponse.Body.String(), service.cancelInput)
 	}
 	assertStatusCursorHeaders(t, cancelResponse)
+	duplicateAuthorityHeaders := http.Header{"Idempotency-Key": {"cancel-operation-0002"}}
+	duplicateAuthorityHeaders.Add(expectedStatusAuthorityHeader, "bva_0123456789abcdef0123456789abcdef")
+	duplicateAuthorityHeaders.Add(expectedStatusAuthorityHeader, "bva_fedcba9876543210fedcba9876543210")
+	duplicateAuthority := performAdminRequest(
+		handler, http.MethodPost, "/api/v1/rollouts/42/cancel",
+		`{"reason":"must not dispatch"}`, duplicateAuthorityHeaders,
+	)
+	if duplicateAuthority.Code != http.StatusBadRequest || service.cancelCalls != 1 {
+		t.Fatalf("duplicate authority response = %d %s calls=%d", duplicateAuthority.Code, duplicateAuthority.Body.String(), service.cancelCalls)
+	}
 	statusResponse := performAdminRequest(handler, http.MethodGet, "/api/v1/rollouts/current", "", nil)
 	if statusResponse.Code != http.StatusOK || strings.Contains(statusResponse.Body.String(), "bva_") {
 		t.Fatalf("status response = %d %s", statusResponse.Code, statusResponse.Body.String())
@@ -153,7 +168,11 @@ func TestHandlerEnforcesStrictMachineBoundaryAndJSON(t *testing.T) {
 	)
 	if routesResponse.Code != http.StatusOK ||
 		service.routeQuery.ExpectedArtifactSHA256 != routeDigest || service.routeQuery.Offset != 500 ||
-		service.routeQuery.Limit != 250 || service.routeQuery.Query != "payments" {
+		service.routeQuery.Limit != 250 || service.routeQuery.Query != "payments" ||
+		routesResponse.Header().Get("BonVoyage-Status-Authority") !=
+			"bva_0123456789abcdef0123456789abcdef" ||
+		routesResponse.Header().Get("BonVoyage-Status-Revision") != "7" ||
+		routesResponse.Header().Get("BonVoyage-Status-SHA256") != strings.Repeat("a", 64) {
 		t.Fatalf("route response = %d %s query=%#v", routesResponse.Code, routesResponse.Body.String(), service.routeQuery)
 	}
 	for _, path := range []string{
@@ -173,6 +192,84 @@ func TestHandlerEnforcesStrictMachineBoundaryAndJSON(t *testing.T) {
 		!strings.Contains(metrics.Body.String(), "bonvoyage_control_plane_ready 1") ||
 		strings.Contains(metrics.Body.String(), testPrincipal().Actor) {
 		t.Fatalf("metrics response = %d %s", metrics.Code, metrics.Body.String())
+	}
+}
+
+func TestHandlerCarriesExpectedInstallationAuthorityIntoRolloutWriters(t *testing.T) {
+	service := &recordingManagementService{}
+	handler, err := NewHandler(HandlerOptions{
+		Service: service, Authorizer: staticAuthorizer{principal: testPrincipal()},
+		ServerName: "admin.test", MaxConcurrent: 4,
+		Random: bytes.NewReader(bytes.Repeat([]byte{0x43}, 1_024)),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	authority := "bva_0123456789abcdef0123456789abcdef"
+	digest := strings.Repeat("a", 64)
+	headers := http.Header{
+		"Idempotency-Key":             {"authority-bound-operation-0001"},
+		expectedStatusAuthorityHeader: {authority},
+	}
+	apply := performAdminRequest(
+		handler, http.MethodPost, "/api/v1/rollouts",
+		fmt.Sprintf(`{"document":"server: {}\n","source_revision":"git:test","reason":"authority-bound apply","target_node_ids":["node-a"],"expected_selected_rollout_sequence":7,"expected_active_artifact_sha256":%q,"preview_fingerprint_sha256":%q}`, digest, digest),
+		headers,
+	)
+	if apply.Code != http.StatusAccepted || service.applyInput.ExpectedStatusAuthorityID != authority {
+		t.Fatalf("apply response = %d %s input=%#v", apply.Code, apply.Body.String(), service.applyInput)
+	}
+
+	headers.Set("Idempotency-Key", "authority-bound-operation-0002")
+	rollback := performAdminRequest(
+		handler, http.MethodPost, "/api/v1/rollbacks",
+		fmt.Sprintf(`{"reason":"authority-bound rollback","target_node_ids":["node-a"],"expected_selected_rollout_sequence":7,"expected_active_artifact_sha256":%q,"rollback_target_sequence":6,"preview_fingerprint_sha256":%q}`, digest, digest),
+		headers,
+	)
+	if rollback.Code != http.StatusAccepted || service.rollbackInput.ExpectedStatusAuthorityID != authority {
+		t.Fatalf("rollback response = %d %s input=%#v", rollback.Code, rollback.Body.String(), service.rollbackInput)
+	}
+}
+
+func TestHandlerPreservesDurableMutationUncertaintyAsRetryUnsafe(t *testing.T) {
+	service := &recordingManagementService{applyErr: errors.Join(
+		adminservice.ErrMutationOutcomeUnknown, discovery.ErrRolloutInProgress,
+	)}
+	handler, err := NewHandler(HandlerOptions{
+		Service: service, Authorizer: staticAuthorizer{principal: testPrincipal()},
+		ServerName: "admin.test", MaxConcurrent: 4,
+		Random: bytes.NewReader(bytes.Repeat([]byte{0x44}, 1_024)),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := strings.Repeat("a", 64)
+	response := performAdminRequest(
+		handler, http.MethodPost, "/api/v1/rollouts",
+		fmt.Sprintf(`{"document":"server: {}\n","source_revision":"git:test","reason":"uncertain apply","target_node_ids":["node-a"],"expected_selected_rollout_sequence":7,"expected_active_artifact_sha256":%q,"preview_fingerprint_sha256":%q}`, digest, digest),
+		http.Header{"Idempotency-Key": {"uncertain-operation-0001"}},
+	)
+	if response.Code != http.StatusServiceUnavailable ||
+		!strings.Contains(response.Body.String(), `"code":"MUTATION_OUTCOME_UNKNOWN"`) ||
+		strings.Contains(response.Body.String(), "rollout in progress") {
+		t.Fatalf("unknown mutation response = %d %s", response.Code, response.Body.String())
+	}
+}
+
+func TestProblemMappingNeverDowngradesJoinedMutationUncertaintyToFourXX(t *testing.T) {
+	for _, underlying := range []error{
+		storage.ErrNotFound,
+		storage.ErrInvalid,
+		storage.ErrCorrupt,
+		identity.ErrCorrupt,
+		discovery.ErrRolloutInProgress,
+	} {
+		code, status, _ := problemForError(errors.Join(
+			adminservice.ErrMutationOutcomeUnknown, underlying,
+		))
+		if code != "MUTATION_OUTCOME_UNKNOWN" || status != http.StatusServiceUnavailable {
+			t.Fatalf("joined %v mapped to %s/%d", underlying, code, status)
+		}
 	}
 }
 
@@ -428,13 +525,18 @@ func testPrincipal() adminservice.Principal {
 type recordingManagementService struct {
 	validateCalls   int
 	previewInput    adminservice.PreviewInput
+	applyInput      adminservice.ApplyInput
+	applyErr        error
 	cancelInput     adminservice.CancelInput
+	cancelCalls     int
+	rollbackInput   adminservice.RollbackInput
 	auditSequence   uint64
 	auditAfterIndex uint64
 	auditLimit      int
 	desiredSequence uint64
 	routeQuery      adminservice.RouteCatalogQuery
 	telemetry       adminservice.OperationalTelemetry
+	statusErr       error
 }
 
 func (service *recordingManagementService) Validate(
@@ -459,28 +561,37 @@ func (*recordingManagementService) PreviewRollback(
 	return adminservice.PreviewResult{}, nil
 }
 
-func (*recordingManagementService) Apply(
-	context.Context, adminservice.Principal, adminservice.ApplyInput,
+func (service *recordingManagementService) Apply(
+	_ context.Context, _ adminservice.Principal, input adminservice.ApplyInput,
 ) (adminservice.MutationResult, error) {
+	service.applyInput = input
+	if service.applyErr != nil {
+		return adminservice.MutationResult{}, service.applyErr
+	}
 	return adminservice.MutationResult{Status: testRolloutStatus()}, nil
 }
 
 func (service *recordingManagementService) Cancel(
 	_ context.Context, _ adminservice.Principal, input adminservice.CancelInput,
 ) (adminservice.MutationResult, error) {
+	service.cancelCalls++
 	service.cancelInput = input
 	return adminservice.MutationResult{Status: testRolloutStatus()}, nil
 }
 
-func (*recordingManagementService) Rollback(
-	context.Context, adminservice.Principal, adminservice.RollbackInput,
+func (service *recordingManagementService) Rollback(
+	_ context.Context, _ adminservice.Principal, input adminservice.RollbackInput,
 ) (adminservice.MutationResult, error) {
+	service.rollbackInput = input
 	return adminservice.MutationResult{Status: testRolloutStatus()}, nil
 }
 
-func (*recordingManagementService) GetStatus(
+func (service *recordingManagementService) GetStatus(
 	context.Context, adminservice.Principal, uint64,
 ) (adminservice.RolloutStatus, error) {
+	if service.statusErr != nil {
+		return adminservice.RolloutStatus{}, service.statusErr
+	}
 	return testRolloutStatus(), nil
 }
 
@@ -491,7 +602,8 @@ func testRolloutStatus() adminservice.RolloutStatus {
 			Revision:    7,
 			SHA256:      strings.Repeat("a", 64),
 		},
-		APIVersion: adminservice.APIVersion,
+		APIVersion: adminservice.APIVersion, Selected: true,
+		Artifact: adminservice.SnapshotSummary{ArtifactSHA256: strings.Repeat("a", 64)},
 	}
 }
 

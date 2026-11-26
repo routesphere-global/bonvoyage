@@ -36,6 +36,7 @@ var (
 	ErrPrecondition                 = errors.New("admin operation precondition failed")
 	ErrNoChange                     = errors.New("desired state produces no artifact change")
 	ErrAuthorityMismatch            = errors.New("runtime and repository authority differ")
+	ErrMutationOutcomeUnknown       = errors.New("durable mutation outcome is unknown")
 	ErrPolicyAwaitingReconciliation = errors.New("safe rollout policy is waiting for node reconciliation")
 )
 
@@ -220,6 +221,7 @@ type ApplyInput struct {
 	Document                        []byte
 	SourceRevision                  string
 	Reason                          string
+	ExpectedStatusAuthorityID       string
 	TargetNodeIDs                   []string
 	ExpectedSelectedRolloutSequence uint64
 	ExpectedActiveArtifact          storage.Digest
@@ -228,14 +230,16 @@ type ApplyInput struct {
 }
 
 type CancelInput struct {
-	RequestID string
-	Sequence  uint64
-	Reason    string
+	RequestID                 string
+	Sequence                  uint64
+	Reason                    string
+	ExpectedStatusAuthorityID string
 }
 
 type RollbackInput struct {
 	RequestID                       string
 	Reason                          string
+	ExpectedStatusAuthorityID       string
 	TargetNodeIDs                   []string
 	ExpectedSelectedRolloutSequence uint64
 	ExpectedActiveArtifact          storage.Digest

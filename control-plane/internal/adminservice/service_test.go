@@ -89,6 +89,142 @@ func TestServiceAppliesIdempotentlyAndRejectsStaleAuthority(t *testing.T) {
 	}
 }
 
+func TestServiceMarksPostAllocationSelectionFailureAsUnknownOutcome(t *testing.T) {
+	fixture := newAdminFixture(t)
+	principal := fixture.operator()
+	candidate := bytes.Replace(
+		fixture.document, []byte("local-bootstrap"), []byte("uncertain-selection"), 1,
+	)
+	preview, err := fixture.service.Preview(context.Background(), principal, PreviewInput{
+		Document: candidate, BaselineRolloutSequence: fixture.initial.Sequence,
+		TargetNodeIDs: []string{"node-a"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture.runtime.mu.Lock()
+	fixture.runtime.replaceErr = discovery.ErrRolloutInProgress
+	fixture.runtime.mu.Unlock()
+	requestID := "op_admin_apply_uncertain_selection"
+	_, err = fixture.service.Apply(context.Background(), principal, ApplyInput{
+		RequestID: requestID, Document: candidate,
+		SourceRevision: "git:uncertain-selection", Reason: "prove durable uncertainty",
+		TargetNodeIDs:                   []string{"node-a"},
+		ExpectedSelectedRolloutSequence: fixture.initial.Sequence,
+		ExpectedActiveArtifact:          fixture.initial.ArtifactDigest,
+		PreviewFingerprintSHA256:        preview.PlanFingerprintSHA256,
+	})
+	if !errors.Is(err, ErrMutationOutcomeUnknown) ||
+		!errors.Is(err, discovery.ErrRolloutInProgress) {
+		t.Fatalf("post-allocation selection error = %v", err)
+	}
+	record, lookupErr := fixture.repository.GetRolloutByRequestID(context.Background(), requestID)
+	if lookupErr != nil || record.Sequence != fixture.initial.Sequence+1 {
+		t.Fatalf("durable candidate = %#v, err=%v", record, lookupErr)
+	}
+	status, statusErr := fixture.service.GetStatus(context.Background(), principal, record.Sequence)
+	if statusErr != nil || status.Phase != rollout.PhasePreparing || status.Selected {
+		t.Fatalf("durable uncertain status = %#v, err=%v", status, statusErr)
+	}
+}
+
+func TestServiceMarksDispatchedCancellationFailureAsUnknownOutcome(t *testing.T) {
+	fixture := newAdminFixture(t)
+	principal := fixture.operator()
+	candidate := bytes.Replace(
+		fixture.document, []byte("local-bootstrap"), []byte("uncertain-cancel"), 1,
+	)
+	preview, err := fixture.service.Preview(context.Background(), principal, PreviewInput{
+		Document: candidate, BaselineRolloutSequence: fixture.initial.Sequence,
+		TargetNodeIDs: []string{"node-a"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	applied, err := fixture.service.Apply(context.Background(), principal, ApplyInput{
+		RequestID: "op_admin_uncertain_cancel_apply", Document: candidate,
+		SourceRevision: "git:uncertain-cancel", Reason: "prepare cancellation",
+		TargetNodeIDs:                   []string{"node-a"},
+		ExpectedSelectedRolloutSequence: fixture.initial.Sequence,
+		ExpectedActiveArtifact:          fixture.initial.ArtifactDigest,
+		PreviewFingerprintSHA256:        preview.PlanFingerprintSHA256,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture.runtime.mu.Lock()
+	fixture.runtime.cancelErrAfterMutation = storage.ErrNotFound
+	fixture.runtime.mu.Unlock()
+	_, err = fixture.service.Cancel(context.Background(), principal, CancelInput{
+		RequestID: "op_admin_uncertain_cancel", Sequence: applied.Status.Sequence,
+		Reason: "prove cancellation uncertainty",
+	})
+	if !errors.Is(err, ErrMutationOutcomeUnknown) || !errors.Is(err, storage.ErrNotFound) {
+		t.Fatalf("post-cancel error = %v", err)
+	}
+	fixture.runtime.mu.Lock()
+	fixture.runtime.cancelErrAfterMutation = nil
+	fixture.runtime.mu.Unlock()
+	status, statusErr := fixture.service.GetStatus(context.Background(), principal, applied.Status.Sequence)
+	if statusErr != nil || status.Phase != rollout.PhaseCancelled {
+		t.Fatalf("durable cancelled status = %#v, err=%v", status, statusErr)
+	}
+}
+
+func TestServiceRejectsMismatchedInstallationAuthorityBeforeRolloutMutation(t *testing.T) {
+	fixture := newAdminFixture(t)
+	principal := fixture.operator()
+	currentAuthority, err := fixture.repository.AuthorityID(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrongAuthority := "bva_ffffffffffffffffffffffffffffffff"
+	if wrongAuthority == currentAuthority {
+		wrongAuthority = "bva_00000000000000000000000000000000"
+	}
+	candidate := bytes.Replace(fixture.document, []byte("local-bootstrap"), []byte("authority-mismatch"), 1)
+	applyRequestID := "op_authority_mismatch_apply"
+	_, err = fixture.service.Apply(context.Background(), principal, ApplyInput{
+		RequestID: applyRequestID, Document: candidate,
+		SourceRevision: "git:authority-mismatch", Reason: "must not mutate",
+		TargetNodeIDs:                   []string{"node-a"},
+		ExpectedStatusAuthorityID:       wrongAuthority,
+		ExpectedSelectedRolloutSequence: fixture.initial.Sequence,
+		ExpectedActiveArtifact:          fixture.initial.ArtifactDigest,
+		PreviewFingerprintSHA256:        strings.Repeat("a", 64),
+	})
+	if !errors.Is(err, ErrPrecondition) {
+		t.Fatalf("apply authority error = %v", err)
+	}
+	if _, err := fixture.repository.GetRolloutByRequestID(context.Background(), applyRequestID); !errors.Is(err, storage.ErrNotFound) {
+		t.Fatalf("mismatched apply created a rollout: %v", err)
+	}
+
+	_, err = fixture.service.Cancel(context.Background(), principal, CancelInput{
+		RequestID: "op_authority_mismatch_cancel", Sequence: fixture.initial.Sequence,
+		Reason: "must not cancel", ExpectedStatusAuthorityID: wrongAuthority,
+	})
+	if !errors.Is(err, ErrPrecondition) {
+		t.Fatalf("cancel authority error = %v", err)
+	}
+	_, err = fixture.service.Rollback(context.Background(), principal, RollbackInput{
+		RequestID: "op_authority_mismatch_rollback", Reason: "must not roll back",
+		TargetNodeIDs:                   []string{"node-a"},
+		ExpectedStatusAuthorityID:       wrongAuthority,
+		ExpectedSelectedRolloutSequence: fixture.initial.Sequence + 1,
+		ExpectedActiveArtifact:          fixture.initial.ArtifactDigest,
+		RollbackTargetSequence:          fixture.initial.Sequence,
+		PreviewFingerprintSHA256:        strings.Repeat("b", 64),
+	})
+	if !errors.Is(err, ErrPrecondition) {
+		t.Fatalf("rollback authority error = %v", err)
+	}
+	status, err := fixture.service.GetStatus(context.Background(), principal, fixture.initial.Sequence)
+	if err != nil || !status.Selected || status.Sequence != fixture.initial.Sequence || status.Cursor.AuthorityID != currentAuthority {
+		t.Fatalf("status changed after rejected writers: status=%#v err=%v", status, err)
+	}
+}
+
 func TestServiceKeepsEphemeralLivenessOutsideDurableCursor(t *testing.T) {
 	fixture := newAdminFixture(t)
 	principal := fixture.operator()
@@ -732,10 +868,12 @@ func createAdminArtifact(
 }
 
 type fakeRuntime struct {
-	mu          sync.Mutex
-	repository  *storage.FileRepository
-	current     discovery.ManagedCoordinator
-	connections []discovery.ConnectionSnapshot
+	mu                     sync.Mutex
+	repository             *storage.FileRepository
+	current                discovery.ManagedCoordinator
+	connections            []discovery.ConnectionSnapshot
+	replaceErr             error
+	cancelErrAfterMutation error
 }
 
 func (runtime *fakeRuntime) CurrentRollout() (discovery.RolloutSelection, error) {
@@ -756,6 +894,9 @@ func (runtime *fakeRuntime) ReplaceRollout(
 ) (discovery.RolloutSelection, error) {
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
+	if runtime.replaceErr != nil {
+		return discovery.RolloutSelection{}, runtime.replaceErr
+	}
 	if err := selector(ctx, runtime.current.Sequence(), next.Sequence()); err != nil {
 		return discovery.RolloutSelection{}, err
 	}
@@ -781,6 +922,9 @@ func (runtime *fakeRuntime) CancelRollout(
 	transition, err := runtime.current.Cancel(ctx, eventID, cancellation)
 	if err != nil {
 		return discovery.RolloutSelection{}, err
+	}
+	if runtime.cancelErrAfterMutation != nil {
+		return discovery.RolloutSelection{}, runtime.cancelErrAfterMutation
 	}
 	snapshot, err := runtime.current.StatusSnapshot()
 	return discovery.RolloutSelection{

@@ -46,44 +46,49 @@ type NodeMetadataInput struct {
 }
 
 type CreateNodeInput struct {
-	RequestID  string
-	Reason     string
-	NodeID     string
-	Metadata   NodeMetadataInput
-	TTLSeconds uint32
+	RequestID                 string
+	Reason                    string
+	ExpectedStatusAuthorityID string
+	NodeID                    string
+	Metadata                  NodeMetadataInput
+	TTLSeconds                uint32
 }
 
 type ReissueNodeInput struct {
-	RequestID       string
-	Reason          string
-	NodeID          string
-	ExpectedVersion uint64
-	TTLSeconds      uint32
+	RequestID                 string
+	Reason                    string
+	ExpectedStatusAuthorityID string
+	NodeID                    string
+	ExpectedVersion           uint64
+	TTLSeconds                uint32
 }
 
 type ReplaceNodeInput struct {
-	RequestID         string
-	Reason            string
-	PredecessorNodeID string
-	ExpectedVersion   uint64
-	ReplacementNodeID string
-	Metadata          NodeMetadataInput
-	TTLSeconds        uint32
+	RequestID                 string
+	Reason                    string
+	ExpectedStatusAuthorityID string
+	PredecessorNodeID         string
+	ExpectedVersion           uint64
+	ReplacementNodeID         string
+	Metadata                  NodeMetadataInput
+	TTLSeconds                uint32
 }
 
 type UpdateNodeInput struct {
-	RequestID       string
-	Reason          string
-	NodeID          string
-	ExpectedVersion uint64
-	Metadata        NodeMetadataInput
+	RequestID                 string
+	Reason                    string
+	ExpectedStatusAuthorityID string
+	NodeID                    string
+	ExpectedVersion           uint64
+	Metadata                  NodeMetadataInput
 }
 
 type TransitionNodeInput struct {
-	RequestID       string
-	Reason          string
-	NodeID          string
-	ExpectedVersion uint64
+	RequestID                 string
+	Reason                    string
+	ExpectedStatusAuthorityID string
+	NodeID                    string
+	ExpectedVersion           uint64
 }
 
 type NodeRuntimeView struct {
@@ -390,6 +395,9 @@ func (service *Service) CreateNode(
 	}
 	service.nodeMu.Lock()
 	defer service.nodeMu.Unlock()
+	if err := service.requireStatusAuthority(ctx, input.ExpectedStatusAuthorityID); err != nil {
+		return NodeEnrollmentResult{}, err
+	}
 	plan, err := service.identity.CreateNodeEnrollment(ctx, identity.NodeEnrollmentInput{
 		RequestID: input.RequestID,
 		IntentSHA256: nodeOperationIntentSHA256(
@@ -418,6 +426,9 @@ func (service *Service) ReissueNode(
 	}
 	service.nodeMu.Lock()
 	defer service.nodeMu.Unlock()
+	if err := service.requireStatusAuthority(ctx, input.ExpectedStatusAuthorityID); err != nil {
+		return NodeEnrollmentResult{}, err
+	}
 	current, err := service.identity.GetNode(ctx, input.NodeID)
 	if err != nil {
 		return NodeEnrollmentResult{}, err
@@ -452,6 +463,9 @@ func (service *Service) ReplaceNode(
 	}
 	service.nodeMu.Lock()
 	defer service.nodeMu.Unlock()
+	if err := service.requireStatusAuthority(ctx, input.ExpectedStatusAuthorityID); err != nil {
+		return NodeEnrollmentResult{}, err
+	}
 	plan, err := service.identity.CreateNodeReplacement(ctx, identity.NodeEnrollmentInput{
 		RequestID: input.RequestID,
 		IntentSHA256: nodeOperationIntentSHA256(
@@ -482,6 +496,9 @@ func (service *Service) UpdateNode(
 	}
 	service.nodeMu.Lock()
 	defer service.nodeMu.Unlock()
+	if err := service.requireStatusAuthority(ctx, input.ExpectedStatusAuthorityID); err != nil {
+		return NodeMutationResult{}, err
+	}
 	plan, err := service.identity.UpdateNodeMetadata(ctx, identity.NodeMetadataUpdateInput{
 		RequestID: input.RequestID,
 		IntentSHA256: nodeOperationIntentSHA256(
@@ -510,6 +527,9 @@ func (service *Service) DrainNode(
 	}
 	service.nodeMu.Lock()
 	defer service.nodeMu.Unlock()
+	if err := service.requireStatusAuthority(ctx, input.ExpectedStatusAuthorityID); err != nil {
+		return NodeMutationResult{}, err
+	}
 	plan, err := service.identity.RequestNodeDrain(ctx, identity.NodeTransitionInput{
 		RequestID: input.RequestID,
 		IntentSHA256: nodeOperationIntentSHA256(
@@ -537,6 +557,9 @@ func (service *Service) RetireNode(
 	}
 	service.nodeMu.Lock()
 	defer service.nodeMu.Unlock()
+	if err := service.requireStatusAuthority(ctx, input.ExpectedStatusAuthorityID); err != nil {
+		return NodeMutationResult{}, err
+	}
 	for _, connection := range service.runtime.Connections() {
 		if connection.NodeID == input.NodeID {
 			return NodeMutationResult{}, fmt.Errorf("node remains connected; stop and verify it before retirement: %w", ErrPrecondition)
@@ -579,6 +602,9 @@ func (service *Service) RevokeNode(
 	}
 	service.nodeMu.Lock()
 	defer service.nodeMu.Unlock()
+	if err := service.requireStatusAuthority(ctx, input.ExpectedStatusAuthorityID); err != nil {
+		return NodeMutationResult{}, err
+	}
 	plan, err := service.identity.RevokeManagedNode(ctx, identity.ManagedNodeRevocationInput{
 		RequestID: input.RequestID,
 		IntentSHA256: nodeOperationIntentSHA256(
@@ -594,7 +620,10 @@ func (service *Service) RevokeNode(
 		service.nodePolicy.RevocationPath, input.NodeID, input.Reason,
 		service.nodeClock(), service.nodePolicy.RevocationValidFor,
 	); err != nil {
-		return NodeMutationResult{}, fmt.Errorf("publish node revocation snapshot: %w", err)
+		return NodeMutationResult{}, unknownMutationOutcome(
+			fmt.Sprintf("node %q was durably revoked before revocation publication became uncertain", input.NodeID),
+			err,
+		)
 	}
 	return service.nodeMutationResult(ctx, plan.Node.NodeID, plan.Replayed)
 }
@@ -628,7 +657,10 @@ func (service *Service) nodeMutationResult(
 ) (NodeMutationResult, error) {
 	summary, err := service.identity.GetNode(ctx, nodeID)
 	if err != nil {
-		return NodeMutationResult{}, err
+		return NodeMutationResult{}, unknownMutationOutcome(
+			fmt.Sprintf("node %q mutation committed before response projection became uncertain", nodeID),
+			err,
+		)
 	}
 	return NodeMutationResult{
 		APIVersion: APIVersion, Replayed: replayed,

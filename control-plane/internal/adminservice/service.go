@@ -2,6 +2,7 @@ package adminservice
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -110,6 +111,9 @@ func (service *Service) Apply(
 
 	service.mutationMu.Lock()
 	defer service.mutationMu.Unlock()
+	if err := service.requireStatusAuthority(ctx, input.ExpectedStatusAuthorityID); err != nil {
+		return MutationResult{}, err
+	}
 	targets, _ := normalizeTargetNodes(input.TargetNodeIDs)
 	policy, policyView, err := normalizePolicy(input.Policy, targets)
 	if err != nil {
@@ -227,6 +231,9 @@ func (service *Service) Rollback(
 
 	service.mutationMu.Lock()
 	defer service.mutationMu.Unlock()
+	if err := service.requireStatusAuthority(ctx, input.ExpectedStatusAuthorityID); err != nil {
+		return MutationResult{}, err
+	}
 	targets, _ := normalizeTargetNodes(input.TargetNodeIDs)
 	preview, err := service.PreviewRollback(ctx, principal, RollbackPreviewInput{
 		CurrentRolloutSequence: input.ExpectedSelectedRolloutSequence,
@@ -331,15 +338,15 @@ func (service *Service) startAndSelect(
 ) (MutationResult, error) {
 	coordinator, err := rolloutservice.Open(ctx, service.repository, record.Sequence)
 	if err != nil {
-		return MutationResult{}, err
+		return MutationResult{}, mutationOutcomeUnknown(record, err)
 	}
 	started, err := coordinator.Start(ctx, "start."+record.RequestID)
 	if err != nil {
-		return MutationResult{}, err
+		return MutationResult{}, mutationOutcomeUnknown(record, err)
 	}
 	current, err := service.runtime.CurrentRollout()
 	if err != nil {
-		return MutationResult{}, err
+		return MutationResult{}, mutationOutcomeUnknown(record, err)
 	}
 	if record.Sequence > current.Sequence {
 		_, err = service.runtime.ReplaceRollout(
@@ -350,18 +357,29 @@ func (service *Service) startAndSelect(
 			},
 		)
 		if err != nil {
-			return MutationResult{}, err
+			return MutationResult{}, mutationOutcomeUnknown(record, err)
 		}
 	} else if record.Sequence < current.Sequence {
 		replayed = true
 	}
 	status, err := service.status(ctx, record.Sequence)
 	if err != nil {
-		return MutationResult{}, err
+		return MutationResult{}, mutationOutcomeUnknown(record, err)
 	}
 	return MutationResult{
 		APIVersion: APIVersion, Replayed: replayed || started.Replayed, Status: status,
 	}, nil
+}
+
+func mutationOutcomeUnknown(record storage.RolloutRecord, err error) error {
+	return unknownMutationOutcome(
+		fmt.Sprintf("rollout %d was durably allocated before its outcome became uncertain", record.Sequence),
+		err,
+	)
+}
+
+func unknownMutationOutcome(detail string, err error) error {
+	return errors.Join(ErrMutationOutcomeUnknown, fmt.Errorf("%s: %w", detail, err))
 }
 
 func (service *Service) GetStatus(
@@ -739,6 +757,27 @@ func validatePrincipal(principal Principal) error {
 	case storage.SourceAPI, storage.SourceCLI, storage.SourceConsole, storage.SourceGitOps:
 	default:
 		return ErrForbidden
+	}
+	return nil
+}
+
+func (service *Service) requireStatusAuthority(ctx context.Context, expected string) error {
+	if expected == "" {
+		return nil
+	}
+	if len(expected) != len("bva_")+32 || !strings.HasPrefix(expected, "bva_") {
+		return fmt.Errorf("expected status authority is invalid: %w", ErrInvalidInput)
+	}
+	decoded, err := hex.DecodeString(strings.TrimPrefix(expected, "bva_"))
+	if err != nil || len(decoded) != 16 || expected != "bva_"+hex.EncodeToString(decoded) {
+		return fmt.Errorf("expected status authority is invalid: %w", ErrInvalidInput)
+	}
+	current, err := service.repository.AuthorityID(ctx)
+	if err != nil {
+		return err
+	}
+	if current != expected {
+		return fmt.Errorf("status authority changed before mutation: %w", ErrPrecondition)
 	}
 	return nil
 }

@@ -2,6 +2,7 @@ package adminapi
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -69,9 +70,14 @@ func (handler *Handler) handleNodes(
 			handler.problem(response, requestID, err)
 			return
 		}
-		writeJSON(response, http.StatusOK, result)
+		handler.writeAuthorityBoundJSON(ctx, response, requestID, principal, http.StatusOK, result, false)
 	case http.MethodPost:
 		operationID, err := operationID(request, principal)
+		if err != nil {
+			handler.problem(response, requestID, err)
+			return
+		}
+		expectedAuthority, err := expectedStatusAuthority(request)
 		if err != nil {
 			handler.problem(response, requestID, err)
 			return
@@ -85,13 +91,14 @@ func (handler *Handler) handleNodes(
 		defer cancel()
 		result, err := handler.nodes.CreateNode(ctx, principal, adminservice.CreateNodeInput{
 			RequestID: operationID, Reason: body.Reason, NodeID: body.NodeID,
-			Metadata: nodeMetadataInput(body.Metadata), TTLSeconds: body.TTLSeconds,
+			ExpectedStatusAuthorityID: expectedAuthority,
+			Metadata:                  nodeMetadataInput(body.Metadata), TTLSeconds: body.TTLSeconds,
 		})
 		if err != nil {
 			handler.problem(response, requestID, err)
 			return
 		}
-		writeJSON(response, http.StatusCreated, result)
+		handler.writeAuthorityBoundJSON(ctx, response, requestID, principal, http.StatusCreated, result, true)
 	default:
 		handler.problem(response, requestID, errMethodNotAllowed)
 	}
@@ -144,9 +151,14 @@ func (handler *Handler) handleNode(
 			handler.problem(response, requestID, err)
 			return
 		}
-		writeJSON(response, http.StatusOK, result)
+		handler.writeAuthorityBoundJSON(ctx, response, requestID, principal, http.StatusOK, result, false)
 	case http.MethodPatch:
 		operationID, err := operationID(request, principal)
+		if err != nil {
+			handler.problem(response, requestID, err)
+			return
+		}
+		expectedAuthority, err := expectedStatusAuthority(request)
 		if err != nil {
 			handler.problem(response, requestID, err)
 			return
@@ -160,13 +172,14 @@ func (handler *Handler) handleNode(
 		defer cancel()
 		result, err := handler.nodes.UpdateNode(ctx, principal, adminservice.UpdateNodeInput{
 			RequestID: operationID, Reason: body.Reason, NodeID: nodeID,
-			ExpectedVersion: body.ExpectedVersion, Metadata: nodeMetadataInput(body.Metadata),
+			ExpectedStatusAuthorityID: expectedAuthority,
+			ExpectedVersion:           body.ExpectedVersion, Metadata: nodeMetadataInput(body.Metadata),
 		})
 		if err != nil {
 			handler.problem(response, requestID, err)
 			return
 		}
-		writeJSON(response, http.StatusOK, result)
+		handler.writeAuthorityBoundJSON(ctx, response, requestID, principal, http.StatusOK, result, true)
 	default:
 		handler.problem(response, requestID, errMethodNotAllowed)
 	}
@@ -194,7 +207,7 @@ func (handler *Handler) handleNodeEvents(
 		handler.problem(response, requestID, err)
 		return
 	}
-	writeJSON(response, http.StatusOK, result)
+	handler.writeAuthorityBoundJSON(ctx, response, requestID, principal, http.StatusOK, result, false)
 }
 
 func (handler *Handler) handleNodeOperation(
@@ -222,7 +235,7 @@ func (handler *Handler) handleNodeOperation(
 		handler.problem(response, requestID, err)
 		return
 	}
-	writeJSON(response, http.StatusOK, result)
+	handler.writeAuthorityBoundJSON(ctx, response, requestID, principal, http.StatusOK, result, false)
 }
 
 func parseNodeOperationPath(path string) (string, error) {
@@ -288,6 +301,11 @@ func (handler *Handler) handleNodeReissue(
 		handler.problem(response, requestID, err)
 		return
 	}
+	expectedAuthority, err := expectedStatusAuthority(request)
+	if err != nil {
+		handler.problem(response, requestID, err)
+		return
+	}
 	var body reissueNodeRequest
 	if err := decodeRequest(request, &body, maxMutationBodyBytes); err != nil {
 		handler.problem(response, requestID, err)
@@ -297,13 +315,14 @@ func (handler *Handler) handleNodeReissue(
 	defer cancel()
 	result, err := handler.nodes.ReissueNode(ctx, principal, adminservice.ReissueNodeInput{
 		RequestID: operationID, Reason: body.Reason, NodeID: nodeID,
-		ExpectedVersion: body.ExpectedVersion, TTLSeconds: body.TTLSeconds,
+		ExpectedStatusAuthorityID: expectedAuthority,
+		ExpectedVersion:           body.ExpectedVersion, TTLSeconds: body.TTLSeconds,
 	})
 	if err != nil {
 		handler.problem(response, requestID, err)
 		return
 	}
-	writeJSON(response, http.StatusCreated, result)
+	handler.writeAuthorityBoundJSON(ctx, response, requestID, principal, http.StatusCreated, result, true)
 }
 
 func (handler *Handler) handleNodeReplacement(
@@ -325,6 +344,11 @@ func (handler *Handler) handleNodeReplacement(
 		handler.problem(response, requestID, err)
 		return
 	}
+	expectedAuthority, err := expectedStatusAuthority(request)
+	if err != nil {
+		handler.problem(response, requestID, err)
+		return
+	}
 	var body replaceNodeRequest
 	if err := decodeRequest(request, &body, maxMutationBodyBytes); err != nil {
 		handler.problem(response, requestID, err)
@@ -334,14 +358,15 @@ func (handler *Handler) handleNodeReplacement(
 	defer cancel()
 	result, err := handler.nodes.ReplaceNode(ctx, principal, adminservice.ReplaceNodeInput{
 		RequestID: operationID, Reason: body.Reason, PredecessorNodeID: nodeID,
-		ExpectedVersion: body.ExpectedVersion, ReplacementNodeID: body.ReplacementNodeID,
+		ExpectedStatusAuthorityID: expectedAuthority,
+		ExpectedVersion:           body.ExpectedVersion, ReplacementNodeID: body.ReplacementNodeID,
 		Metadata: nodeMetadataInput(body.Metadata), TTLSeconds: body.TTLSeconds,
 	})
 	if err != nil {
 		handler.problem(response, requestID, err)
 		return
 	}
-	writeJSON(response, http.StatusCreated, result)
+	handler.writeAuthorityBoundJSON(ctx, response, requestID, principal, http.StatusCreated, result, true)
 }
 
 func (handler *Handler) handleNodeTransition(
@@ -364,13 +389,19 @@ func (handler *Handler) handleNodeTransition(
 		handler.problem(response, requestID, err)
 		return
 	}
+	expectedAuthority, err := expectedStatusAuthority(request)
+	if err != nil {
+		handler.problem(response, requestID, err)
+		return
+	}
 	var body nodeTransitionRequest
 	if err := decodeRequest(request, &body, maxMutationBodyBytes); err != nil {
 		handler.problem(response, requestID, err)
 		return
 	}
 	input := adminservice.TransitionNodeInput{
-		RequestID: operationID, Reason: body.Reason, NodeID: nodeID, ExpectedVersion: body.ExpectedVersion,
+		RequestID: operationID, Reason: body.Reason, NodeID: nodeID,
+		ExpectedStatusAuthorityID: expectedAuthority, ExpectedVersion: body.ExpectedVersion,
 	}
 	ctx, cancel := context.WithTimeout(request.Context(), 10*time.Second)
 	defer cancel()
@@ -391,7 +422,28 @@ func (handler *Handler) handleNodeTransition(
 	if action == "drain" {
 		status = http.StatusAccepted
 	}
-	writeJSON(response, status, result)
+	handler.writeAuthorityBoundJSON(ctx, response, requestID, principal, status, result, true)
+}
+
+func (handler *Handler) writeAuthorityBoundJSON(
+	ctx context.Context,
+	response http.ResponseWriter,
+	requestID string,
+	principal adminservice.Principal,
+	status int,
+	value any,
+	mutationCommitted bool,
+) {
+	current, err := handler.service.GetStatus(ctx, principal, 0)
+	if err != nil {
+		if mutationCommitted {
+			err = errors.Join(adminservice.ErrMutationOutcomeUnknown, err)
+		}
+		handler.problem(response, requestID, err)
+		return
+	}
+	writeStatusCursor(response, current.Cursor)
+	writeJSON(response, status, value)
 }
 
 func parseNodeResourcePath(path string) (string, string, error) {

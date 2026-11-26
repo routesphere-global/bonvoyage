@@ -45,6 +45,25 @@ func TestNodeManagementUsesDurableIdentityAndRetirementPreconditions(t *testing.
 		Actor: "spiffe://admin.test/operators/root", Role: RoleAdministrator,
 		SourceChannel: storage.SourceConsole,
 	}
+	currentAuthority, err := fixture.repository.AuthorityID(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrongAuthority := "bva_ffffffffffffffffffffffffffffffff"
+	if wrongAuthority == currentAuthority {
+		wrongAuthority = "bva_00000000000000000000000000000000"
+	}
+	if _, err := service.CreateNode(context.Background(), administrator, CreateNodeInput{
+		RequestID: "authority-mismatch-create-node", Reason: "must not mutate", NodeID: "node-stale",
+		ExpectedStatusAuthorityID: wrongAuthority,
+		Metadata:                  NodeMetadataInput{DisplayName: "Stale node", Group: "default"},
+	}); !errors.Is(err, ErrPrecondition) {
+		t.Fatalf("mismatched authority create error = %v", err)
+	}
+	nodesAfterMismatch, err := service.ListNodes(context.Background(), administrator)
+	if err != nil || len(nodesAfterMismatch.Nodes) != 0 {
+		t.Fatalf("mismatched authority created node state: nodes=%#v err=%v", nodesAfterMismatch.Nodes, err)
+	}
 	viewer := administrator
 	viewer.Role = RoleViewer
 	if _, err := service.CreateNode(context.Background(), viewer, CreateNodeInput{
@@ -56,6 +75,7 @@ func TestNodeManagementUsesDurableIdentityAndRetirementPreconditions(t *testing.
 
 	created, err := service.CreateNode(context.Background(), administrator, CreateNodeInput{
 		RequestID: "admin-create-node-b", Reason: "add replacement capacity", NodeID: "node-b",
+		ExpectedStatusAuthorityID: currentAuthority,
 		Metadata: NodeMetadataInput{
 			DisplayName: "Singapore edge B", Group: "edge-sin",
 			Labels: map[string]string{"zone": "ap-southeast-1b"},
@@ -70,6 +90,7 @@ func TestNodeManagementUsesDurableIdentityAndRetirementPreconditions(t *testing.
 	}
 	replayed, err := service.CreateNode(context.Background(), administrator, CreateNodeInput{
 		RequestID: "admin-create-node-b", Reason: "add replacement capacity", NodeID: "node-b",
+		ExpectedStatusAuthorityID: currentAuthority,
 		Metadata: NodeMetadataInput{
 			DisplayName: "Singapore edge B", Group: "edge-sin",
 			Labels: map[string]string{"zone": "ap-southeast-1b"},

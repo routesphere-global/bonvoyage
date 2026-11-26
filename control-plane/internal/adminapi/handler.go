@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net"
@@ -25,15 +26,16 @@ import (
 )
 
 const (
-	maxConfigEnvelopeBytes = 4 << 20
-	maxMutationBodyBytes   = 16 << 10
-	maxURLBytes            = 4 << 10
-	maxHeaderCount         = 64
-	maxHeaderValueBytes    = 8 << 10
-	maxJSONDepth           = 32
-	statusAuthorityHeader  = "BonVoyage-Status-Authority"
-	statusRevisionHeader   = "BonVoyage-Status-Revision"
-	statusSHA256Header     = "BonVoyage-Status-SHA256"
+	maxConfigEnvelopeBytes        = 4 << 20
+	maxMutationBodyBytes          = 16 << 10
+	maxURLBytes                   = 4 << 10
+	maxHeaderCount                = 64
+	maxHeaderValueBytes           = 8 << 10
+	maxJSONDepth                  = 32
+	statusAuthorityHeader         = "BonVoyage-Status-Authority"
+	statusRevisionHeader          = "BonVoyage-Status-Revision"
+	statusSHA256Header            = "BonVoyage-Status-SHA256"
+	expectedStatusAuthorityHeader = "X-BonVoyage-Expected-Status-Authority"
 )
 
 type managementService interface {
@@ -231,6 +233,11 @@ func (handler *Handler) handleApply(
 		handler.problem(response, requestID, err)
 		return
 	}
+	expectedAuthority, err := expectedStatusAuthority(request)
+	if err != nil {
+		handler.problem(response, requestID, err)
+		return
+	}
 	var body applyRequest
 	if err := decodeRequest(request, &body, maxConfigEnvelopeBytes); err != nil {
 		handler.problem(response, requestID, err)
@@ -246,6 +253,7 @@ func (handler *Handler) handleApply(
 	result, err := handler.service.Apply(ctx, principal, adminservice.ApplyInput{
 		RequestID: operationID, Document: []byte(body.Document),
 		SourceRevision: body.SourceRevision, Reason: body.Reason,
+		ExpectedStatusAuthorityID:       expectedAuthority,
 		TargetNodeIDs:                   body.TargetNodeIDs,
 		ExpectedSelectedRolloutSequence: body.ExpectedSelectedRolloutSequence,
 		ExpectedActiveArtifact:          expected,
@@ -273,6 +281,11 @@ func (handler *Handler) handleCancel(
 		handler.problem(response, requestID, err)
 		return
 	}
+	expectedAuthority, err := expectedStatusAuthority(request)
+	if err != nil {
+		handler.problem(response, requestID, err)
+		return
+	}
 	path := strings.TrimSuffix(strings.TrimPrefix(request.URL.Path, "/api/v1/rollouts/"), "/cancel")
 	sequence, err := parseSequence(path)
 	if err != nil || sequence == 0 {
@@ -288,6 +301,7 @@ func (handler *Handler) handleCancel(
 	defer cancel()
 	result, err := handler.service.Cancel(ctx, principal, adminservice.CancelInput{
 		RequestID: operationID, Sequence: sequence, Reason: body.Reason,
+		ExpectedStatusAuthorityID: expectedAuthority,
 	})
 	if err != nil {
 		handler.problem(response, requestID, err)
@@ -338,6 +352,11 @@ func (handler *Handler) handleRollback(
 		handler.problem(response, requestID, err)
 		return
 	}
+	expectedAuthority, err := expectedStatusAuthority(request)
+	if err != nil {
+		handler.problem(response, requestID, err)
+		return
+	}
 	var body rollbackRequest
 	if err := decodeRequest(request, &body, maxMutationBodyBytes); err != nil {
 		handler.problem(response, requestID, err)
@@ -352,6 +371,7 @@ func (handler *Handler) handleRollback(
 	defer cancel()
 	result, err := handler.service.Rollback(ctx, principal, adminservice.RollbackInput{
 		RequestID: operationID, Reason: body.Reason, TargetNodeIDs: body.TargetNodeIDs,
+		ExpectedStatusAuthorityID:       expectedAuthority,
 		ExpectedSelectedRolloutSequence: body.ExpectedSelectedRolloutSequence,
 		ExpectedActiveArtifact:          expected,
 		RollbackTargetSequence:          body.RollbackTargetSequence,
@@ -483,6 +503,20 @@ func (handler *Handler) handleCurrentRoutes(
 		handler.problem(response, requestID, err)
 		return
 	}
+	current, err := handler.service.GetStatus(ctx, principal, 0)
+	if err != nil {
+		handler.problem(response, requestID, err)
+		return
+	}
+	if !current.Selected || current.Sequence != result.RolloutSequence ||
+		current.Artifact.ArtifactSHA256 != result.ArtifactSHA256 {
+		handler.problem(response, requestID, fmt.Errorf(
+			"selected route artifact changed during response binding: %w",
+			adminservice.ErrAuthorityMismatch,
+		))
+		return
+	}
+	writeStatusCursor(response, current.Cursor)
 	writeJSON(response, http.StatusOK, result)
 }
 
@@ -665,6 +699,22 @@ func operationID(request *http.Request, principal adminservice.Principal) (strin
 	return "op_" + hex.EncodeToString(digest[:]), nil
 }
 
+func expectedStatusAuthority(request *http.Request) (string, error) {
+	values := request.Header.Values(expectedStatusAuthorityHeader)
+	if len(values) == 0 {
+		return "", nil
+	}
+	if len(values) != 1 || len(values[0]) != len("bva_")+32 ||
+		!strings.HasPrefix(values[0], "bva_") {
+		return "", errInvalidRequest
+	}
+	decoded, err := hex.DecodeString(strings.TrimPrefix(values[0], "bva_"))
+	if err != nil || len(decoded) != 16 || values[0] != "bva_"+hex.EncodeToString(decoded) {
+		return "", errInvalidRequest
+	}
+	return values[0], nil
+}
+
 func parseSequence(value string) (uint64, error) {
 	if value == "current" {
 		return 0, nil
@@ -784,6 +834,10 @@ var (
 
 func problemForError(err error) (string, int, string) {
 	switch {
+	case errors.Is(err, adminservice.ErrMutationOutcomeUnknown):
+		return "MUTATION_OUTCOME_UNKNOWN", http.StatusServiceUnavailable, "the durable operation may have started and must be reconciled before retry"
+	case errors.Is(err, storage.ErrCorrupt), errors.Is(err, identity.ErrCorrupt), errors.Is(err, rolloutservice.ErrReplayMismatch):
+		return "DATA_LOSS", http.StatusInternalServerError, "durable control-plane state failed integrity verification"
 	case errors.Is(err, ErrUnauthenticated):
 		return "UNAUTHENTICATED", http.StatusUnauthorized, "a valid Admin client certificate and authorization are required"
 	case errors.Is(err, adminservice.ErrForbidden), errors.Is(err, errForbiddenBoundary):
@@ -824,8 +878,6 @@ func problemForError(err error) (string, int, string) {
 		errors.Is(err, storage.ErrLocked), errors.Is(err, rolloutservice.ErrServicePoisoned),
 		errors.Is(err, rolloutservice.ErrDurabilityUncertain):
 		return "UNAVAILABLE", http.StatusServiceUnavailable, "the authoritative control-plane state is unavailable"
-	case errors.Is(err, storage.ErrCorrupt), errors.Is(err, identity.ErrCorrupt), errors.Is(err, rolloutservice.ErrReplayMismatch):
-		return "DATA_LOSS", http.StatusInternalServerError, "durable control-plane state failed integrity verification"
 	default:
 		return "INTERNAL", http.StatusInternalServerError, "the Admin operation failed without exposing internal state"
 	}
